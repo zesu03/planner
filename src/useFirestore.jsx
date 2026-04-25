@@ -15,11 +15,13 @@ export function useUserData(userId) {
   const [prayerLog, setPrayerLog] = useState(null);
   const [focusLog, setFocusLog] = useState(null);
   const [settings, setSettings] = useState(null);
+  const [muhasaba, setMuhasaba] = useState(null);
   const [loading, setLoading] = useState(true);
   const latestGoalsRef = useRef([]);
   const latestPrayerRef = useRef({});
   const latestFocusRef = useRef([]);
   const latestSettingsRef = useRef({});
+  const latestMuhasabaRef = useRef({});
 
   // Load once, then listen
   useEffect(() => {
@@ -32,23 +34,28 @@ export function useUserData(userId) {
         const nextPrayerLog = data.prayerLog || {};
         const nextFocusLog = data.focusLog || [];
         const nextSettings = data.settings || {};
+        const nextMuhasaba = data.muhasaba || {};
         latestGoalsRef.current = nextGoals;
         latestPrayerRef.current = nextPrayerLog;
         latestFocusRef.current = nextFocusLog;
         latestSettingsRef.current = nextSettings;
+        latestMuhasabaRef.current = nextMuhasaba;
         setGoals(nextGoals);
         setPrayerLog(nextPrayerLog);
         setFocusLog(nextFocusLog);
         setSettings(nextSettings);
+        setMuhasaba(nextMuhasaba);
       } else {
         latestGoalsRef.current = [];
         latestPrayerRef.current = {};
         latestFocusRef.current = [];
         latestSettingsRef.current = {};
+        latestMuhasabaRef.current = {};
         setGoals([]);
         setPrayerLog({});
         setFocusLog([]);
         setSettings({});
+        setMuhasaba({});
       }
       setLoading(false);
     });
@@ -61,7 +68,13 @@ export function useUserData(userId) {
       if (!userId) return;
       await setDoc(
         doc(db, "users", userId),
-        { goals: latestGoalsRef.current, prayerLog: latestPrayerRef.current, focusLog: latestFocusRef.current, settings: latestSettingsRef.current },
+        {
+          goals: latestGoalsRef.current,
+          prayerLog: latestPrayerRef.current,
+          focusLog: latestFocusRef.current,
+          settings: latestSettingsRef.current,
+          muhasaba: latestMuhasabaRef.current,
+        },
         { merge: true }
       );
     }, 1200),
@@ -92,5 +105,11 @@ export function useUserData(userId) {
     save();
   }
 
-  return { goals, prayerLog, focusLog, settings, loading, updateGoals, updatePrayerLog, updateFocusLog, updateSettings };
+  function updateMuhasaba(newMuhasaba) {
+    latestMuhasabaRef.current = newMuhasaba;
+    setMuhasaba(newMuhasaba);
+    save();
+  }
+
+  return { goals, prayerLog, focusLog, settings, muhasaba, loading, updateGoals, updatePrayerLog, updateFocusLog, updateSettings, updateMuhasaba };
 }

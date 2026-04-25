@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Space+Grotesk:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Amiri:ital,wght@0,400;0,700;1,400;1,700&family=Fraunces:opsz,wght@9..144,500;9..144,700&family=Space+Grotesk:wght@400;500;600&display=swap");
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -6,18 +6,19 @@ body {
   font-family: "Space Grotesk", sans-serif;
   font-size: 17px;
   line-height: 1.6;
-  background: radial-gradient(1200px 600px at 20% -10%, rgba(201,168,76,0.18), transparent 55%),
-    radial-gradient(900px 500px at 90% 20%, rgba(63,140,160,0.18), transparent 60%),
-    #0b0c0a;
-  color: #e8e3d8;
+  background: radial-gradient(1200px 600px at 20% -10%, var(--body-glow-1), transparent 55%),
+    radial-gradient(900px 500px at 90% 20%, var(--body-glow-2), transparent 60%),
+    var(--body-bg-base);
+  color: var(--text-primary);
   min-height: 100vh;
+  transition: background 0.3s ease, color 0.2s ease;
 }
 
 #root {
   min-height: 100vh;
 }
 
-:root {
+:root, [data-theme="dark"] {
   --gold: #c9a84c;
   --gold-light: rgba(201,168,76,0.12);
   --bg-primary: #0f120f;
@@ -29,6 +30,8 @@ body {
   --text-muted: #6c6559;
   --radius: 14px;
   --radius-sm: 10px;
+  --card-padding: 20px 22px;
+  --page-padding: 1.5rem 1.25rem;
 
   --color-background-primary: var(--bg-card);
   --color-background-secondary: var(--bg-secondary);
@@ -45,6 +48,43 @@ body {
   --color-background-warning: rgba(214,168,95,0.2);
   --border-radius-lg: 16px;
   --border-radius-md: 12px;
+
+  --body-bg-base: #0b0c0a;
+  --body-glow-1: rgba(201,168,76,0.18);
+  --body-glow-2: rgba(63,140,160,0.18);
+  --input-bg: rgba(23, 26, 22, 0.9);
+}
+
+/* Light theme — warm parchment palette. Deep ochre + olive on cream. */
+[data-theme="light"] {
+  --gold: #7a5810;
+  --gold-light: rgba(122,88,16,0.14);
+  --bg-primary: #f5ecd6;
+  --bg-secondary: #e6dcbf;
+  --bg-card: #fbf6e6;
+  --border: rgba(96,70,18,0.22);
+  --text-primary: #20180c;
+  --text-secondary: #5a4818;
+  --text-muted: #8a7848;
+
+  --color-background-primary: var(--bg-card);
+  --color-background-secondary: #ece1c4;
+  --color-border-tertiary: rgba(96,70,18,0.22);
+  --color-border-secondary: rgba(96,70,18,0.34);
+  --color-border-danger: rgba(154,52,40,0.4);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-muted);
+  --color-text-danger: #9a3428;
+  --color-text-warning: #7a5614;
+  --color-text-success: #3a6b34;
+  --color-background-danger: rgba(154,52,40,0.13);
+  --color-background-warning: rgba(192,140,40,0.18);
+
+  --body-bg-base: #ede2c5;
+  --body-glow-1: rgba(122,88,16,0.18);
+  --body-glow-2: rgba(63,140,160,0.10);
+  --input-bg: rgba(255,251,238,0.92);
 }
 
 h1, h2, h3 {
@@ -53,8 +93,8 @@ h1, h2, h3 {
 }
 
 input, textarea, select {
-  background: rgba(23, 26, 22, 0.9);
-  border: 0.5px solid rgba(201,168,76,0.25);
+  background: var(--input-bg);
+  border: 0.5px solid var(--color-border-secondary);
   border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-family: inherit;
@@ -62,14 +102,14 @@ input, textarea, select {
   padding: 10px 14px;
   width: 100%;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.25);
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
 }
 input:focus, textarea:focus, select:focus {
   border-color: var(--gold);
   box-shadow: 0 0 0 2px rgba(201,168,76,0.15);
 }
-select option { background: #1e1d18; }
+select option { background: var(--bg-card); color: var(--text-primary); }
 
 button {
   background: rgba(17, 18, 16, 0.7);
@@ -94,20 +134,93 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 .btn-gold:hover { background: #d4af5a; color: #0f0f0f; border-color: #d4af5a; }
 
+/* Primary CTA — used for Create / Save / Start. Sturdier than .btn-gold. */
+.btn-primary {
+  background: var(--gold);
+  color: #0f0f0f;
+  border: 0.5px solid var(--gold);
+  border-radius: var(--border-radius-md);
+  font-weight: 600;
+  font-size: 15px;
+  padding: 11px 20px;
+  letter-spacing: 0.2px;
+  box-shadow: 0 8px 22px rgba(201, 168, 76, 0.18);
+  transition: transform 0.12s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.btn-primary:hover { background: #d4af5a; border-color: #d4af5a; color: #0f0f0f; transform: translateY(-1px); box-shadow: 0 10px 26px rgba(201, 168, 76, 0.28); }
+.btn-primary:active { transform: translateY(0); box-shadow: 0 4px 12px rgba(201, 168, 76, 0.18); }
+.btn-primary:disabled { background: rgba(201, 168, 76, 0.35); border-color: rgba(201, 168, 76, 0.35); box-shadow: none; transform: none; cursor: not-allowed; }
+
+/* Arabic typography — tuned for reading Quranic verse and du'a. */
+.arabic {
+  font-family: "Amiri", "Scheherazade New", serif;
+  font-weight: 400;
+  line-height: 2.1;
+  letter-spacing: 0;
+  direction: rtl;
+}
+
+/* Tab bar — soft fade on the right edge to hint at scrollability. */
+.tabbar {
+  position: relative;
+  -webkit-mask-image: linear-gradient(to right, #000 0, #000 92%, transparent 100%);
+          mask-image: linear-gradient(to right, #000 0, #000 92%, transparent 100%);
+}
+
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes popIn {
+  0% { opacity: 0; transform: scale(0.7); }
+  60% { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes goldGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(201, 168, 76, 0); }
+  50% { box-shadow: 0 0 0 6px rgba(201, 168, 76, 0.18); }
+}
+
+/* Slow breath used as a halo behind the focus dial while running. */
+@keyframes dialBreath {
+  0%, 100% { transform: scale(1); opacity: 0.35; }
+  50% { transform: scale(1.06); opacity: 0.7; }
+}
+.dial-breath { animation: dialBreath 3.6s ease-in-out infinite; }
+
 #root > * {
   animation: fadeUp 0.35s ease-out;
 }
 
+/* Animates the visible content of each tab view when switched. */
+.view-content {
+  animation: fadeUp 0.28s ease-out;
+}
+
+/* Used on the "Completed" pill the moment a goal flips done. */
+.pop-in {
+  animation: popIn 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Soft tile hover used on stat tiles, prayer chips, etc. */
+.tile-hover {
+  transition: transform 0.12s ease, border-color 0.15s ease, box-shadow 0.18s ease, background 0.15s ease;
+}
+.tile-hover:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+}
+
 @media (max-width: 640px) {
+  :root {
+    --card-padding: 14px 16px;
+    --page-padding: 1.1rem 0.85rem;
+  }
+
   body {
-    background: radial-gradient(800px 400px at 20% -10%, rgba(201,168,76,0.16), transparent 55%),
-      radial-gradient(600px 380px at 90% 20%, rgba(63,140,160,0.16), transparent 60%),
-      #0b0c0a;
+    font-size: 16px;
   }
 
   h2 {
@@ -120,6 +233,11 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
   input, textarea, select {
     font-size: 15px;
+  }
+
+  .btn-primary {
+    padding: 10px 16px;
+    font-size: 14px;
   }
 
   .task-toolbar button,

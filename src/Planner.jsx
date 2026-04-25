@@ -1,142 +1,39 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useUserData } from "./useFirestore";
+import { auth } from "./firebase";
 
-const newId = () => {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-  return `id_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-};
+// Pure helpers and data — no React, no state. See src/lib/.
+import {
+  CAT_COLORS, PRAYERS, PRAYER_ICONS,
+  QUOTES, INTENTIONS, FALLBACK_VERSE,
+  DEFAULT_DURATIONS,
+} from "./lib/constants";
+import { newId } from "./lib/ids";
+import { todayStr, localDateStr, addDays } from "./lib/dates";
+import { isGoalDone, pct } from "./lib/goals";
+import { emptyMuhasabaEntry, isMuhasabaFilled, muhasabaStreak } from "./lib/muhasaba";
+import { getFocusSeconds, fmtTime } from "./lib/focus";
+import { getAudioCtx, playTimerSound } from "./lib/audio";
+import { gold, S } from "./lib/styles";
 
-// ── constants ──────────────────────────────────────────────────────────────
-const CATEGORIES = ["Health","Career","Learning","Finance","Personal","Deen","Other"];
-const CAT_COLORS  = { Health:"#1D9E75",Career:"#7F77DD",Learning:"#378ADD",Finance:"#BA7517",Personal:"#D85A30",Deen:"#c9a84c",Other:"#888780" };
-const PRIORITIES  = ["Low","Medium","High"];
-
-const PRAYERS = ["Fajr","Sunrise","Dhuhr","Asr","Maghrib","Isha"];
-const PRAYER_ICONS = { Fajr:"🌙", Sunrise:"🌅", Dhuhr:"☀️", Asr:"🌤️", Maghrib:"🌇", Isha:"✨" };
-
-const QUOTES = [
-  { ar:"وَمَا الْحَيَاةُ الدُّنْيَا إِلَّا مَتَاعُ الْغُرُورِ", en:"The life of this world is nothing but the enjoyment of delusion.", ref:"Quran 3:185" },
-  { ar:"فَإِنَّ مَعَ الْعُسْرِ يُسْرًا", en:"Verily, with every hardship comes ease.", ref:"Quran 94:5" },
-  { ar:"وَاسْتَعِينُوا بِالصَّبْرِ وَالصَّلَاةِ", en:"Seek help through patience and prayer.", ref:"Quran 2:45" },
-  { ar:"إِنَّ اللَّهَ مَعَ الصَّابِرِينَ", en:"Indeed, Allah is with the patient.", ref:"Quran 2:153" },
-  { ar:"وَمَن يَتَّقِ اللَّهَ يَجْعَل لَّهُ مَخْرَجًا", en:"Whoever fears Allah, He will make a way out for him.", ref:"Quran 65:2" },
-  { en:"The best of deeds are those done regularly, even if they are few.", ref:"Hadith – Bukhari & Muslim" },
-  { en:"Make use of five before five: your youth before old age, your health before illness, your wealth before poverty, your free time before preoccupation, and your life before death.", ref:"Hadith – Ibn Abbas" },
-  { en:"Every soul shall taste death. Only on the Day of Resurrection shall you be paid your full recompense.", ref:"Quran 3:185" },
-];
-
-const INTENTIONS = [
-  "I am doing this to please Allah and earn Jannah.",
-  "This effort is my sadaqah jariyah.",
-  "Ya Allah, accept this from me as an act of worship.",
-  "Every step closer to my goal is a step closer to Jannah.",
-  "My time is an amanah — I will use it wisely.",
-];
-
-const FALLBACK_VERSE = {
-  verseKey: "94:5",
-  arabic: "فَإِنَّ مَعَ الْعُسْرِ يُسْرًا",
-  translation: "So surely with hardship comes ease.",
-  url: "https://quran.com/94:5",
-};
-
-const createInitialGoals = () => [
-  {
-    id: newId(),
-    title: "Memorise Surah Al-Mulk",
-    type: "long",
-    category: "Deen",
-    due: `${new Date().getFullYear()}-12-31`,
-    notes: "10 verses per month. For the sake of Jannah.",
-    tasks: [
-      { id: newId(), text: "Learn verses 1-5", done: true, priority: "High", eta: 45, sessions: 2, totalTime: 48 },
-      { id: newId(), text: "Learn verses 6-10", done: false, priority: "High", eta: 45, sessions: 0, totalTime: 0 },
-      { id: newId(), text: "Daily revision after Fajr", done: false, priority: "Medium", eta: 15, sessions: 0, totalTime: 0 },
-    ],
-  },
-  {
-    id: newId(),
-    title: "Run a 5K",
-    type: "short",
-    category: "Health",
-    due: (() => {
-      const d = new Date();
-      d.setDate(d.getDate() + 45);
-      return d.toISOString().split("T")[0];
-    })(),
-    notes: "Health is an amanah from Allah.",
-    tasks: [
-      { id: newId(), text: "Buy running shoes", done: true, priority: "High", eta: 30, sessions: 1, totalTime: 28 },
-      { id: newId(), text: "Complete week 1 of C25K", done: false, priority: "High", eta: 60, sessions: 0, totalTime: 0 },
-    ],
-  },
-];
-
-const DEFAULT_DURATIONS = { defaultFocus: 60, break: 10 };
-const getSecondsFromMinutes = (mins) => Math.max(0, Math.round(mins)) * 60;
-const getFocusSeconds = (taskEta, durations) => getSecondsFromMinutes(taskEta || durations.defaultFocus);
-const getBreakSeconds = (durations) => getSecondsFromMinutes(durations.break);
-const fmtTime = s => `${String(Math.floor(s/60)).padStart(2,"0")}:${String(s%60).padStart(2,"0")}`;
-const fmtMins = m => m >= 60 ? `${Math.floor(m/60)}h ${m%60>0?m%60+"m":""}`.trim() : `${m}m`;
-const todayStr = () => new Date().toISOString().split("T")[0];
-const daysLeft = due => Math.ceil((new Date(due)-new Date())/86400000);
-const fmt = d => { if(!d)return""; const[y,m,day]=d.split("-"); return`${day}/${m}/${y}`; };
-
-// ── styles helpers ─────────────────────────────────────────────────────────
-const gold = "#c9a84c";
-const goldLight = "rgba(201,168,76,0.12)";
-const S = {
-  card: { background:"var(--color-background-primary)", border:"0.5px solid var(--color-border-tertiary)", borderRadius:"var(--border-radius-lg)", padding:"20px 22px" },
-  goldCard: { background:"linear-gradient(135deg,rgba(201,168,76,0.18) 0%,rgba(201,168,76,0.06) 100%)", border:`0.5px solid ${gold}55`, borderRadius:"var(--border-radius-lg)", padding:"20px 22px" },
-  pill: (bg,color) => ({ display:"inline-block",fontSize:13,padding:"3px 10px",borderRadius:99,background:bg,color,fontWeight:500,whiteSpace:"nowrap" }),
-  tab: (active) => ({ fontSize:15,fontWeight:active?600:400,color:active?"var(--color-text-primary)":"var(--color-text-secondary)",borderBottom:active?"2.5px solid "+gold:"2.5px solid transparent",borderRadius:0,padding:"9px 0",marginRight:22,background:"none",borderTop:"none",borderLeft:"none",borderRight:"none",cursor:"pointer",letterSpacing:"0.2px" }),
-  filterBtn: (active) => ({ fontSize:14,padding:"5px 16px",borderRadius:99,background:active?"var(--color-text-primary)":"transparent",color:active?"var(--color-background-primary)":"var(--color-text-secondary)",border:"0.5px solid var(--color-border-secondary)",cursor:"pointer" }),
-};
-
-// ── reusable components (outside main component to avoid re-creation) ──
-const ProgressBar = ({val,color,height=6}) => (
-  <div style={{height,background:"var(--color-background-secondary)",borderRadius:99,overflow:"hidden"}}>
-    <div style={{height:"100%",width:`${val}%`,background:color||gold,borderRadius:99,transition:"width 0.4s"}} />
-  </div>
-);
-
-// ── play a short beep using Web Audio API ──
-function playTimerSound() {
-  try {
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(880, ctx.currentTime);
-    gain.gain.setValueAtTime(0.3, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + 0.8);
-    // second beep
-    const osc2 = ctx.createOscillator();
-    const gain2 = ctx.createGain();
-    osc2.connect(gain2);
-    gain2.connect(ctx.destination);
-    osc2.type = "sine";
-    osc2.frequency.setValueAtTime(1100, ctx.currentTime + 0.3);
-    gain2.gain.setValueAtTime(0.3, ctx.currentTime + 0.3);
-    gain2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.1);
-    osc2.start(ctx.currentTime + 0.3);
-    osc2.stop(ctx.currentTime + 1.1);
-  } catch {}
-}
+// View components (one per tab).
+import Dashboard from "./views/Dashboard";
+import Stats from "./views/Stats";
+import Pomodoro from "./views/Pomodoro";
+import Prayer from "./views/Prayer";
+import GoalsList from "./views/GoalsList";
+import GoalAdd from "./views/GoalAdd";
+import GoalDetail from "./views/GoalDetail";
+import Muhasaba from "./views/Muhasaba";
 
 // ── main component ─────────────────────────────────────────────────────────
 export default function Planner({ user }) {
-  const { goals: goalsFromDb, prayerLog: prayerLogFromDb, focusLog: focusLogFromDb, settings: settingsFromDb, loading, updateGoals, updatePrayerLog, updateFocusLog, updateSettings } = useUserData(user.uid);
+  const { goals: goalsFromDb, prayerLog: prayerLogFromDb, focusLog: focusLogFromDb, settings: settingsFromDb, muhasaba: muhasabaFromDb, loading, updateGoals, updatePrayerLog, updateFocusLog, updateSettings, updateMuhasaba } = useUserData(user.uid);
   const goals = goalsFromDb ?? [];
   const prayerLog = prayerLogFromDb ?? {};
   const focusLog = focusLogFromDb ?? [];
   const userSettings = settingsFromDb ?? {};
+  const muhasaba = muhasabaFromDb ?? {};
   const [view,setView]         = useState("dashboard");
   const [filter,setFilter]     = useState("all");
   const [searchTerm,setSearchTerm] = useState("");
@@ -167,8 +64,12 @@ export default function Planner({ user }) {
   const [hijriDate,setHijriDate]       = useState("");
   const settingsAppliedRef = useRef(false);
 
-  // pomodoro
-  const [pomMode,setPomMode]     = useState("focus");
+  // muhasaba
+  const [muhasabaDay,setMuhasabaDay] = useState(todayStr());
+  const [aiLoadingDay,setAiLoadingDay] = useState(null); // day being generated, or null
+  const [aiError,setAiError] = useState("");
+
+  // pomodoro — break mode is intentionally absent; the timer is focus-only.
   const [pomDurations,setPomDurations] = useState(DEFAULT_DURATIONS);
   const [pomSeconds,setPomSeconds] = useState(() => getFocusSeconds(null, DEFAULT_DURATIONS));
   const [pomRunning,setPomRunning] = useState(false);
@@ -195,6 +96,23 @@ export default function Planner({ user }) {
     }
   }, [settingsFromDb]);
 
+  // theme: apply data-theme to <html> based on settings (default dark)
+  const theme = userSettings.theme === "light" ? "light" : "dark";
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", theme);
+  }, [theme]);
+  function toggleTheme() {
+    updateSettings({ ...userSettings, theme: theme === "dark" ? "light" : "dark" });
+  }
+
+  // Daily focus goal (minutes). Drives the Daily progress ring on the Focus
+  // tab and the streak count. Persisted in settings; defaults to 60.
+  const dailyFocusGoalMins = Number(userSettings.dailyFocusGoalMins) || 60;
+  function updateDailyFocusGoal(mins) {
+    const v = Math.max(1, Math.min(720, Number(mins) || 60));
+    updateSettings({ ...userSettings, dailyFocusGoalMins: v });
+  }
+
   const applyGoalsUpdate = useCallback(
     (updater) => {
       const next = typeof updater === "function" ? updater(goals) : updater;
@@ -219,90 +137,268 @@ export default function Planner({ user }) {
     [focusLog, updateFocusLog]
   );
 
-  useEffect(() => {
-    let active = true;
-    const controller = new AbortController();
-    const today = new Date().toISOString().split("T")[0];
-    const storageKey = "aakhirah_votd";
-    const cached = localStorage.getItem(storageKey);
+  const applyMuhasabaUpdate = useCallback(
+    (updater) => {
+      const next = typeof updater === "function" ? updater(muhasaba) : updater;
+      updateMuhasaba(next);
+    },
+    [muhasaba, updateMuhasaba]
+  );
 
+  // Build a rich JSON payload for Gemini. The mentor needs enough context to
+  // spot real patterns (recurring sins, stalling du'as, momentum) — not just
+  // a snapshot of today.
+  const buildReportPayload = useCallback((day) => {
+    const entry = muhasaba[day] || {};
+    const today = todayStr();
+    const isToday = day === today;
+    const dayOfWeek = new Date(day).toLocaleDateString("en", { weekday: "long" });
+
+    // Prayers — today + yesterday for direct comparison
+    const dayPrayersDone = PRAYERS.filter(p => (prayerLog[p]||[]).includes(day));
+    const dayPrayersMissed = PRAYERS.filter(p => p !== "Sunrise" && !dayPrayersDone.includes(p));
+    const yKey = (() => { const d=new Date(`${day}T00:00:00Z`); d.setUTCDate(d.getUTCDate()-1); return localDateStr(d); })();
+    const yesterdayPrayers = {
+      done: PRAYERS.filter(p => (prayerLog[p]||[]).includes(yKey)),
+      missed: PRAYERS.filter(p => p !== "Sunrise" && !(prayerLog[p]||[]).includes(yKey)),
+    };
+
+    // Focus — today's mins + breakdown by goal
+    const dayFocus = focusLog.filter(l => l.day === day);
+    const dayFocusMins = dayFocus.reduce((s,l) => s + (l.mins||0), 0);
+    const focusByGoal = dayFocus.reduce((acc, l) => {
+      const g = goals.find(x => x.id === l.goalId);
+      const key = g?.title || "general";
+      acc[key] = (acc[key] || 0) + (l.mins || 0);
+      return acc;
+    }, {});
+
+    // Goals snapshot
+    const goalsState = goals.map(g => {
+      const tasks = g.tasks || [];
+      const doneCount = tasks.filter(t => t.done).length;
+      const dl = Math.ceil((new Date(g.due) - new Date(day)) / 86400000);
+      return {
+        title: g.title,
+        category: g.category,
+        type: g.type,
+        progressPct: tasks.length ? Math.round(doneCount/tasks.length*100) : 0,
+        tasksDone: doneCount,
+        tasksTotal: tasks.length,
+        daysUntilDue: dl,
+        completed: !!g.completedAt,
+        completedOn: g.completedAt || null,
+        intention: g.intention || null,
+      };
+    });
+
+    // Momentum — when did the user last finish a goal?
+    const lastCompletedDay = goals
+      .filter(g => g.completedAt)
+      .map(g => g.completedAt)
+      .sort()
+      .pop();
+    const daysSinceLastGoalCompletion = lastCompletedDay
+      ? Math.floor((new Date(day) - new Date(lastCompletedDay)) / 86400000)
+      : null;
+
+    // 7-day prayer streaks ending on `day`
+    const streaks = {};
+    for (const p of PRAYERS) {
+      if (p === "Sunrise") continue;
+      let count = 0;
+      const cursor = new Date(day);
+      for (let i=0; i<7; i++) {
+        const k = localDateStr(cursor);
+        if ((prayerLog[p]||[]).includes(k)) count++;
+        else if (i>0) break;
+        cursor.setDate(cursor.getDate() - 1);
+      }
+      streaks[p] = count;
+    }
+
+    // Last 5 days of muhasaba — gives the model real history to spot
+    // recurring patterns instead of having to "infer" from a hint.
+    const lastFiveDaysMuhasaba = [];
+    for (let i = 1; i <= 5; i++) {
+      const d = new Date(day);
+      d.setDate(d.getDate() - i);
+      const k = localDateStr(d);
+      const e = muhasaba[k];
+      if (e && (e.repentText || e.sinTags?.length || e.bestDeed || e.niyyahRating || e.duaTomorrow)) {
+        lastFiveDaysMuhasaba.push({
+          day: k,
+          sinTags: e.sinTags || [],
+          repentText: e.repentText || null,
+          niyyahRating: e.niyyahRating || null,
+          bestDeed: e.bestDeed || null,
+          duaTomorrow: e.duaTomorrow || null,
+          ghaflahNote: e.ghaflahNote || null,
+        });
+      }
+    }
+
+    // recentDuas — kept alongside lastFiveDaysMuhasaba as a quick-glance signal
+    const recentDuas = [];
+    for (let i = 1; i <= 3; i++) {
+      const d = new Date(day);
+      d.setDate(d.getDate() - i);
+      const k = localDateStr(d);
+      const past = muhasaba[k]?.duaTomorrow;
+      if (past && past.trim()) recentDuas.push({ daysAgo: i, dua: past });
+    }
+
+    // Niyyah trend (last 7 days incl. today)
+    const niyyahTrendArr = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(day);
+      d.setDate(d.getDate() - i);
+      const k = localDateStr(d);
+      const r = muhasaba[k]?.niyyahRating;
+      if (r) niyyahTrendArr.push({ day: k, rating: r });
+    }
+
+    return {
+      day,
+      dayOfWeek,
+      hijriHint: isToday ? (hijriDate || null) : null, // we only know today's Hijri date
+      isToday,
+      entryUpdatedAt: entry.updatedAt || null,
+      prayers: {
+        done: dayPrayersDone,
+        missed: dayPrayersMissed,
+        sevenDayStreaks: streaks,
+        yesterday: yesterdayPrayers,
+      },
+      focus: { totalMins: dayFocusMins, sessions: dayFocus.length, byGoal: focusByGoal },
+      goals: goalsState,
+      daysSinceLastGoalCompletion,
+      muhasaba: {
+        quranPages: entry.quranPages || null,
+        dhikr: !!entry.dhikr,
+        makeupNote: entry.makeupNote || null,
+        repentText: entry.repentText || null,
+        sinTags: entry.sinTags || [],
+        ghaflahNote: entry.ghaflahNote || null,
+        niyyahRating: entry.niyyahRating || null,
+        bestDeed: entry.bestDeed || null,
+        shukr: (entry.shukr || []).filter(s => s && s.trim()),
+        duaTomorrow: entry.duaTomorrow || null,
+      },
+      muhasabaStreak: muhasabaStreak(muhasaba),
+      lastFiveDaysMuhasaba,
+      recentDuas,
+      niyyahTrend: niyyahTrendArr,
+    };
+  }, [goals, prayerLog, focusLog, muhasaba, hijriDate]);
+
+  const generateReport = useCallback(async (day, { force=false } = {}) => {
+    if (!day) return;
+    const existing = muhasaba[day]?.aiReport;
+    if (existing && !force) return;
+    if (aiLoadingDay) return; // already generating something
+    setAiError("");
+    setAiLoadingDay(day);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("Not signed in");
+      const payload = buildReportPayload(day);
+      const res = await fetch("/api/gemini-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ day, payload }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || `Request failed (${res.status})`);
+      // Prefer the structured `data` object; fall back to legacy `text`
+      // (for the rare case Gemini's JSON parse fails server-side and we
+      // return raw text instead).
+      const aiReport = {
+        ...(json.data ? { data: json.data } : {}),
+        ...(json.text ? { text: json.text } : {}),
+        generatedAt: json.generatedAt || new Date().toISOString(),
+        model: json.model || null,
+      };
+      applyMuhasabaUpdate(m => ({
+        ...m,
+        [day]: { ...emptyMuhasabaEntry(), ...m[day], aiReport },
+      }));
+    } catch (e) {
+      setAiError(e?.message || "Failed to generate report");
+    } finally {
+      setAiLoadingDay(null);
+    }
+  }, [muhasaba, aiLoadingDay, buildReportPayload, applyMuhasabaUpdate]);
+
+  // AI Mirror is invoked manually only — the user clicks Generate / Regenerate
+  // in the Mirror card. No automatic generation on filled muhasaba; saves API
+  // quota and lets the user decide when they're ready to be reflected on.
+
+  // Verse of the day — fetches a random ayah from Quran.com, caches in
+  // localStorage keyed by date so each day's first load uses the network and
+  // subsequent loads reuse the cached value. `refreshVerse()` invalidates
+  // the cache so the user can intentionally fetch a new verse.
+  const fetchVerse = useCallback(async () => {
+    const today = todayStr();
+    const storageKey = "aakhirah_votd";
+    setVerseError("");
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    try {
+      const res = await fetch(
+        "https://api.quran.com/api/v4/verses/random?fields=text_uthmani&translations=20",
+        { signal: controller.signal }
+      );
+      if (!res.ok) throw new Error("Quran API request failed");
+      const json = await res.json();
+      const v = json?.verse;
+      const verseKey = v?.verse_key || FALLBACK_VERSE.verseKey;
+      const arabic = v?.text_uthmani || "";
+      const translation = (v?.translations?.[0]?.text || "").replace(/<[^>]*>/g, "");
+      if (!arabic || !translation) {
+        const fallback = { ...FALLBACK_VERSE, day: today };
+        setVerseOfDay(fallback);
+        setVerseError("Using a fallback verse. Please refresh to try again.");
+        localStorage.setItem(storageKey, JSON.stringify(fallback));
+        return;
+      }
+      const payload = { day: today, verseKey, arabic, translation, url: `https://quran.com/${verseKey}` };
+      setVerseOfDay(payload);
+      localStorage.setItem(storageKey, JSON.stringify(payload));
+    } catch {
+      setVerseOfDay({ ...FALLBACK_VERSE, day: today });
+      setVerseError("Using a fallback verse. Please refresh to try again.");
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  }, []);
+
+  function refreshVerse() {
+    try { localStorage.removeItem("aakhirah_votd"); } catch {}
+    fetchVerse();
+  }
+
+  useEffect(() => {
+    const today = todayStr();
+    const cached = localStorage.getItem("aakhirah_votd");
     if (cached) {
       try {
         const parsed = JSON.parse(cached);
         if (parsed?.day === today && parsed?.verseKey) {
           setVerseOfDay(parsed);
-          return () => { active = false; controller.abort(); };
-        }
-      } catch {
-        // ignore cache parse errors
-      }
-    }
-
-    const timeoutId = setTimeout(() => {
-      if (active) {
-        controller.abort();
-        setVerseError("Verse of the day timed out. Please refresh.");
-      }
-    }, 8000);
-
-    async function loadVerse() {
-      try {
-        const res = await fetch(
-          "https://api.quran.com/api/v4/verses/random?fields=text_uthmani&translations=20",
-          { signal: controller.signal }
-        );
-        if (!res.ok) throw new Error("Quran API request failed");
-        const json = await res.json();
-        const v = json?.verse;
-        const verseKey = v?.verse_key || FALLBACK_VERSE.verseKey;
-        const arabic = v?.text_uthmani || "";
-        const translation = (v?.translations?.[0]?.text || "").replace(/<[^>]*>/g, "");
-        if (!arabic || !translation) {
-          const fallback = { ...FALLBACK_VERSE, day: today };
-          if (!active) return;
-          setVerseOfDay(fallback);
-          setVerseError("Using a fallback verse. Please refresh to try again.");
-          localStorage.setItem(storageKey, JSON.stringify(fallback));
           return;
         }
-        const payload = {
-          day: today,
-          verseKey,
-          arabic,
-          translation,
-          url: `https://quran.com/${verseKey}`,
-        };
-        if (!active) return;
-        setVerseOfDay(payload);
-        localStorage.setItem(storageKey, JSON.stringify(payload));
-      } catch (e) {
-        if (!active) return;
-        setVerseOfDay({ ...FALLBACK_VERSE, day: today });
-        setVerseError("Using a fallback verse. Please refresh to try again.");
-      } finally {
-        clearTimeout(timeoutId);
-      }
+      } catch { /* ignore cache parse errors */ }
     }
-
-    loadVerse();
-    return () => { active = false; controller.abort(); clearTimeout(timeoutId); };
-  }, []);
+    fetchVerse();
+  }, [fetchVerse]);
   const selected   = goals.find(g => g.id===selectedId);
   const activeTask = pomGoalId&&pomTaskId ? goals.find(g=>g.id===pomGoalId)?.tasks.find(t=>t.id===pomTaskId) : null;
 
-  const pct = g => g.tasks.length ? Math.round(g.tasks.filter(t=>t.done).length/g.tasks.length*100) : 0;
   const overallPct = goals.length ? Math.round(goals.reduce((s,g)=>s+pct(g),0)/goals.length) : 0;
+  // Used by Dashboard's stats grid. Stats view derives its own focus aggregates.
   const totalSessions = focusLog.length;
   const totalFocusMins = focusLog.reduce((s,l)=>s+(l.mins||0),0);
-  const avgFocusMins = focusLog.length ? Math.round(totalFocusMins / focusLog.length) : 0;
-  const focusByTask = focusLog.reduce((acc,l)=>{
-    const g = goals.find(x=>x.id===l.goalId);
-    const t = g?.tasks.find(x=>x.id===l.taskId);
-    const label = t?.text || "General focus";
-    acc[label] = (acc[label] || 0) + (l.mins || 0);
-    return acc;
-  }, {});
-  const topFocusTasks = Object.entries(focusByTask).sort((a,b)=>b[1]-a[1]).slice(0,5);
   const rawName = user?.displayName || user?.email?.split("@")[0] || "Dost";
   const firstName = rawName.split(/[\s._-]+/)[0] || "Dost";
   const greetingName = firstName;
@@ -382,7 +478,7 @@ export default function Planner({ user }) {
     const log = prayerLog[prayer]||[];
     let streak=0, d=new Date();
     for (let i=0;i<30;i++) {
-      const s = d.toISOString().split("T")[0];
+      const s = localDateStr(d);
       if (log.includes(s)) streak++;
       else break;
       d.setDate(d.getDate()-1);
@@ -394,59 +490,40 @@ export default function Planner({ user }) {
   const stopTimer = useCallback(() => { clearInterval(intervalRef.current); setPomRunning(false); },[]);
 
   useEffect(() => {
-    if (pomRunning) {
-      intervalRef.current = setInterval(() => {
-        setPomSeconds(s => {
-          if (s<=1) {
-            if (pomMode==="focus") {
-              const mins = Math.max(1, Math.round(pomFocusTargetMins));
-              const at = new Date();
-              const entry = {
-                id: newId(),
-                taskId: pomTaskId,
-                goalId: pomGoalId,
-                mins,
-                at: at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                day: at.toISOString().split("T")[0],
-              };
-              applyFocusLogUpdate(l=>[entry, ...l].slice(0, 100));
-              if (pomGoalId && pomTaskId) {
-                applyGoalsUpdate(gs=>gs.map(g=>g.id!==pomGoalId?g:{...g,tasks:g.tasks.map(t=>t.id!==pomTaskId?t:{...t,sessions:(t.sessions||0)+1,totalTime:(t.totalTime||0)+mins})}));
-              }
-              playTimerSound();
-              elapsedRef.current = 0;
-              // auto-skip break if duration is 0
-              const breakSecs = getBreakSeconds(pomDurations);
-              if (breakSecs <= 0) {
-                const task = pomGoalId && pomTaskId ? goals.find(g=>g.id===pomGoalId)?.tasks.find(t=>t.id===pomTaskId) : null;
-                const nextMins = task?.eta || pomDurations.defaultFocus;
-                setPomFocusTargetMins(nextMins);
-                setPomRunning(false);
-                setPomMode("focus");
-                return getFocusSeconds(nextMins, pomDurations);
-              }
-              setPomMode("break");
-              return breakSecs;
-            }
-
-            if (pomMode==="break") {
-              playTimerSound();
-              setPomRunning(false);
-              setPomMode("focus");
-              const task = pomGoalId && pomTaskId ? goals.find(g=>g.id===pomGoalId)?.tasks.find(t=>t.id===pomTaskId) : null;
-              const nextMins = task?.eta || pomDurations.defaultFocus;
-              setPomFocusTargetMins(nextMins);
-              elapsedRef.current = 0;
-              return getFocusSeconds(nextMins, pomDurations);
-            }
+    if (!pomRunning) return () => clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => {
+      setPomSeconds(s => {
+        if (s <= 1) {
+          // Session complete — log it, increment task sessions, chime, stop.
+          const mins = Math.max(1, Math.round(pomFocusTargetMins));
+          const at = new Date();
+          const entry = {
+            id: newId(),
+            taskId: pomTaskId,
+            goalId: pomGoalId,
+            mins,
+            at: at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            day: localDateStr(at),
+          };
+          applyFocusLogUpdate(l => [entry, ...l].slice(0, 100));
+          if (pomGoalId && pomTaskId) {
+            applyGoalsUpdate(gs => gs.map(g => g.id !== pomGoalId ? g : { ...g, tasks: g.tasks.map(t => t.id !== pomTaskId ? t : { ...t, sessions: (t.sessions || 0) + 1, totalTime: (t.totalTime || 0) + mins }) }));
           }
-          if (pomMode==="focus") elapsedRef.current += 1;
-          return s-1;
-        });
-      },1000);
-    }
+          playTimerSound("focusEnd");
+          elapsedRef.current = 0;
+          // Reset the dial to the next session length (task eta or default).
+          const task = pomGoalId && pomTaskId ? goals.find(g => g.id === pomGoalId)?.tasks.find(t => t.id === pomTaskId) : null;
+          const nextMins = task?.eta || pomDurations.defaultFocus;
+          setPomFocusTargetMins(nextMins);
+          setPomRunning(false);
+          return getFocusSeconds(nextMins, pomDurations);
+        }
+        elapsedRef.current += 1;
+        return s - 1;
+      });
+    }, 1000);
     return () => clearInterval(intervalRef.current);
-  },[pomRunning,pomMode,pomGoalId,pomTaskId,pomFocusTargetMins,pomDurations,goals,applyGoalsUpdate,applyFocusLogUpdate]);
+  }, [pomRunning, pomGoalId, pomTaskId, pomFocusTargetMins, pomDurations, goals, applyGoalsUpdate, applyFocusLogUpdate]);
 
   if (loading) {
     return (
@@ -457,39 +534,81 @@ export default function Planner({ user }) {
   }
 
   function startTaskTimer(goalId,taskId) {
-    if (pomRunning && pomTaskId===taskId && pomMode==="focus") { stopTimer(); return; }
+    if (pomRunning && pomTaskId===taskId) { stopTimer(); return; }
     const task = goals.find(g=>g.id===goalId)?.tasks.find(t=>t.id===taskId);
     const focusMins = task?.eta || pomDurations.defaultFocus;
+    getAudioCtx(); // unlock audio under user gesture so end-of-session chime can play
     stopTimer(); setPomGoalId(goalId); setPomTaskId(taskId);
-    setPomMode("focus"); setPomFocusTargetMins(focusMins); setPomSeconds(getFocusSeconds(focusMins, pomDurations)); elapsedRef.current=0; setPomRunning(true); setView("pomodoro");
+    setPomFocusTargetMins(focusMins); setPomSeconds(getFocusSeconds(focusMins, pomDurations)); elapsedRef.current=0; setPomRunning(true); setView("pomodoro");
   }
 
-  function switchMode(m) {
+  // Reset has dual behaviour:
+  //  - If a task is linked, delink it and preserve the time the user has
+  //    left as a fresh general focus block. Lets you abort a task partway
+  //    through without losing the time you'd already set aside.
+  //  - With no task linked, just reset to the default focus length.
+  function resetTimer() {
     stopTimer();
-    setPomMode(m);
-    if (m === "break") {
-      setPomSeconds(getBreakSeconds(pomDurations));
-    } else {
-      const task = pomGoalId && pomTaskId ? goals.find(g=>g.id===pomGoalId)?.tasks.find(t=>t.id===pomTaskId) : null;
-      const focusMins = task?.eta || pomDurations.defaultFocus;
-      setPomFocusTargetMins(focusMins);
-      setPomSeconds(getFocusSeconds(focusMins, pomDurations));
+    if (pomTaskId) {
+      const remainingMins = Math.max(1, Math.ceil(pomSeconds / 60));
+      setPomGoalId(null);
+      setPomTaskId(null);
+      setPomFocusTargetMins(remainingMins);
+      setPomSeconds(remainingMins * 60);
+      elapsedRef.current = 0;
+      return;
     }
-    elapsedRef.current=0;
+    setPomSeconds(getFocusSeconds(pomFocusTargetMins, pomDurations));
+    elapsedRef.current = 0;
   }
 
-  function skipBreak() {
-    const task = pomGoalId && pomTaskId ? goals.find(g=>g.id===pomGoalId)?.tasks.find(t=>t.id===pomTaskId) : null;
-    const focusMins = task?.eta || pomDurations.defaultFocus;
-    setPomMode("focus");
-    setPomFocusTargetMins(focusMins);
-    setPomSeconds(getFocusSeconds(focusMins, pomDurations));
-    elapsedRef.current=0;
-    setPomRunning(true);
+  // Trigger a client-side download of the user's full data as JSON. Useful
+  // for backup or moving the data elsewhere — the entire user doc shape.
+  function exportData() {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      uid: user.uid,
+      goals,
+      prayerLog,
+      focusLog,
+      muhasaba,
+      settings: userSettings,
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `aakhirah-${todayStr()}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // Delete a focus log entry and reverse its credit on the linked task's
+  // sessions/totalTime counters. Used by Stats → focus log management.
+  function deleteFocusEntry(entryId) {
+    const entry = focusLog.find((l) => l.id === entryId);
+    if (!entry) return;
+    if (!window.confirm(`Delete this ${entry.mins}-minute session?`)) return;
+    applyFocusLogUpdate((log) => log.filter((l) => l.id !== entryId));
+    if (entry.goalId && entry.taskId) {
+      applyGoalsUpdate((gs) => gs.map((g) => {
+        if (g.id !== entry.goalId) return g;
+        return {
+          ...g,
+          tasks: g.tasks.map((t) => t.id !== entry.taskId ? t : {
+            ...t,
+            sessions: Math.max(0, (t.sessions || 0) - 1),
+            totalTime: Math.max(0, (t.totalTime || 0) - (entry.mins || 0)),
+          }),
+        };
+      }));
+    }
   }
 
   function endFocusEarly() {
-    if (!pomRunning || pomMode !== "focus") return;
+    if (!pomRunning) return;
     const mins = Math.max(1, Math.round(elapsedRef.current / 60));
     const at = new Date();
     const entry = {
@@ -498,7 +617,7 @@ export default function Planner({ user }) {
       goalId: pomGoalId,
       mins,
       at: at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      day: at.toISOString().split("T")[0],
+      day: localDateStr(at),
     };
     applyFocusLogUpdate(l=>[entry, ...l].slice(0, 100));
     if (pomGoalId && pomTaskId) {
@@ -506,7 +625,6 @@ export default function Planner({ user }) {
     }
     stopTimer();
     elapsedRef.current = 0;
-    setPomMode("focus");
     const task = pomGoalId && pomTaskId ? goals.find(g=>g.id===pomGoalId)?.tasks.find(t=>t.id===pomTaskId) : null;
     const focusMins = task?.eta || pomDurations.defaultFocus;
     setPomFocusTargetMins(focusMins);
@@ -514,26 +632,25 @@ export default function Planner({ user }) {
   }
 
   function updatePomDuration(field, value) {
-    const min = field === "break" ? 0 : 1;
-    const nextVal = Math.max(min, Math.min(120, Number(value) || 0));
+    // No upper hardcode — let the user pick a long deep-work block if they
+    // want. Just guard against zero / negative.
+    const nextVal = Math.max(1, Number(value) || 1);
     const nextDurations = { ...pomDurations, [field]: nextVal };
     setPomDurations(nextDurations);
-    // persist timer durations to settings
     updateSettings({ ...userSettings, pomDurations: nextDurations });
-    if (!pomRunning && pomMode === "focus" && !pomTaskId && field === "defaultFocus") {
-      setPomSeconds(getFocusSeconds(nextVal, nextDurations));
+    // Reflect the change in the visible dial right away when the user is
+    // sitting idle on the focus tab without a task linked. With a task linked,
+    // the task's own `eta` drives the dial and shouldn't be overridden.
+    if (!pomRunning && !pomTaskId && field === "defaultFocus") {
       setPomFocusTargetMins(nextVal);
-      elapsedRef.current = 0;
-    }
-    if (!pomRunning && pomMode === "break" && field === "break") {
-      setPomSeconds(getBreakSeconds(nextDurations));
+      setPomSeconds(getFocusSeconds(nextVal, nextDurations));
       elapsedRef.current = 0;
     }
   }
 
   function addGoal() {
     if (!form.title.trim()||!form.due) return;
-    const g={...form,id:newId(),title:form.title.trim(),tasks:[]};
+    const g={...form,id:newId(),title:form.title.trim(),tasks:[],completedAt:null};
     applyGoalsUpdate(gs=>[...gs,g]); setSelectedId(g.id); setForm({title:"",type:"short",category:"Health",due:"",notes:"",intention:""}); setView("detail");
   }
 
@@ -562,10 +679,32 @@ export default function Planner({ user }) {
     setGoalDraft(null);
   }
 
-  function toggleTask(gId,tId) { applyGoalsUpdate(gs=>gs.map(g=>g.id!==gId?g:{...g,tasks:g.tasks.map(t=>t.id===tId?{...t,done:!t.done}:t)})); }
+  function toggleTask(gId,tId) {
+    applyGoalsUpdate(gs=>gs.map(g=>{
+      if (g.id!==gId) return g;
+      const tasks = g.tasks.map(t=>t.id===tId?{...t,done:!t.done}:t);
+      const allDone = tasks.length>0 && tasks.every(t=>t.done);
+      let completedAt = g.completedAt || null;
+      if (allDone && !completedAt) completedAt = todayStr();
+      else if (!allDone && completedAt) completedAt = null;
+      return { ...g, tasks, completedAt };
+    }));
+  }
+  function toggleGoalCompleted(gId) {
+    applyGoalsUpdate(gs=>gs.map(g=>{
+      if (g.id!==gId) return g;
+      if (g.completedAt) return { ...g, completedAt: null };
+      return { ...g, completedAt: todayStr() };
+    }));
+  }
   function addTask(gId) {
     if (!newTask.text.trim()) return;
-    applyGoalsUpdate(gs=>gs.map(g=>g.id!==gId?g:{...g,tasks:[...g.tasks,{id:newId(),text:newTask.text.trim(),done:false,priority:newTask.priority,eta:Number(newTask.eta)||30,sessions:0,totalTime:0}]}));
+    applyGoalsUpdate(gs=>gs.map(g=>{
+      if (g.id!==gId) return g;
+      const tasks = [...g.tasks,{id:newId(),text:newTask.text.trim(),done:false,priority:newTask.priority,eta:Number(newTask.eta)||30,sessions:0,totalTime:0}];
+      // a new open task means the goal is no longer fully done
+      return { ...g, tasks, completedAt: null };
+    }));
     setNewTask({text:"",priority:"Medium",eta:30});
   }
   function startTaskEdit(t) {
@@ -593,7 +732,15 @@ export default function Planner({ user }) {
   }
   function removeTask(gId,tId) {
     if (!window.confirm("Remove this task?")) return;
-    applyGoalsUpdate(gs=>gs.map(g=>g.id!==gId?g:{...g,tasks:g.tasks.filter(t=>t.id!==tId)}));
+    applyGoalsUpdate(gs=>gs.map(g=>{
+      if (g.id!==gId) return g;
+      const tasks = g.tasks.filter(t=>t.id!==tId);
+      const allDone = tasks.length>0 && tasks.every(t=>t.done);
+      let completedAt = g.completedAt || null;
+      if (allDone && !completedAt) completedAt = todayStr();
+      else if (!allDone && completedAt) completedAt = null;
+      return { ...g, tasks, completedAt };
+    }));
   }
   function deleteGoal(id) {
     if (!window.confirm("Delete this goal and all its tasks? This cannot be undone.")) return;
@@ -608,9 +755,19 @@ export default function Planner({ user }) {
     return hay.includes(normalizedSearch);
   };
   const visibleGoals = goals.filter(g=>{
-    if (filter!=="all" && g.type!==filter) return false;
+    if (filter==="completed") { if (!isGoalDone(g)) return false; }
+    else if (filter==="active") { if (isGoalDone(g)) return false; }
+    else if (filter==="short" || filter==="long") {
+      if (g.type!==filter) return false;
+    }
     return matchesSearch(g);
   }).sort((a,b)=>{
+    // always push completed goals to the bottom unless we're explicitly viewing them
+    if (filter!=="completed") {
+      const da = isGoalDone(a) ? 1 : 0;
+      const db = isGoalDone(b) ? 1 : 0;
+      if (da !== db) return da - db;
+    }
     if (goalSort==="due") return new Date(a.due)-new Date(b.due);
     if (goalSort==="progress") return pct(b)-pct(a);
     if (goalSort==="category") return a.category.localeCompare(b.category);
@@ -619,31 +776,16 @@ export default function Planner({ user }) {
   });
   const dashboardGoals = normalizedSearch ? goals.filter(matchesSearch) : goals;
 
-  const GoalCard = ({g}) => {
-    const p=pct(g),dl=daysLeft(g.due),overdue=dl<0,urgent=dl>=0&&dl<=7;
-    return (
-      <div onClick={()=>{setSelectedId(g.id);setView("detail");}} style={{...S.card,cursor:"pointer",transition:"border-color 0.15s,box-shadow 0.15s"}}
-        onMouseEnter={e=>{e.currentTarget.style.borderColor=gold+"88";}}
-        onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--color-border-tertiary)";}}>
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-          <div style={{width:9,height:9,borderRadius:"50%",background:CAT_COLORS[g.category],flexShrink:0}} />
-          <span style={{flex:1,fontWeight:500,fontSize:16}}>{g.title}</span>
-          <span style={S.pill(CAT_COLORS[g.category]+"22",CAT_COLORS[g.category])}>{g.category}</span>
-        </div>
-        <ProgressBar val={p} color={CAT_COLORS[g.category]} />
-        <div style={{display:"flex",justifyContent:"space-between",marginTop:7,fontSize:14,color:"var(--color-text-secondary)"}}>
-          <span>{g.tasks.filter(t=>t.done).length}/{g.tasks.length} tasks · {g.type==="short"?"Short":"Long"}-term</span>
-          <span style={{color:overdue?"var(--color-text-danger)":urgent?"var(--color-text-warning)":"var(--color-text-secondary)"}}>
-            {overdue?`${Math.abs(dl)}d overdue`:dl===0?"Due today":`${dl}d left`}
-          </span>
-        </div>
-      </div>
-    );
-  };
+  // last activity day per goal, derived from focusLog (most recent entry's day)
+  const lastActivityByGoal = focusLog.reduce((acc, l) => {
+    if (!l.goalId || !l.day) return acc;
+    if (!acc[l.goalId] || l.day > acc[l.goalId]) acc[l.goalId] = l.day;
+    return acc;
+  }, {});
 
-  const pomTotal = pomMode==="break" ? getBreakSeconds(pomDurations) : getFocusSeconds(pomFocusTargetMins, pomDurations);
-  const pomProg = (pomTotal-pomSeconds)/pomTotal;
-  const pomR=65, pomCirc=2*Math.PI*pomR;
+  // Bound helper that opens the detail view for a goal — passed to GoalCard.
+  const openGoal = (id) => { setSelectedId(id); setView("detail"); };
+
   const quote=QUOTES[quoteIdx];
   const todayPrayers = PRAYERS.filter(p=>prayerTimes&&prayerTimes[p]);
 
@@ -660,721 +802,408 @@ export default function Planner({ user }) {
     if (!nextPrayer) nextPrayer={name:"Fajr",time:prayerTimes["Fajr"]};
   }
 
-  return (
-    <div style={{padding:"1.5rem 1.25rem",maxWidth:1060,margin:"0 auto"}}>
+  const englishDate = new Date().toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
+  const dateLine = hijriDate ? `${englishDate} · ${hijriDate}` : englishDate;
 
-      <div style={{...S.card,marginBottom:16}}>
-        <div style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
-          <div style={{width:40,height:40,borderRadius:12,background:"rgba(201,168,76,0.18)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22}}>☀️</div>
-          <div style={{fontSize:20,fontWeight:600,color:"var(--color-text-primary)"}}>
-            Salam {greetingName} — Start with Bismillah, Alhamdulillah.
-          </div>
-        </div>
-      </div>
+  // ── dashboard "Right now" hero ─────────────────────────────────────────
+  const hero = (() => {
+    const now = new Date();
+    const hour = now.getHours();
+    const nowMins = hour*60 + now.getMinutes();
+    const today = todayStr();
+    const muhasabaToday = muhasaba[today];
+    const muhasabaFilled = isMuhasabaFilled(muhasabaToday);
+
+    // 1. Active focus session
+    if (pomRunning) {
+      const activeT = activeTask;
+      return {
+        accent: "var(--gold)",
+        icon: "⏱",
+        eyebrow: "Focus in progress",
+        title: activeT?.text || "General focus",
+        subtitle: `${fmtTime(pomSeconds)} remaining`,
+        cta: "Open timer",
+        onClick: () => setView("pomodoro"),
+      };
+    }
+
+    // 1.5 Just-completed goal — celebrate the same day. The hero quietly
+    // disappears tomorrow because completedAt no longer matches today.
+    const completedToday = goals.find(g => g.completedAt === today);
+    if (completedToday) {
+      return {
+        accent: CAT_COLORS[completedToday.category] || "var(--gold)",
+        icon: "✨",
+        eyebrow: "Alhamdulillah",
+        title: `You completed: ${completedToday.title}`,
+        subtitle: "May Allah accept it. One niyyah closer.",
+        cta: "Open goal",
+        onClick: () => { setSelectedId(completedToday.id); setView("detail"); },
+      };
+    }
+
+    // 1.6 Streak milestones — only fires on the exact day a round number is
+    // hit. Focus streak is read from focusLog; muhasaba streak from entries.
+    const milestoneOf = (n) => [7, 14, 30, 60, 100, 200, 365].includes(n);
+    // Compute today's focus streak inline (mirrors Pomodoro's helper).
+    const focusGoalMins = Number(userSettings.dailyFocusGoalMins) || 60;
+    const focusStreak = (() => {
+      let s = 0;
+      const cur = new Date();
+      for (let i = 0; i < 400; i++) {
+        const k = localDateStr(cur);
+        const m = focusLog.reduce((a, l) => l.day === k ? a + (l.mins || 0) : a, 0);
+        if (m >= focusGoalMins) s++;
+        else if (i > 0) break;
+        cur.setDate(cur.getDate() - 1);
+      }
+      return s;
+    })();
+    const muhStreak = muhasabaStreak(muhasaba);
+    if (milestoneOf(focusStreak) && focusStreak >= 7) {
+      return {
+        accent: "var(--gold)",
+        icon: "🔥",
+        eyebrow: "Focus streak",
+        title: `${focusStreak} days in a row`,
+        subtitle: "Consistency is louder than any single session. Keep going.",
+        cta: "Open Focus",
+        onClick: () => setView("pomodoro"),
+      };
+    }
+    if (milestoneOf(muhStreak) && muhStreak >= 7) {
+      return {
+        accent: "#7BB6C7",
+        icon: "🌙",
+        eyebrow: "Muhasaba streak",
+        title: `${muhStreak} nights of self-accounting`,
+        subtitle: "ʿUmar would be pleased. Don't break the chain tonight.",
+        cta: "Open Muhasaba",
+        onClick: () => { setMuhasabaDay(today); setView("muhasaba"); },
+      };
+    }
+
+    // 2. Next prayer in <= 60 min
+    if (nextPrayer && prayerTimes?.[nextPrayer.name]) {
+      const [h,m] = prayerTimes[nextPrayer.name].split(":").map(Number);
+      const minsTo = (h*60+m) - nowMins;
+      if (minsTo > 0 && minsTo <= 60) {
+        const label = minsTo < 60 ? `in ${minsTo}m` : `in 1h`;
+        return {
+          accent: "#1D9E75",
+          icon: PRAYER_ICONS[nextPrayer.name] || "🕌",
+          eyebrow: "Next prayer",
+          title: `${nextPrayer.name} ${label}`,
+          subtitle: `${prayerTimes[nextPrayer.name]} · ${prayerCity || "your city"}`,
+          cta: "Prayer times",
+          onClick: () => setView("prayer"),
+        };
+      }
+    }
+
+    // 3. Overdue active goals
+    const todayMs = Date.now();
+    const activeGoals = goals.filter(g => !isGoalDone(g));
+    const overdueActive = activeGoals
+      .map(g => ({ g, dl: Math.ceil((new Date(g.due) - todayMs)/86400000) }))
+      .filter(x => x.dl < 0)
+      .sort((a,b) => a.dl - b.dl);
+    if (overdueActive.length > 0) {
+      const worst = overdueActive[0];
+      return {
+        accent: "#D85A30",
+        icon: "⚠",
+        eyebrow: overdueActive.length>1 ? `${overdueActive.length} goals overdue` : "Overdue",
+        title: worst.g.title,
+        subtitle: `${Math.abs(worst.dl)}d past due · ${pct(worst.g)}% done`,
+        cta: "Open goal",
+        onClick: () => { setSelectedId(worst.g.id); setView("detail"); },
+      };
+    }
+
+    // 4. Goal due in next 3 days
+    const upcoming = activeGoals
+      .map(g => ({ g, dl: Math.ceil((new Date(g.due) - todayMs)/86400000) }))
+      .filter(x => x.dl >= 0 && x.dl <= 3)
+      .sort((a,b) => a.dl - b.dl);
+    if (upcoming.length > 0) {
+      const next = upcoming[0];
+      const dueLabel = next.dl===0 ? "due today" : next.dl===1 ? "due tomorrow" : `due in ${next.dl}d`;
+      return {
+        accent: CAT_COLORS[next.g.category] || "var(--gold)",
+        icon: "🎯",
+        eyebrow: "Up next",
+        title: next.g.title,
+        subtitle: `${dueLabel} · ${pct(next.g)}% done`,
+        cta: "Open goal",
+        onClick: () => { setSelectedId(next.g.id); setView("detail"); },
+      };
+    }
+
+    // 5. Evening: muhasaba unfilled
+    if (hour >= 20 && !muhasabaFilled) {
+      return {
+        accent: "var(--gold)",
+        icon: "🌙",
+        eyebrow: "Tonight",
+        title: "Time for muhasaba",
+        subtitle: "Hold yourself accountable before being held accountable.",
+        cta: "Start reflection",
+        onClick: () => { setMuhasabaDay(today); setView("muhasaba"); },
+      };
+    }
+
+    // 6. Morning du'a from yesterday — keeps last night's commitment alive
+    // through the day. Higher priority than the action nudge so the spiritual
+    // anchor lands first.
+    if (hour < 12) {
+      const yKey = addDays(-1);
+      const yDua = muhasaba[yKey]?.duaTomorrow;
+      if (yDua && yDua.trim()) {
+        return {
+          accent: "#7BB6C7",
+          icon: "🤲",
+          eyebrow: "Yesterday's du'a",
+          title: yDua.length > 70 ? yDua.slice(0, 70).replace(/\s\S*$/, "") + "…" : yDua,
+          subtitle: "Today is the test. Honour what you asked Allah for.",
+          cta: "Open muhasaba",
+          onClick: () => { setMuhasabaDay(yKey); setView("muhasaba"); },
+        };
+      }
+    }
+
+    // 7. Morning, with active goals: nudge a focus block
+    if (hour < 12 && activeGoals.length > 0) {
+      const firstGoal = activeGoals[0];
+      const firstOpenTask = firstGoal.tasks.find(t => !t.done);
+      if (firstOpenTask) {
+        return {
+          accent: CAT_COLORS[firstGoal.category] || "var(--gold)",
+          icon: "☀️",
+          eyebrow: "Morning",
+          title: firstOpenTask.text,
+          subtitle: `${firstGoal.title} · ${firstOpenTask.eta || 30}m`,
+          cta: "Start focus",
+          onClick: () => startTaskTimer(firstGoal.id, firstOpenTask.id),
+        };
+      }
+    }
+
+    // 7. Muhasaba review (filled, evening still)
+    if (muhasabaFilled) {
+      return {
+        accent: "#7BB6C7",
+        icon: "📖",
+        eyebrow: "Today's muhasaba",
+        title: "Saved · review or add",
+        subtitle: muhasabaToday?.duaTomorrow ? `Du'a: "${(muhasabaToday.duaTomorrow||"").slice(0,60)}${(muhasabaToday.duaTomorrow||"").length>60?"…":""}"` : "Tap to continue tonight's reflection.",
+        cta: "Open",
+        onClick: () => { setMuhasabaDay(today); setView("muhasaba"); },
+      };
+    }
+
+    // 8. Default
+    return {
+      accent: "var(--gold)",
+      icon: "✨",
+      eyebrow: "Today",
+      title: "All clear — make du'a",
+      subtitle: "Renew your niyyah. Every small deed counts towards your Aakhirah.",
+      cta: null,
+      onClick: null,
+    };
+  })();
+
+  return (
+    <div style={{padding:"var(--page-padding)",maxWidth:1060,margin:"0 auto"}}>
 
       {/* header */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6,flexWrap:"wrap",gap:12}}>
         <div>
-          <h2 style={{margin:0,fontSize:24,fontWeight:600,color:gold}}>Aakhirah Planner</h2>
-          <div style={{fontSize:14,color:"var(--color-text-tertiary)",marginTop:3}}>
-            {hijriDate || new Date().toLocaleDateString("en-GB",{weekday:"long",day:"numeric",month:"long",year:"numeric"})}
+          <div style={{fontSize:14,color:"var(--gold)",fontWeight:600,letterSpacing:"0.6px",textTransform:"uppercase",marginBottom:3}}>Aakhirah Planner</div>
+          <h2 style={{margin:0,fontSize:22,fontWeight:600,color:"var(--color-text-primary)",lineHeight:1.25}}>
+            Salam, {greetingName} <span style={{color:"var(--gold)",fontWeight:500}}>·</span> <span style={{fontFamily:'"Fraunces",serif',fontStyle:"italic",fontWeight:500}}>Bismillah</span>
+          </h2>
+          <div style={{fontSize:13,color:"var(--color-text-secondary)",marginTop:5}}>
+            {dateLine}
           </div>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-          {pomRunning && <span style={{fontSize:14,padding:"3px 10px",borderRadius:99,background:"rgba(201,168,76,0.15)",color:gold,fontWeight:500}}>● {pomMode==="break"?"Break":"Focus"} {fmtTime(pomSeconds)}</span>}
-          {view!=="add" && <button onClick={()=>setView("add")} style={{fontSize:15,borderColor:gold+"66",color:gold}}>+ New goal</button>}
+          {pomRunning && <span style={{fontSize:14,padding:"3px 10px",borderRadius:99,background:"rgba(201,168,76,0.15)",color:"var(--gold)",fontWeight:500}}>● Focus {fmtTime(pomSeconds)}</span>}
+          <button onClick={toggleTheme} title={`Switch to ${theme==="dark"?"light":"dark"} mode`}
+            style={{fontSize:15,padding:"6px 11px",lineHeight:1,minWidth:38,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>
+            {theme==="dark" ? "☀" : "☾"}
+          </button>
+          {view!=="add" && <button onClick={()=>setView("add")} style={{fontSize:15,borderColor:"var(--gold)",color:"var(--gold)"}}>+ New goal</button>}
           {view==="add" && <button onClick={()=>setView("dashboard")} style={{fontSize:15}}>Cancel</button>}
         </div>
       </div>
 
       {/* nav */}
-      <div style={{borderBottom:`0.5px solid ${gold}44`,marginBottom:22,display:"flex",marginTop:14,overflowX:"auto",gap:4}}>
-        {["dashboard","list","prayer","pomodoro","stats"].map((v)=>{
-          const labels = { dashboard:"Dashboard", list:"Goals", prayer:"Prayer", pomodoro:"Focus", stats:"Stats" };
+      <div className="tabbar" style={{borderBottom:`0.5px solid ${gold}44`,marginBottom:22,display:"flex",marginTop:14,overflowX:"auto",gap:4}}>
+        {["dashboard","list","prayer","pomodoro","muhasaba","stats"].map((v)=>{
+          const labels = { dashboard:"Dashboard", list:"Goals", prayer:"Prayer", pomodoro:"Focus", muhasaba:"Muhasaba", stats:"Stats" };
+          const icons = { dashboard:"☀️", list:"🎯", prayer:"🕌", pomodoro:"⏱", muhasaba:"🌙", stats:"📊" };
           return (
-            <button key={v} style={S.tab(view===v)} onClick={()=>setView(v)}>{labels[v]}</button>
+            <button key={v} style={{...S.tab(view===v),display:"inline-flex",alignItems:"center",gap:7,whiteSpace:"nowrap"}} onClick={()=>setView(v)}>
+              <span style={{fontSize:15,opacity:view===v?1:0.7}}>{icons[v]}</span>
+              {labels[v]}
+            </button>
           );
         })}
       </div>
 
       {/* ── DASHBOARD ── */}
       {view==="dashboard" && (
-        <div>
-          <div style={{...S.goldCard,marginBottom:20}}>
-            <div style={{fontSize:14,color:gold,fontWeight:600,marginBottom:8}}>Verse of the day</div>
-            {verseError && <div style={{fontSize:14,color:"var(--color-text-danger)"}}>{verseError}</div>}
-            {!verseError && !verseOfDay && <div style={{fontSize:14,color:"var(--color-text-tertiary)"}}>Loading…</div>}
-            {verseOfDay && (
-              <div>
-                <div style={{fontSize:20,color:gold,marginBottom:10,fontFamily:"serif",lineHeight:2}}>{verseOfDay.arabic || FALLBACK_VERSE.arabic}</div>
-                <div style={{fontSize:15,color:"var(--color-text-primary)",lineHeight:1.7}}>{(verseOfDay.translation || FALLBACK_VERSE.translation).replace(/<[^>]*>/g, "")}</div>
-                <a href={verseOfDay.url} target="_blank" rel="noreferrer" style={{display:"inline-block",marginTop:10,fontSize:13,color:gold,textDecoration:"none",opacity:0.8}}>
-                  Quran.com {verseOfDay.verseKey} ↗
-                </a>
-              </div>
-            )}
-          </div>
-          {/* quote card */}
-          <div style={{...S.goldCard,marginBottom:18,textAlign:"center"}}>
-            {quote.ar && <div style={{fontSize:18,color:gold,marginBottom:6,fontFamily:"serif",lineHeight:1.8}}>{quote.ar}</div>}
-            <div style={{fontSize:15,color:"var(--color-text-primary)",fontStyle:"italic",lineHeight:1.6}}>"{quote.en}"</div>
-            <div style={{fontSize:13,color:"var(--color-text-tertiary)",marginTop:5}}>— {quote.ref}</div>
-          </div>
-
-          {/* stats */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginBottom:20}}>
-            {["Goals","Short-term","Completed","Focus mins","Sessions"].map((label)=>{
-              const valueMap = {
-                "Goals": goals.length,
-                "Short-term": goals.filter(g=>g.type==="short").length,
-                "Completed": goals.filter(g=>pct(g)===100).length,
-                "Focus mins": totalFocusMins,
-                "Sessions": totalSessions,
-              };
-              const colorMap = {
-                "Goals": "#7F77DD",
-                "Short-term": "#378ADD",
-                "Completed": "#1D9E75",
-                "Focus mins": gold,
-                "Sessions": "#D88E4A",
-              };
-              return (
-                <div key={label} style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-md)",padding:"14px 16px"}}>
-                  <div style={{fontSize:13,color:"var(--color-text-secondary)",marginBottom:5}}>{label}</div>
-                  <div style={{fontSize:28,fontWeight:500,color:colorMap[label]}}>{valueMap[label]}</div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* overall progress */}
-          <div style={{...S.card,marginBottom:16}}>
-            <div style={{display:"flex",justifyContent:"space-between",fontSize:15,marginBottom:7}}>
-              <span style={{fontWeight:500}}>Overall progress</span>
-              <span style={{color:gold,fontWeight:500}}>{overallPct}%</span>
-            </div>
-            <ProgressBar val={overallPct} color={gold} height={10} />
-            <div style={{fontSize:13,color:"var(--color-text-tertiary)",marginTop:6,textAlign:"center"}}>Every effort counts towards your Aakhirah</div>
-          </div>
-
-          {/* next prayer snippet */}
-          {nextPrayer && (
-            <div style={{...S.goldCard,display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-              <span style={{fontSize:28}}>{PRAYER_ICONS[nextPrayer.name]}</span>
-              <div>
-                <div style={{fontSize:14,color:"var(--color-text-secondary)"}}>Next prayer</div>
-                <div style={{fontWeight:500,color:gold}}>{nextPrayer.name} · {nextPrayer.time}</div>
-              </div>
-              <div style={{marginLeft:"auto"}}>
-                <button onClick={()=>setView("prayer")} style={{fontSize:14,borderColor:gold+"55",color:gold}}>View all ›</button>
-              </div>
-            </div>
-          )}
-          {!prayerTimes && (
-            <div style={{...S.card,display:"flex",alignItems:"center",gap:10,marginBottom:16,cursor:"pointer"}} onClick={()=>setView("prayer")}>
-              <span style={{fontSize:21}}>🕌</span>
-              <span style={{fontSize:15,color:"var(--color-text-secondary)"}}>Set up prayer times →</span>
-            </div>
-          )}
-
-          {/* intention */}
-          <div style={{textAlign:"center",fontSize:14,color:"var(--color-text-tertiary)",fontStyle:"italic",marginBottom:16,padding:"0 16px"}}>
-            {INTENTIONS[intentionIdx]}
-          </div>
-
-          {/* upcoming goals */}
-          <div style={{fontSize:16,fontWeight:500,marginBottom:10}}>Upcoming goals</div>
-          <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            {[...goals].sort((a,b)=>new Date(a.due)-new Date(b.due)).slice(0,4).map(g=><GoalCard key={g.id} g={g} />)}
-            {goals.length===0 && <p style={{fontSize:15,color:"var(--color-text-tertiary)",textAlign:"center",padding:"2rem 0"}}>No goals yet. Start with your Deen goals first.</p>}
-          </div>
-
-          {/* session log */}
-          {focusLog.length>0 && (
-            <div style={{marginTop:20}}>
-              <div style={{fontSize:16,fontWeight:500,marginBottom:10}}>Recent focus sessions</div>
-              <div style={{display:"flex",flexDirection:"column",gap:7}}>
-                {focusLog.slice(0,5).map(l=>{
-                  const g=goals.find(x=>x.id===l.goalId); const t=g?.tasks.find(x=>x.id===l.taskId);
-                  return (<div key={l.id} style={{display:"flex",alignItems:"center",gap:10,fontSize:15}}>
-                    <span style={{width:7,height:7,borderRadius:"50%",background:g?CAT_COLORS[g.category]:"#888",flexShrink:0,display:"inline-block"}} />
-                    <span style={{flex:1}}>{t?.text||"General focus"}</span>
-                    <span style={{color:"var(--color-text-secondary)"}}>{l.mins}m · {l.at}</span>
-                  </div>);
-                })}
-              </div>
-            </div>
-          )}
-        </div>
+        <Dashboard
+          goals={goals}
+          muhasaba={muhasaba}
+          totalFocusMins={totalFocusMins}
+          totalSessions={totalSessions}
+          overallPct={overallPct}
+          hero={hero}
+          nextPrayer={nextPrayer}
+          prayerTimes={prayerTimes}
+          intentionIdx={intentionIdx}
+          verseOfDay={verseOfDay}
+          refreshVerse={refreshVerse}
+          lastActivityByGoal={lastActivityByGoal}
+          setView={setView}
+          setMuhasabaDay={setMuhasabaDay}
+          onSelectGoal={openGoal}
+        />
       )}
 
       {/* ── GOALS LIST ── */}
       {view==="list" && (
-        <div>
-          <div style={{display:"flex",gap:8,marginBottom:12,flexWrap:"wrap"}}>
-            <input
-              value={searchTerm}
-              onChange={e=>setSearchTerm(e.target.value)}
-              placeholder="Search goals or tasks..."
-              style={{flex:"1 1 220px",minWidth:180}}
-            />
-            {searchTerm && (
-              <button onClick={()=>setSearchTerm("")} style={{fontSize:14}}>Clear</button>
-            )}
-          </div>
-          <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"nowrap",overflowX:"auto",alignItems:"center"}}>
-            {["all","short","long"].map(f=>(
-              <button key={f} style={S.filterBtn(filter===f)} onClick={()=>setFilter(f)}>
-                {f==="all"?"All":f==="short"?"Short-term":"Long-term"}
-              </button>
-            ))}
-            <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6}}>
-              <span style={{fontSize:13,color:"var(--color-text-secondary)",whiteSpace:"nowrap"}}>Sort:</span>
-              <select value={goalSort} onChange={e=>setGoalSort(e.target.value)} style={{fontSize:14,padding:"4px 8px",minWidth:100}}>
-                <option value="due">Due date</option>
-                <option value="progress">Progress</option>
-                <option value="category">Category</option>
-                <option value="name">Name</option>
-              </select>
-            </div>
-          </div>
-          <div style={{display:"flex",flexDirection:"column",gap:10}}>
-            {visibleGoals.map(g=><GoalCard key={g.id} g={g} />)}
-            {visibleGoals.length===0 && <p style={{fontSize:15,color:"var(--color-text-tertiary)",textAlign:"center",padding:"2rem 0"}}>No goals here.</p>}
-          </div>
-        </div>
+        <GoalsList
+          goals={goals}
+          visibleGoals={visibleGoals}
+          lastActivityByGoal={lastActivityByGoal}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          filter={filter}
+          setFilter={setFilter}
+          goalSort={goalSort}
+          setGoalSort={setGoalSort}
+          onSelectGoal={openGoal}
+        />
       )}
 
       {/* ── ADD GOAL ── */}
       {view==="add" && (
-        <div style={{...S.card}}>
-          <h3 style={{margin:"0 0 16px",fontSize:18,fontWeight:500}}>New goal</h3>
-          <div style={{display:"flex",flexDirection:"column",gap:14}}>
-            <div>
-              <label style={{fontSize:14,color:"var(--color-text-secondary)",display:"block",marginBottom:5}}>Goal title</label>
-              <input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="What do you want to achieve?" style={{width:"100%",boxSizing:"border-box"}} />
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
-              <div>
-                <label style={{fontSize:14,color:"var(--color-text-secondary)",display:"block",marginBottom:5}}>Type</label>
-                <select value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))} style={{width:"100%"}}>
-                  <option value="short">Short-term</option><option value="long">Long-term</option>
-                </select>
-              </div>
-              <div>
-                <label style={{fontSize:14,color:"var(--color-text-secondary)",display:"block",marginBottom:5}}>Category</label>
-                <select value={form.category} onChange={e=>setForm(f=>({...f,category:e.target.value}))} style={{width:"100%"}}>
-                  {CATEGORIES.map(c=><option key={c}>{c}</option>)}
-                </select>
-              </div>
-            </div>
-            <div>
-              <label style={{fontSize:14,color:"var(--color-text-secondary)",display:"block",marginBottom:5}}>Due date</label>
-              <input type="date" value={form.due} min={todayStr()} onChange={e=>setForm(f=>({...f,due:e.target.value}))} style={{width:"100%",boxSizing:"border-box"}} />
-            </div>
-            <div>
-              <label style={{fontSize:14,color:"var(--color-text-secondary)",display:"block",marginBottom:5}}>Niyyah / Intention</label>
-              <input value={form.intention} onChange={e=>setForm(f=>({...f,intention:e.target.value}))} placeholder="Why are you doing this? (for Allah's pleasure…)" style={{width:"100%",boxSizing:"border-box"}} />
-            </div>
-            <div>
-              <label style={{fontSize:14,color:"var(--color-text-secondary)",display:"block",marginBottom:5}}>Notes</label>
-              <textarea value={form.notes} onChange={e=>setForm(f=>({...f,notes:e.target.value}))} rows={2} style={{width:"100%",resize:"vertical",boxSizing:"border-box"}} />
-            </div>
-            <button onClick={addGoal} disabled={!form.title.trim()||!form.due} style={{fontSize:16,padding:"9px 0",background:gold,color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",cursor:"pointer"}}>Create goal</button>
-          </div>
-        </div>
+        <GoalAdd form={form} setForm={setForm} addGoal={addGoal} />
       )}
 
       {/* ── DETAIL ── */}
-      {view==="detail" && selected && (()=>{
-        const p=pct(selected),dl=daysLeft(selected.due),overdue=dl<0;
-        const totalEta=selected.tasks.reduce((s,t)=>s+(t.eta||0),0);
-        const totalLogged=selected.tasks.reduce((s,t)=>s+(t.totalTime||0),0);
-        const filteredTasks = selected.tasks.filter(t=>{
-          if (taskStatusFilter==="open" && t.done) return false;
-          if (taskStatusFilter==="done" && !t.done) return false;
-          if (taskPriorityFilter!=="all" && t.priority!==taskPriorityFilter) return false;
-          return true;
-        });
-        return (
-          <div>
-            <button onClick={()=>setView("list")} style={{fontSize:15,color:"var(--color-text-secondary)",marginBottom:14,background:"none",border:"none",cursor:"pointer",padding:0}}>← Back</button>
-            <div style={S.card}>
-              <div style={{display:"flex",gap:10,marginBottom:12,alignItems:"flex-start"}}>
-                <div style={{width:10,height:10,borderRadius:"50%",background:CAT_COLORS[selected.category],marginTop:6,flexShrink:0}} />
-                <div style={{flex:1}}>
-                  <h3 style={{margin:"0 0 6px",fontSize:18,fontWeight:500}}>{selected.title}</h3>
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                    <span style={S.pill(CAT_COLORS[selected.category]+"22",CAT_COLORS[selected.category])}>{selected.category}</span>
-                    <span style={S.pill("var(--color-background-secondary)","var(--color-text-secondary)")}>{selected.type==="short"?"Short-term":"Long-term"}</span>
-                    <span style={S.pill(overdue?"var(--color-background-danger)":"var(--color-background-secondary)",overdue?"var(--color-text-danger)":"var(--color-text-secondary)")}>Due {fmt(selected.due)}</span>
-                  </div>
-                </div>
-                {!editingGoal && (
-                  <button onClick={startGoalEdit} style={{fontSize:14}}>Edit goal</button>
-                )}
-              </div>
-
-              {editingGoal && goalDraft && (
-                <div style={{...S.card,marginBottom:14}}>
-                  <div style={{display:"flex",flexDirection:"column",gap:10}}>
-                    <div>
-                      <label style={{fontSize:14,color:"var(--color-text-secondary)",display:"block",marginBottom:5}}>Title</label>
-                      <input value={goalDraft.title} onChange={e=>setGoalDraft(d=>({...d,title:e.target.value}))} />
-                    </div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-                      <div>
-                        <label style={{fontSize:14,color:"var(--color-text-secondary)",display:"block",marginBottom:5}}>Type</label>
-                        <select value={goalDraft.type} onChange={e=>setGoalDraft(d=>({...d,type:e.target.value}))}>
-                          <option value="short">Short-term</option>
-                          <option value="long">Long-term</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label style={{fontSize:14,color:"var(--color-text-secondary)",display:"block",marginBottom:5}}>Category</label>
-                        <select value={goalDraft.category} onChange={e=>setGoalDraft(d=>({...d,category:e.target.value}))}>
-                          {CATEGORIES.map(c=><option key={c}>{c}</option>)}
-                        </select>
-                      </div>
-                    </div>
-                    <div>
-                      <label style={{fontSize:14,color:"var(--color-text-secondary)",display:"block",marginBottom:5}}>Due date</label>
-                      <input type="date" value={goalDraft.due} onChange={e=>setGoalDraft(d=>({...d,due:e.target.value}))} />
-                    </div>
-                    <div>
-                      <label style={{fontSize:14,color:"var(--color-text-secondary)",display:"block",marginBottom:5}}>Niyyah / Intention</label>
-                      <input value={goalDraft.intention} onChange={e=>setGoalDraft(d=>({...d,intention:e.target.value}))} />
-                    </div>
-                    <div>
-                      <label style={{fontSize:14,color:"var(--color-text-secondary)",display:"block",marginBottom:5}}>Notes</label>
-                      <textarea rows={2} value={goalDraft.notes} onChange={e=>setGoalDraft(d=>({...d,notes:e.target.value}))} />
-                    </div>
-                    <div style={{display:"flex",gap:8}}>
-                      <button onClick={saveGoalEdit} style={{fontSize:14}}>Save</button>
-                      <button onClick={cancelGoalEdit} style={{fontSize:14}}>Cancel</button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {selected.intention && (
-                <div style={{...S.goldCard,marginBottom:14,padding:"10px 14px"}}>
-                  <div style={{fontSize:13,color:gold,marginBottom:3}}>Niyyah</div>
-                  <div style={{fontSize:15,fontStyle:"italic",color:"var(--color-text-primary)"}}>{selected.intention}</div>
-                </div>
-              )}
-
-              <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:10,marginBottom:14}}>
-                {[["Progress",`${p}%`,CAT_COLORS[selected.category]],["ETA",fmtMins(totalEta),"#378ADD"],["Logged",fmtMins(totalLogged),"#1D9E75"]].map(([l,v,c])=>(
-                  <div key={l} style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-md)",padding:"12px 14px"}}>
-                    <div style={{fontSize:13,color:"var(--color-text-secondary)",marginBottom:4}}>{l}</div>
-                    <div style={{fontSize:22,fontWeight:500,color:c}}>{v}</div>
-                  </div>
-                ))}
-              </div>
-              <ProgressBar val={p} color={CAT_COLORS[selected.category]} height={8} />
-              <div style={{fontSize:14,color:"var(--color-text-secondary)",marginTop:5,marginBottom:16}}>
-                {selected.tasks.filter(t=>t.done).length}/{selected.tasks.length} tasks · {overdue?`${Math.abs(dl)}d overdue`:dl===0?"Due today":`${dl}d remaining`}
-              </div>
-
-              {/* tasks */}
-              <div style={{borderTop:"0.5px solid var(--color-border-tertiary)",paddingTop:14,marginBottom:14}}>
-                <div className="task-toolbar" style={{display:"flex",flexWrap:"wrap",alignItems:"center",gap:10,marginBottom:10}}>
-                  <div style={{fontSize:15,fontWeight:500}}>Tasks <span style={{color:"var(--color-text-tertiary)",fontWeight:400,fontSize:13}}>— use Start to begin focus</span></div>
-                  <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                    {["all","open","done"].map(f=> (
-                      <button key={f} onClick={()=>setTaskStatusFilter(f)} style={S.filterBtn(taskStatusFilter===f)}>
-                        {f==="all"?"All":f==="open"?"Open":"Done"}
-                      </button>
-                    ))}
-                    <select value={taskPriorityFilter} onChange={e=>setTaskPriorityFilter(e.target.value)} style={{fontSize:14,padding:"4px 8px"}}>
-                      <option value="all">All priorities</option>
-                      {PRIORITIES.map(p=> <option key={p} value={p}>{p}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div style={{display:"flex",flexDirection:"column",gap:10,marginBottom:14}}>
-                  {filteredTasks.map((t, idx)=>{
-                    const isActive=pomTaskId===t.id&&pomGoalId===selected.id;
-                    const priC = {High:"var(--color-background-danger)",Medium:"var(--color-background-warning)",Low:"var(--color-background-secondary)"};
-                    const priT = {High:"var(--color-text-danger)",Medium:"var(--color-text-warning)",Low:"var(--color-text-secondary)"};
-                    return (
-                      <div key={t.id} style={{display:"flex",alignItems:"center",gap:12,padding:"12px 14px",borderRadius:"var(--border-radius-md)",background:isActive?goldLight:"var(--color-background-secondary)",border:isActive?`0.5px solid ${gold}66`:"0.5px solid transparent"}}>
-                        <div style={{cursor:"pointer"}}>
-                          <input type="checkbox" checked={t.done} onChange={()=>toggleTask(selected.id,t.id)} style={{width:17,height:17,cursor:"pointer",accentColor:gold}} />
-                        </div>
-                        <div style={{flex:1}}>
-                          {editingTaskId===t.id ? (
-                            <div style={{display:"grid",gridTemplateColumns:"1fr",gap:6}}>
-                              <input value={taskDraft.text} onChange={e=>setTaskDraft(d=>({...d,text:e.target.value}))} onClick={e=>e.stopPropagation()} />
-                              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                                <select value={taskDraft.priority} onChange={e=>setTaskDraft(d=>({...d,priority:e.target.value}))} onClick={e=>e.stopPropagation()}>
-                                  {PRIORITIES.map(p=><option key={p}>{p}</option>)}
-                                </select>
-                                <input type="number" min="1" value={taskDraft.eta} onChange={e=>setTaskDraft(d=>({...d,eta:e.target.value}))} onClick={e=>e.stopPropagation()} />
-                              </div>
-                            </div>
-                          ) : (
-                            <>
-                              <div style={{fontSize:16,color:t.done?"var(--color-text-tertiary)":"var(--color-text-primary)",textDecoration:t.done?"line-through":"none"}}>{t.text}</div>
-                              <div style={{fontSize:13,color:"var(--color-text-secondary)",marginTop:2,display:"flex",gap:8}}>
-                                <span>ETA {fmtMins(t.eta)}</span>
-                                {t.totalTime>0&&<span>· Logged {fmtMins(t.totalTime)}</span>}
-                                {t.sessions>0&&<span>· {t.sessions} session{t.sessions>1?"s":""}</span>}
-                              </div>
-                            </>
-                          )}
-                        </div>
-                        <span style={S.pill(priC[t.priority],priT[t.priority])}>{t.priority}</span>
-                        {isActive&&<span style={{fontSize:13,color:gold,fontWeight:500}}>{pomRunning?"▶ ":"⏸ "}{fmtTime(pomSeconds)}</span>}
-                        <div className="task-actions" style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-                          {editingTaskId===t.id ? (
-                            <>
-                              <button onClick={e=>{e.stopPropagation();saveTaskEdit(selected.id,t.id);}} style={{fontSize:13}}>Save</button>
-                              <button onClick={e=>{e.stopPropagation();cancelTaskEdit();}} style={{fontSize:13}}>Cancel</button>
-                            </>
-                          ) : (
-                            <>
-                              <button onClick={e=>{e.stopPropagation();startTaskTimer(selected.id,t.id);}} style={{fontSize:13}}>{isActive?"Focus":"Start"}</button>
-                              <button onClick={e=>{e.stopPropagation();moveTask(selected.id,t.id,-1);}} style={{fontSize:13}} disabled={idx===0}>↑</button>
-                              <button onClick={e=>{e.stopPropagation();moveTask(selected.id,t.id,1);}} style={{fontSize:13}} disabled={idx===selected.tasks.length-1}>↓</button>
-                              <button onClick={e=>{e.stopPropagation();startTaskEdit(t);}} style={{fontSize:13}}>Edit</button>
-                              <button onClick={e=>{e.stopPropagation();removeTask(selected.id,t.id);}} style={{fontSize:13,color:"var(--color-text-tertiary)",background:"none",border:"none",cursor:"pointer"}}>✕</button>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {selected.tasks.length===0&&<p style={{fontSize:15,color:"var(--color-text-tertiary)",margin:0}}>No tasks yet.</p>}
-                  {selected.tasks.length>0&&filteredTasks.length===0&&(
-                    <p style={{fontSize:15,color:"var(--color-text-tertiary)",margin:0}}>No tasks match your filters.</p>
-                  )}
-                </div>
-                <div style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-md)",padding:12}}>
-                  <div style={{fontSize:14,color:"var(--color-text-secondary)",marginBottom:8,fontWeight:500}}>Add task</div>
-                  <input value={newTask.text} onChange={e=>setNewTask(n=>({...n,text:e.target.value}))} onKeyDown={e=>e.key==="Enter"&&addTask(selected.id)} placeholder="Task description..." style={{width:"100%",fontSize:15,marginBottom:8,boxSizing:"border-box"}} />
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:8}}>
-                    <div>
-                      <label style={{fontSize:13,color:"var(--color-text-secondary)",display:"block",marginBottom:4}}>Priority</label>
-                      <select value={newTask.priority} onChange={e=>setNewTask(n=>({...n,priority:e.target.value}))} style={{width:"100%",fontSize:15}}>
-                        {PRIORITIES.map(p=><option key={p}>{p}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label style={{fontSize:13,color:"var(--color-text-secondary)",display:"block",marginBottom:4}}>ETA (mins)</label>
-                      <input type="number" min="1" value={newTask.eta} onChange={e=>setNewTask(n=>({...n,eta:e.target.value}))} style={{width:"100%",fontSize:15,boxSizing:"border-box"}} />
-                    </div>
-                    <button onClick={()=>addTask(selected.id)} style={{fontSize:15,padding:"7px 14px",marginTop:16}}>Add</button>
-                  </div>
-                </div>
-              </div>
-
-              {/* notes */}
-              <div style={{borderTop:"0.5px solid var(--color-border-tertiary)",paddingTop:14}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-                  <span style={{fontSize:15,fontWeight:500}}>Notes</span>
-                  {!editingNotes&&<button onClick={()=>{setNotesVal(selected.notes||"");setEditingNotes(true);}} style={{fontSize:14}}>Edit</button>}
-                </div>
-                {editingNotes?(
-                  <div>
-                    <textarea value={notesVal} onChange={e=>setNotesVal(e.target.value)} rows={3} style={{width:"100%",fontSize:15,resize:"vertical",boxSizing:"border-box",marginBottom:8}} />
-                    <div style={{display:"flex",gap:8}}>
-                      <button onClick={()=>saveNotes(selected.id)} style={{fontSize:15}}>Save</button>
-                      <button onClick={()=>setEditingNotes(false)} style={{fontSize:15}}>Cancel</button>
-                    </div>
-                  </div>
-                ):<p style={{fontSize:15,color:selected.notes?"var(--color-text-primary)":"var(--color-text-tertiary)",margin:0}}>{selected.notes||"No notes added."}</p>}
-              </div>
-              <div style={{borderTop:"0.5px solid var(--color-border-tertiary)",paddingTop:14,marginTop:14}}>
-                <button onClick={()=>deleteGoal(selected.id)} style={{fontSize:15,color:"var(--color-text-danger)",background:"none",border:"0.5px solid var(--color-border-danger)",borderRadius:"var(--border-radius-md)",padding:"6px 14px",cursor:"pointer"}}>Delete goal</button>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
+      {view==="detail" && selected && (
+        <GoalDetail
+          selected={selected}
+          goBack={()=>setView("list")}
+          toggleGoalCompleted={toggleGoalCompleted}
+          startGoalEdit={startGoalEdit}
+          editingGoal={editingGoal}
+          goalDraft={goalDraft}
+          setGoalDraft={setGoalDraft}
+          saveGoalEdit={saveGoalEdit}
+          cancelGoalEdit={cancelGoalEdit}
+          deleteGoal={deleteGoal}
+          taskStatusFilter={taskStatusFilter}
+          setTaskStatusFilter={setTaskStatusFilter}
+          taskPriorityFilter={taskPriorityFilter}
+          setTaskPriorityFilter={setTaskPriorityFilter}
+          newTask={newTask}
+          setNewTask={setNewTask}
+          addTask={addTask}
+          toggleTask={toggleTask}
+          removeTask={removeTask}
+          moveTask={moveTask}
+          editingTaskId={editingTaskId}
+          taskDraft={taskDraft}
+          setTaskDraft={setTaskDraft}
+          startTaskEdit={startTaskEdit}
+          cancelTaskEdit={cancelTaskEdit}
+          saveTaskEdit={saveTaskEdit}
+          startTaskTimer={startTaskTimer}
+          editingNotes={editingNotes}
+          setEditingNotes={setEditingNotes}
+          notesVal={notesVal}
+          setNotesVal={setNotesVal}
+          saveNotes={saveNotes}
+          pomGoalId={pomGoalId}
+          pomTaskId={pomTaskId}
+          pomRunning={pomRunning}
+          pomSeconds={pomSeconds}
+        />
+      )}
 
       {/* ── PRAYER ── */}
       {view==="prayer" && (
-        <div>
-          {hijriDate && (
-            <div style={{textAlign:"center",fontSize:15,color:gold,fontWeight:500,marginBottom:14}}>{hijriDate}</div>
-          )}
-
-          {!prayerTimes && (
-            <div style={{...S.card,marginBottom:16}}>
-              <div style={{fontSize:16,fontWeight:500,marginBottom:14}}>Set your location</div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-                <div>
-                  <label style={{fontSize:14,color:"var(--color-text-secondary)",display:"block",marginBottom:4}}>City</label>
-                  <input value={cityInput} onChange={e=>setCityInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&fetchPrayers(cityInput,countryInput)} placeholder="e.g. London" style={{width:"100%",boxSizing:"border-box",fontSize:15}} />
-                </div>
-                <div>
-                  <label style={{fontSize:14,color:"var(--color-text-secondary)",display:"block",marginBottom:4}}>Country</label>
-                  <input value={countryInput} onChange={e=>setCountryInput(e.target.value)} onKeyDown={e=>e.key==="Enter"&&fetchPrayers(cityInput,countryInput)} placeholder="e.g. UK" style={{width:"100%",boxSizing:"border-box",fontSize:15}} />
-                </div>
-              </div>
-              <div style={{display:"flex",gap:8}}>
-                <button onClick={()=>fetchPrayers(cityInput,countryInput)} disabled={prayerLoading||!cityInput.trim()||!countryInput.trim()} style={{fontSize:15,flex:1,background:gold,color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",padding:"8px",cursor:"pointer"}}>
-                  {prayerLoading?"Loading...":"Get prayer times"}
-                </button>
-                <button onClick={fetchByGeo} disabled={prayerLoading} style={{fontSize:15}}>Use my location</button>
-              </div>
-              {prayerError && <div style={{fontSize:14,color:"var(--color-text-danger)",marginTop:8}}>{prayerError}</div>}
-            </div>
-          )}
-
-          {prayerTimes && (
-            <div>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-                <div>
-                  <div style={{fontSize:15,fontWeight:500}}>{prayerCity}</div>
-                  <div style={{fontSize:13,color:"var(--color-text-secondary)"}}>Today's prayer times</div>
-                </div>
-                <button onClick={()=>setPrayerTimes(null)} style={{fontSize:14,color:"var(--color-text-secondary)"}}>Change city</button>
-              </div>
-
-              {/* next prayer highlight */}
-              {nextPrayer && (
-                <div style={{...S.goldCard,display:"flex",alignItems:"center",gap:14,marginBottom:14,padding:"14px 18px"}}>
-                  <span style={{fontSize:28}}>{PRAYER_ICONS[nextPrayer.name]}</span>
-                  <div>
-                    <div style={{fontSize:13,color:"var(--color-text-secondary)"}}>Next prayer</div>
-                    <div style={{fontSize:21,fontWeight:500,color:gold}}>{nextPrayer.name}</div>
-                    <div style={{fontSize:15,color:"var(--color-text-secondary)"}}>{nextPrayer.time}</div>
-                  </div>
-                </div>
-              )}
-
-              <div style={{display:"flex",flexDirection:"column",gap:8,marginBottom:20}}>
-                {PRAYERS.filter(p=>prayerTimes[p]).map(p=>{
-                  const done=prayerDoneToday(p);
-                  const streak=prayerStreak(p);
-                  const isSunrise=p==="Sunrise";
-                  return (
-                    <div key={p} style={{...S.card,display:"flex",alignItems:"center",gap:12,padding:"12px 16px"}}>
-                      <span style={{fontSize:21,width:24,textAlign:"center"}}>{PRAYER_ICONS[p]}</span>
-                      <div style={{flex:1}}>
-                        <div style={{fontWeight:500,fontSize:16}}>{p}</div>
-                        <div style={{fontSize:14,color:"var(--color-text-secondary)"}}>{prayerTimes[p]}{streak>0&&!isSunrise?` · 🔥 ${streak} day streak`:""}</div>
-                      </div>
-                      {!isSunrise && (
-                        <button
-                          onClick={()=>togglePrayerLog(p)}
-                          style={{fontSize:14,padding:"5px 14px",borderRadius:99,background:done?gold:"transparent",color:done?"#fff":"var(--color-text-secondary)",border:`0.5px solid ${done?gold:"var(--color-border-secondary)"}`,cursor:"pointer",transition:"all 0.2s"}}>
-                          {done?"✓ Prayed":"Mark done"}
-                        </button>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* 7-day prayer tracker */}
-              <div style={{...S.card}}>
-                <div style={{fontSize:15,fontWeight:500,marginBottom:12}}>7-day tracker</div>
-                <div style={{overflowX:"auto"}}>
-                  <table style={{width:"100%",borderCollapse:"collapse",fontSize:14,minWidth:340}}>
-                    <thead>
-                      <tr>
-                        <th style={{textAlign:"left",color:"var(--color-text-secondary)",fontWeight:400,paddingBottom:8,paddingRight:8}}>Prayer</th>
-                        {Array.from({length:7}).map((_,i)=>{
-                          const d=new Date(); d.setDate(d.getDate()-6+i);
-                          return <th key={i} style={{textAlign:"center",color:"var(--color-text-secondary)",fontWeight:400,paddingBottom:8,minWidth:32}}>{d.getDate()}</th>;
-                        })}
-                        <th style={{textAlign:"center",color:"var(--color-text-secondary)",fontWeight:400,paddingBottom:8,paddingLeft:8}}>%</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {["Fajr","Dhuhr","Asr","Maghrib","Isha"].map(p=>{
-                        const days=Array.from({length:7}).map((_,i)=>{ const d=new Date(); d.setDate(d.getDate()-6+i); return d.toISOString().split("T")[0]; });
-                        const doneCount=days.filter(d=>(prayerLog[p]||[]).includes(d)).length;
-                        return (
-                          <tr key={p}>
-                            <td style={{paddingRight:8,paddingBottom:6,color:"var(--color-text-primary)",whiteSpace:"nowrap"}}>{p}</td>
-                            {days.map(d=>{
-                              const done=(prayerLog[p]||[]).includes(d);
-                              return <td key={d} style={{textAlign:"center",paddingBottom:6}}>
-                                <div style={{width:20,height:20,borderRadius:4,background:done?gold:"var(--color-background-secondary)",border:`0.5px solid ${done?gold:"var(--color-border-tertiary)"}`,margin:"0 auto",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,color:done?"#fff":"var(--color-text-tertiary)"}}>
-                                  {done?"✓":""}
-                                </div>
-                              </td>;
-                            })}
-                            <td style={{textAlign:"center",paddingLeft:8,fontWeight:500,color:doneCount===7?gold:doneCount>=4?"var(--color-text-success)":"var(--color-text-secondary)"}}>
-                              {Math.round(doneCount/7*100)}%
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        <Prayer
+          prayerTimes={prayerTimes}
+          prayerCity={prayerCity}
+          prayerLog={prayerLog}
+          prayerLoading={prayerLoading}
+          prayerError={prayerError}
+          hijriDate={hijriDate}
+          cityInput={cityInput}
+          countryInput={countryInput}
+          nextPrayer={nextPrayer}
+          setCityInput={setCityInput}
+          setCountryInput={setCountryInput}
+          setPrayerTimes={setPrayerTimes}
+          fetchPrayers={fetchPrayers}
+          fetchByGeo={fetchByGeo}
+          togglePrayerLog={togglePrayerLog}
+          prayerDoneToday={prayerDoneToday}
+          prayerStreak={prayerStreak}
+        />
       )}
 
       {/* ── POMODORO ── */}
       {view==="pomodoro" && (
-        <div>
-          <div style={{...S.goldCard,textAlign:"center",marginBottom:22,padding:"16px 20px"}}>
-            <div style={{fontSize:14,color:gold,marginBottom:4}}>Reminder</div>
-            <div style={{fontSize:14,fontStyle:"italic",color:"var(--color-text-secondary)"}}>Make your intention before you begin — this effort is for Allah.</div>
-          </div>
+        <Pomodoro
+          goals={goals}
+          focusLog={focusLog}
+          activeTask={activeTask}
+          pomGoalId={pomGoalId}
+          pomTaskId={pomTaskId}
+          pomSeconds={pomSeconds}
+          pomRunning={pomRunning}
+          pomDurations={pomDurations}
+          pomFocusTargetMins={pomFocusTargetMins}
+          setPomRunning={setPomRunning}
+          stopTimer={stopTimer}
+          resetTimer={resetTimer}
+          endFocusEarly={endFocusEarly}
+          updatePomDuration={updatePomDuration}
+          startTaskTimer={startTaskTimer}
+          dailyFocusGoalMins={dailyFocusGoalMins}
+          updateDailyFocusGoal={updateDailyFocusGoal}
+        />
+      )}
 
-          <div style={{display:"flex",justifyContent:"center",marginBottom:24}}>
-            <svg width={180} height={180} viewBox="0 0 180 180">
-              <circle cx="90" cy="90" r={pomR} fill="none" stroke="var(--color-background-secondary)" strokeWidth="10" />
-              <circle cx="90" cy="90" r={pomR} fill="none" stroke={pomMode==="focus"?gold:"#1D9E75"} strokeWidth="10"
-                strokeDasharray={pomCirc} strokeDashoffset={pomCirc*(1-pomProg)} strokeLinecap="round"
-                transform="rotate(-90 90 90)" style={{transition:"stroke-dashoffset 0.5s"}} />
-              <text x="90" y="85" textAnchor="middle" style={{fontSize:34,fontWeight:500,fill:"var(--color-text-primary)",fontFamily:"monospace"}}>{fmtTime(pomSeconds)}</text>
-              <text x="90" y="106" textAnchor="middle" style={{fontSize:14,fill:"var(--color-text-secondary)"}}>{pomMode==="break"?"break":"focus"}</text>
-            </svg>
-          </div>
-
-          {activeTask ? (
-            <div style={{textAlign:"center",marginBottom:16}}>
-              <div style={{fontSize:13,color:"var(--color-text-secondary)",marginBottom:3}}>Working on</div>
-              <div style={{fontSize:16,fontWeight:500}}>{activeTask.text}</div>
-              <div style={{fontSize:13,color:"var(--color-text-tertiary)",marginTop:4}}>ETA {activeTask.eta} min</div>
-            </div>
-          ) : (
-            <p style={{textAlign:"center",fontSize:15,color:"var(--color-text-tertiary)",marginBottom:16}}>No task linked. Start a general focus session or pick a task from a goal.</p>
-          )}
-
-          <div style={{display:"flex",justifyContent:"center",gap:10,marginBottom:20,flexWrap:"wrap"}}>
-            <button onClick={()=>{if(pomRunning)stopTimer();else setPomRunning(true);}} style={{fontSize:16,padding:"11px 36px",fontWeight:500,background:gold,color:"#fff",border:"none",borderRadius:"var(--border-radius-md)",cursor:"pointer"}}>
-              {pomRunning?"Pause":pomMode==="break"?"Start break":"Bismillah — Start"}
-            </button>
-            <button onClick={()=>{stopTimer();setPomSeconds(pomMode==="break"?getBreakSeconds(pomDurations):getFocusSeconds(pomFocusTargetMins, pomDurations));elapsedRef.current=0;}} style={{fontSize:16,padding:"9px 18px"}}>Reset</button>
-            {pomRunning && pomMode==="focus" && (
-              <button onClick={endFocusEarly} style={{fontSize:16,padding:"9px 18px"}}>End focus</button>
-            )}
-            {pomMode==="break" && (
-              <button onClick={skipBreak} style={{fontSize:16,padding:"9px 18px"}}>Skip break</button>
-            )}
-
-          </div>
-
-          <div style={{display:"flex",justifyContent:"center",gap:8,marginBottom:18}}>
-            {[["focus","Focus"],["break","Break"]].map(([m,l])=> (
-              <button key={m} onClick={()=>switchMode(m)} style={{fontSize:14,padding:"6px 14px",borderRadius:99,background:pomMode===m?gold:"transparent",color:pomMode===m?"#fff":"var(--color-text-secondary)",border:`0.5px solid ${pomMode===m?gold:"var(--color-border-secondary)"}`,cursor:"pointer"}}>
-                {l}
-              </button>
-            ))}
-          </div>
-
-          <div style={{...S.card,marginBottom:18}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-              <div style={{fontSize:14,color:"var(--color-text-secondary)"}}>Timer defaults (minutes)</div>
-              {pomRunning && <div style={{fontSize:13,color:"var(--color-text-tertiary)"}}>Applies next cycle</div>}
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(2, minmax(0, 1fr))",gap:10}}>
-              {[["defaultFocus","Default focus"],["break","Break"]].map(([field,label])=> (
-                <div key={field} style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-md)",padding:"10px 12px"}}>
-                  <label style={{fontSize:13,color:"var(--color-text-secondary)",display:"block",marginBottom:6}}>{label}</label>
-                  <input
-                    type="number"
-                    min={field==="break"?0:1}
-                    max="120"
-                    value={pomDurations[field]}
-                    onChange={e=>updatePomDuration(field, e.target.value)}
-                    style={{width:"100%",fontSize:16}}
-                  />
-                </div>
-              ))}
-
-
-            </div>
-          </div>
-
-          {focusLog.length>0 ? (
-            <div style={S.card}>
-              <div style={{fontSize:15,fontWeight:500,marginBottom:10}}>Session log</div>
-              <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {focusLog.map(l=>{
-                  const g=goals.find(x=>x.id===l.goalId); const t=g?.tasks.find(x=>x.id===l.taskId);
-                  return (<div key={l.id} style={{display:"flex",alignItems:"center",gap:10,fontSize:15}}>
-                    <div style={{width:7,height:7,borderRadius:"50%",background:g?CAT_COLORS[g.category]:"#888",flexShrink:0}} />
-                    <span style={{flex:1}}>{t?.text||"General focus"}</span>
-                    <span style={{color:"var(--color-text-secondary)"}}>{l.mins}m · {l.at}</span>
-                  </div>);
-                })}
-              </div>
-            </div>
-          ) : <p style={{textAlign:"center",fontSize:15,color:"var(--color-text-tertiary)"}}>Complete a session to see your log.</p>}
-        </div>
+      {/* ── MUHASABA ── */}
+      {view==="muhasaba" && (
+        <Muhasaba
+          muhasaba={muhasaba}
+          muhasabaDay={muhasabaDay}
+          setMuhasabaDay={setMuhasabaDay}
+          applyMuhasabaUpdate={applyMuhasabaUpdate}
+          prayerLog={prayerLog}
+          focusLog={focusLog}
+          aiLoadingDay={aiLoadingDay}
+          aiError={aiError}
+          generateReport={generateReport}
+        />
       )}
 
       {/* ── STATS ── */}
       {view==="stats" && (
-        <div>
-          <div style={{...S.card,marginBottom:16}}>
-            <div style={{fontSize:16,fontWeight:500,marginBottom:10}}>Productivity overview</div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))",gap:10}}>
-              {["Total focus","Sessions","Avg session","Top task"].map((label)=>{
-                const valueMap = {
-                  "Total focus": `${totalFocusMins} min`,
-                  "Sessions": focusLog.length,
-                  "Avg session": `${avgFocusMins} min`,
-                  "Top task": topFocusTasks[0]?.[0] || "—",
-                };
-                const colorMap = {
-                  "Total focus": gold,
-                  "Sessions": "#D88E4A",
-                  "Avg session": "#1D9E75",
-                  "Top task": "#7F77DD",
-                };
-                return (
-                  <div key={label} style={{background:"var(--color-background-secondary)",borderRadius:"var(--border-radius-md)",padding:"10px 12px"}}>
-                    <div style={{fontSize:13,color:"var(--color-text-secondary)",marginBottom:4}}>{label}</div>
-                    <div style={{fontSize:18,fontWeight:500,color:colorMap[label]}}>{valueMap[label]}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div style={{...S.card,marginBottom:16}}>
-            <div style={{fontSize:16,fontWeight:500,marginBottom:10}}>Last 7 days</div>
-            <div style={{display:"flex",alignItems:"flex-end",gap:8,height:120}}>
-              {Array.from({length:7}).map((_,i)=>{
-                const d=new Date(); d.setDate(d.getDate()-6+i);
-                const key=d.toISOString().split("T")[0];
-                const mins=focusLog.filter(l=>l.day===key).reduce((s,l)=>s+(l.mins||0),0);
-                const h = Math.min(100, mins*2);
-                return (
-                  <div key={key} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
-                    <div style={{width:"100%",background:"var(--color-background-secondary)",borderRadius:8,overflow:"hidden",height:100,display:"flex",alignItems:"flex-end"}}>
-                      <div style={{width:"100%",height:`${h}%`,background:gold}} />
-                    </div>
-                    <div style={{fontSize:12,color:"var(--color-text-tertiary)"}}>{d.getDate()}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          <div style={{...S.card}}>
-            <div style={{fontSize:16,fontWeight:500,marginBottom:10}}>Top focus tasks</div>
-            {topFocusTasks.length===0 ? (
-              <p style={{fontSize:15,color:"var(--color-text-tertiary)",margin:0}}>No focus sessions yet.</p>
-            ) : (
-              <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {topFocusTasks.map(([label,mins])=> (
-                  <div key={label} style={{display:"flex",alignItems:"center",gap:10,fontSize:15}}>
-                    <div style={{width:7,height:7,borderRadius:"50%",background:gold,flexShrink:0}} />
-                    <span style={{flex:1}}>{label}</span>
-                    <span style={{color:"var(--color-text-secondary)"}}>{mins}m</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
+        <Stats goals={goals} focusLog={focusLog} muhasaba={muhasaba} onSelectGoal={openGoal} onDeleteFocusEntry={deleteFocusEntry} onExport={exportData} />
       )}
+
     </div>
   );
 }

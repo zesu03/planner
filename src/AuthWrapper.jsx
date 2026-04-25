@@ -82,8 +82,8 @@ export default function AuthWrapper({ children }) {
           </div>
           <button
             onClick={handleGoogle}
-            className="btn-gold"
-            style={{ width: "100%", padding: "10px 16px", fontSize: 14 }}
+            className="btn-primary"
+            style={{ width: "100%" }}
           >
             Continue with Google
           </button>
