@@ -1,62 +1,167 @@
 import { CAT_COLORS, PRIORITIES } from "../lib/constants";
-import { daysLeft, fmt, todayStr } from "../lib/dates";
-import { isGoalDone, pct } from "../lib/goals";
+import { daysLeft, fmt, todayStr, localDateStr } from "../lib/dates";
+import { isGoalDone, pct, isRecurring, isScheduledOn, isDoneOn, recurringStreak, scheduleLabel, DOW_LABELS, DOW_LONG } from "../lib/goals";
 import { fmtMins, fmtTime } from "../lib/focus";
-import { gold, goldLight, S } from "../lib/styles";
+import { goldA, goldLight, S } from "../lib/styles";
 import ProgressBar from "../components/ProgressBar";
 import EmptyState from "../components/EmptyState";
 import TypeToggle from "../components/goal-form/TypeToggle";
 import CategoryTiles from "../components/goal-form/CategoryTiles";
 import DueChips from "../components/goal-form/DueChips";
 import NiyyahChips from "../components/goal-form/NiyyahChips";
+import { useGoalDetail } from "../contexts/GoalDetailContext";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+
+// Recurring picker — Never / Daily / Weekly, with conditional day-of-week
+// chips on Weekly. Default weekly days are Mon + Thu (Sunnah fasting days)
+// because that's the most common Islamic weekly cadence; user can change.
+function RecurringPicker({ value, onChange }) {
+  const type = value?.type || "none";
+  const days = value?.days || [];
+
+  const setType = (next) => {
+    if (next === "none") onChange(null);
+    else if (next === "daily") onChange({ type: "daily" });
+    else if (next === "weekly") onChange({ type: "weekly", days: days.length > 0 ? days : [1, 4] });
+  };
+
+  const toggleDay = (d) => {
+    if (type !== "weekly") return;
+    const next = days.includes(d) ? days.filter((x) => x !== d) : [...days, d].sort();
+    onChange({ type: "weekly", days: next });
+  };
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {[
+          { v: "none",   label: "Once" },
+          { v: "daily",  label: "Daily" },
+          { v: "weekly", label: "Weekly" },
+        ].map((opt) => {
+          const active = type === opt.v;
+          return (
+            <button key={opt.v} type="button" onClick={() => setType(opt.v)}
+              style={{
+                fontSize: 13, padding: "5px 12px", borderRadius: 99,
+                background: active ? goldA(22) : "var(--color-background-secondary)",
+                border: `0.5px solid ${active ? "var(--gold)" : "var(--color-border-tertiary)"}`,
+                color: active ? "var(--gold)" : "var(--color-text-secondary)",
+                fontWeight: active ? 600 : 400,
+                cursor: "pointer",
+              }}>
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+      {type === "weekly" && (
+        <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 8 }}>
+          {DOW_LABELS.map((label, i) => {
+            const active = days.includes(i);
+            return (
+              <button key={i} type="button" onClick={() => toggleDay(i)}
+                aria-label={`${DOW_LONG[i]}: ${active ? "selected" : "not selected"}`}
+                style={{
+                  width: 32, height: 32, borderRadius: "50%",
+                  fontSize: 13, fontWeight: 500,
+                  background: active ? goldA(28) : "var(--color-background-secondary)",
+                  border: `0.5px solid ${active ? "var(--gold)" : "var(--color-border-tertiary)"}`,
+                  color: active ? "var(--gold)" : "var(--color-text-secondary)",
+                  cursor: "pointer", padding: 0,
+                }}>
+                {label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Render-prop wrapper that gives a task row sortable behaviour without
+// moving the row's JSX into a separate component. Children receive everything
+// they need to attach the ref, drag-start listeners, and transform style.
+function SortableRow({ id, disabled, children }) {
+  const { setNodeRef, transform, transition, listeners, attributes, isDragging } = useSortable({ id, disabled });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    position: "relative",
+    zIndex: isDragging ? 2 : 1,
+  };
+  return children({ setNodeRef, style, listeners, attributes, isDragging });
+}
 
 // Goal detail view: header pills, edit-goal panel, stats triple, tasks list
-// (with inline editor + add row), and notes. Many callbacks come from the
-// parent — they all live in Planner today (Phase 4 candidate to extract into
-// a useGoals() hook).
-export default function GoalDetail({
-  selected,
-  // navigation
-  goBack,
-  // goal-level
-  toggleGoalCompleted,
-  startGoalEdit,
-  editingGoal,
-  goalDraft,
-  setGoalDraft,
-  saveGoalEdit,
-  cancelGoalEdit,
-  deleteGoal,
-  // tasks
-  taskStatusFilter,
-  setTaskStatusFilter,
-  taskPriorityFilter,
-  setTaskPriorityFilter,
-  newTask,
-  setNewTask,
-  addTask,
-  toggleTask,
-  removeTask,
-  moveTask,
-  editingTaskId,
-  taskDraft,
-  setTaskDraft,
-  startTaskEdit,
-  cancelTaskEdit,
-  saveTaskEdit,
-  startTaskTimer,
-  // notes
-  editingNotes,
-  setEditingNotes,
-  notesVal,
-  setNotesVal,
-  saveNotes,
-  // pomodoro overlay (highlights the task currently being focused)
-  pomGoalId,
-  pomTaskId,
-  pomRunning,
-  pomSeconds,
-}) {
+// (with inline editor + add row), and notes. Most of the bag (form drafts,
+// write callbacks, focus-timer indicators) comes through GoalDetailContext
+// so this component's explicit interface stays small: just `selected` (the
+// goal being viewed) and `goBack` (the route-back callback). Everything
+// else is pulled via useGoalDetail() below.
+export default function GoalDetail({ selected, goBack }) {
+  const {
+    focusLog,
+    // goal-level
+    toggleGoalCompleted,
+    startGoalEdit,
+    editingGoal,
+    goalDraft,
+    setGoalDraft,
+    saveGoalEdit,
+    cancelGoalEdit,
+    deleteGoal,
+    // task list filters
+    taskStatusFilter,
+    setTaskStatusFilter,
+    taskPriorityFilter,
+    setTaskPriorityFilter,
+    // task add form
+    newTask,
+    setNewTask,
+    addTask,
+    // task ops
+    toggleTask,
+    removeTask,
+    // moveTask is still in the context bag for potential context-menu /
+    // keyboard-shortcut consumers, but the UI uses reorderTasks via DnD now.
+    reorderTasks,
+    // task edit form
+    editingTaskId,
+    taskDraft,
+    setTaskDraft,
+    startTaskEdit,
+    cancelTaskEdit,
+    saveTaskEdit,
+    startTaskTimer,
+    // notes
+    editingNotes,
+    setEditingNotes,
+    notesVal,
+    setNotesVal,
+    saveNotes,
+    // pomodoro overlay (highlights the task currently being focused)
+    pomGoalId,
+    pomTaskId,
+    pomRunning,
+    pomSeconds,
+  } = useGoalDetail();
   const p = pct(selected);
   const dl = daysLeft(selected.due);
   const done = isGoalDone(selected);
@@ -65,11 +170,85 @@ export default function GoalDetail({
   const totalEta = selected.tasks.reduce((s, t) => s + (t.eta || 0), 0);
   const totalLogged = selected.tasks.reduce((s, t) => s + (t.totalTime || 0), 0);
   const filteredTasks = selected.tasks.filter((t) => {
-    if (taskStatusFilter === "open" && t.done) return false;
-    if (taskStatusFilter === "done" && !t.done) return false;
+    // "Done" semantics differ between task flavours:
+    //  - One-shot task: t.done
+    //  - Recurring task: today's date is in completions
+    // The filter uses isDoneOn so both filters work coherently across types.
+    const doneNow = isDoneOn(t);
+    if (taskStatusFilter === "open" && doneNow) return false;
+    if (taskStatusFilter === "done" && !doneNow) return false;
     if (taskPriorityFilter !== "all" && t.priority !== taskPriorityFilter) return false;
     return true;
   });
+
+  // Drag-and-drop sensors. PointerSensor needs a 6px activation distance so
+  // a tap on the drag handle (e.g. accidentally) doesn't trigger a drag —
+  // important on touch where every touch is a "pointer down". KeyboardSensor
+  // keeps reordering accessible: focus the handle, Space to pick up, arrow
+  // keys to move, Space to drop.
+  const dndSensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  // Drop = reorder. Visible-order from/to map back to unfiltered indices
+  // by looking up each task in selected.tasks. Hidden tasks (filtered out)
+  // stay where they are in the underlying array relative to the moved task.
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (!over || !reorderTasks || active.id === over.id) return;
+    const fromIdx = selected.tasks.findIndex((t) => t.id === active.id);
+    const toIdx = selected.tasks.findIndex((t) => t.id === over.id);
+    if (fromIdx < 0 || toIdx < 0) return;
+    reorderTasks(selected.id, fromIdx, toIdx);
+  };
+
+  // Focus rhythm — windowed aggregates from focusLog. focusLog is capped at
+  // 100 entries; for older sessions task.totalTime (used in the "Logged"
+  // metric tile above) remains the authoritative total. The 7d/30d numbers
+  // here are recent-windows only, which is what "rhythm" means anyway.
+  const focusRhythm = (() => {
+    const log = (focusLog || []).filter((l) => l.goalId === selected.id);
+    if (log.length === 0) {
+      return { last7Mins: 0, last30Mins: 0, lastActivityDay: null, series: [] };
+    }
+    const today = todayStr();
+    const cutoff7 = (() => {
+      const d = new Date(`${today}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - 6);
+      return localDateStr(d);
+    })();
+    const cutoff30 = (() => {
+      const d = new Date(`${today}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - 29);
+      return localDateStr(d);
+    })();
+    let last7 = 0, last30 = 0, lastDay = null;
+    for (const l of log) {
+      const mins = l.mins || 0;
+      if (l.day >= cutoff30) last30 += mins;
+      if (l.day >= cutoff7) last7 += mins;
+      if (!lastDay || l.day > lastDay) lastDay = l.day;
+    }
+    // 14-day series, oldest → newest.
+    const DAYS = 14;
+    const series = [];
+    for (let i = DAYS - 1; i >= 0; i--) {
+      const d = new Date(`${today}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - i);
+      const k = localDateStr(d);
+      const mins = log.filter((l) => l.day === k).reduce((s, l) => s + (l.mins || 0), 0);
+      series.push({ day: k, mins });
+    }
+    return { last7Mins: last7, last30Mins: last30, lastActivityDay: lastDay, series };
+  })();
+
+  const lastActivityLabel = (() => {
+    if (!focusRhythm.lastActivityDay) return null;
+    if (focusRhythm.lastActivityDay === todayStr()) return "today";
+    const today = new Date(`${todayStr()}T12:00:00Z`);
+    const last = new Date(`${focusRhythm.lastActivityDay}T12:00:00Z`);
+    const days = Math.round((today - last) / 86400000);
+    if (days === 1) return "yesterday";
+    return `${days}d ago`;
+  })();
 
   return (
     <div className="view-content">
@@ -144,8 +323,8 @@ export default function GoalDetail({
               <button onClick={() => toggleGoalCompleted(selected.id)}
                 style={{
                   fontSize: 14,
-                  borderColor: done ? "var(--color-border-tertiary)" : gold + "66",
-                  color: done ? "var(--color-text-secondary)" : gold,
+                  borderColor: done ? "var(--color-border-tertiary)" : goldA(40),
+                  color: done ? "var(--color-text-secondary)" : "var(--gold)",
                 }}>
                 {done ? "Reopen" : "Mark complete"}
               </button>
@@ -215,7 +394,14 @@ export default function GoalDetail({
         </div>
         <ProgressBar val={p} color={CAT_COLORS[selected.category]} height={8} />
         <div style={{ fontSize: 14, color: "var(--color-text-secondary)", marginTop: 5, marginBottom: 16 }}>
-          {selected.tasks.filter((t) => t.done).length}/{selected.tasks.length} tasks ·{" "}
+          {(() => {
+            const oneShots = selected.tasks.filter((t) => !isRecurring(t));
+            const habits = selected.tasks.filter((t) => isRecurring(t));
+            const parts = [];
+            if (oneShots.length > 0) parts.push(`${oneShots.filter((t) => t.done).length}/${oneShots.length} tasks`);
+            if (habits.length > 0) parts.push(`${habits.length} habit${habits.length === 1 ? "" : "s"}`);
+            return parts.length > 0 ? parts.join(" · ") + " · " : "";
+          })()}
           {done
             ? selected.completedAt
               ? `Completed ${fmt(selected.completedAt)}`
@@ -226,6 +412,73 @@ export default function GoalDetail({
             ? "Due today"
             : `${dl}d remaining`}
         </div>
+
+        {/* Focus rhythm — recent activity windowed from focusLog.
+            "Logged" tile above is the lifetime total; this row is about
+            cadence, so it shows last 7/30 days plus a mini sparkline. */}
+        {(focusRhythm.last30Mins > 0 || focusRhythm.lastActivityDay) && (() => {
+          const cat = CAT_COLORS[selected.category];
+          const sparkW = 160;
+          const sparkH = 28;
+          const max = Math.max(1, ...focusRhythm.series.map((s) => s.mins));
+          const barW = sparkW / focusRhythm.series.length;
+          return (
+            <div style={{
+              background: "var(--color-background-secondary)",
+              borderRadius: "var(--border-radius-md)",
+              padding: "12px 14px",
+              marginBottom: 16,
+              border: "0.5px solid var(--color-border-tertiary)",
+            }}>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10, gap: 10, flexWrap: "wrap" }}>
+                <div style={{ fontSize: 13, color: "var(--color-text-secondary)", fontWeight: 500 }}>
+                  Focus rhythm
+                </div>
+                <div style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>
+                  {lastActivityLabel ? `Last session ${lastActivityLabel}` : "No sessions yet"}
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", gap: 16 }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: "var(--color-text-tertiary)", letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: 2 }}>
+                      Last 7 days
+                    </div>
+                    <div style={{ fontSize: 16, fontWeight: 500, color: focusRhythm.last7Mins > 0 ? cat : "var(--color-text-tertiary)" }}>
+                      {fmtMins(focusRhythm.last7Mins)}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, color: "var(--color-text-tertiary)", letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: 2 }}>
+                      Last 30 days
+                    </div>
+                    <div style={{ fontSize: 16, fontWeight: 500, color: focusRhythm.last30Mins > 0 ? cat : "var(--color-text-tertiary)" }}>
+                      {fmtMins(focusRhythm.last30Mins)}
+                    </div>
+                  </div>
+                </div>
+                <svg width={sparkW} height={sparkH} style={{ marginLeft: "auto" }}
+                  role="img" aria-label="Focus over the last 14 days">
+                  {focusRhythm.series.map((s, i) => {
+                    const h = (s.mins / max) * sparkH;
+                    return (
+                      <rect key={s.day}
+                        x={i * barW}
+                        y={sparkH - h}
+                        width={Math.max(1, barW - 1.5)}
+                        height={Math.max(s.mins > 0 ? 1.5 : 0, h)}
+                        rx={1}
+                        fill={s.mins > 0 ? cat : "var(--color-border-tertiary)"}
+                        opacity={s.mins > 0 ? 1 : 0.4}>
+                        <title>{s.day} · {s.mins}m</title>
+                      </rect>
+                    );
+                  })}
+                </svg>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* tasks */}
         <div style={{ borderTop: "0.5px solid var(--color-border-tertiary)", paddingTop: 14, marginBottom: 14 }}>
@@ -247,99 +500,175 @@ export default function GoalDetail({
             </div>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
-            {filteredTasks.map((t, idx) => {
-              const isActive = pomTaskId === t.id && pomGoalId === selected.id;
-              const priC = { High: "var(--color-background-danger)", Medium: "var(--color-background-warning)", Low: "var(--color-background-secondary)" };
-              const priT = { High: "var(--color-text-danger)", Medium: "var(--color-text-warning)", Low: "var(--color-text-secondary)" };
-              return (
-                <div key={t.id} style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: "12px 14px",
-                  borderRadius: "var(--border-radius-md)",
-                  background: isActive ? goldLight : "var(--color-background-secondary)",
-                  border: isActive ? `0.5px solid ${gold}66` : "0.5px solid transparent",
-                }}>
-                  <div style={{ cursor: "pointer" }}>
-                    <input type="checkbox" checked={t.done}
-                      onChange={() => toggleTask(selected.id, t.id)}
-                      style={{ width: 17, height: 17, cursor: "pointer", accentColor: "var(--gold)" }} />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    {editingTaskId === t.id ? (
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 6 }}>
-                        <input value={taskDraft.text}
-                          onChange={(e) => setTaskDraft((d) => ({ ...d, text: e.target.value }))}
-                          onClick={(e) => e.stopPropagation()} />
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-                          <select value={taskDraft.priority}
-                            onChange={(e) => setTaskDraft((d) => ({ ...d, priority: e.target.value }))}
-                            onClick={(e) => e.stopPropagation()}>
-                            {PRIORITIES.map((pr) => <option key={pr}>{pr}</option>)}
-                          </select>
-                          <input type="number" min="1" value={taskDraft.eta}
-                            onChange={(e) => setTaskDraft((d) => ({ ...d, eta: e.target.value }))}
-                            onClick={(e) => e.stopPropagation()} />
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div style={{
-                          fontSize: 16,
-                          color: t.done ? "var(--color-text-tertiary)" : "var(--color-text-primary)",
-                          textDecoration: t.done ? "line-through" : "none",
+          <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={filteredTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 14 }}>
+                {filteredTasks.map((t) => {
+                  const isActive = pomTaskId === t.id && pomGoalId === selected.id;
+                  const isEditing = editingTaskId === t.id;
+                  const priC = { High: "var(--color-background-danger)", Medium: "var(--color-background-warning)", Low: "var(--color-background-secondary)" };
+                  const priT = { High: "var(--color-text-danger)", Medium: "var(--color-text-warning)", Low: "var(--color-text-secondary)" };
+                  return (
+                    <SortableRow key={t.id} id={t.id} disabled={isEditing}>
+                      {({ setNodeRef, style: sortableStyle, listeners, attributes, isDragging }) => (
+                        <div ref={setNodeRef} {...attributes} style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                          padding: "12px 14px",
+                          borderRadius: "var(--border-radius-md)",
+                          background: isActive ? goldLight : "var(--color-background-secondary)",
+                          border: isActive ? `0.5px solid ${goldA(40)}` : "0.5px solid transparent",
+                          boxShadow: isDragging ? "0 12px 28px rgba(0,0,0,0.32)" : "none",
+                          ...sortableStyle,
                         }}>
-                          {t.text}
+                          {/* Drag handle — replaces the previous ↑↓ buttons. Disabled
+                              while editing so the user can't accidentally move a row
+                              they're typing in. Keyboard: Tab → Space → arrows → Space. */}
+                          <button
+                            {...listeners}
+                            aria-label={`Reorder ${t.text}`}
+                            title="Drag to reorder"
+                            disabled={isEditing}
+                            style={{
+                              fontSize: 16,
+                              padding: "4px 6px",
+                              cursor: isEditing ? "not-allowed" : "grab",
+                              touchAction: "none", // prevent page scroll while dragging
+                              background: "transparent",
+                              border: "none",
+                              color: "var(--color-text-tertiary)",
+                              lineHeight: 1,
+                              opacity: isEditing ? 0.3 : 0.7,
+                            }}>
+                            ⋮⋮
+                          </button>
+                          <div style={{ cursor: isRecurring(t) && !isScheduledOn(t) ? "not-allowed" : "pointer" }}
+                            title={isRecurring(t) && !isScheduledOn(t) ? "Not scheduled today" : undefined}>
+                            <input type="checkbox"
+                              checked={isDoneOn(t)}
+                              disabled={isRecurring(t) && !isScheduledOn(t)}
+                              onChange={() => toggleTask(selected.id, t.id)}
+                              aria-label={isRecurring(t) ? "Mark today's instance done" : "Mark task done"}
+                              style={{
+                                width: 17, height: 17,
+                                cursor: isRecurring(t) && !isScheduledOn(t) ? "not-allowed" : "pointer",
+                                accentColor: "var(--gold)",
+                                opacity: isRecurring(t) && !isScheduledOn(t) ? 0.4 : 1,
+                              }} />
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            {isEditing ? (
+                              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
+                                <input value={taskDraft.text}
+                                  onChange={(e) => setTaskDraft((d) => ({ ...d, text: e.target.value }))}
+                                  onClick={(e) => e.stopPropagation()} />
+                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                                  <select value={taskDraft.priority}
+                                    onChange={(e) => setTaskDraft((d) => ({ ...d, priority: e.target.value }))}
+                                    onClick={(e) => e.stopPropagation()}>
+                                    {PRIORITIES.map((pr) => <option key={pr}>{pr}</option>)}
+                                  </select>
+                                  <input type="number" min="1" value={taskDraft.eta}
+                                    onChange={(e) => setTaskDraft((d) => ({ ...d, eta: e.target.value }))}
+                                    onClick={(e) => e.stopPropagation()} />
+                                </div>
+                                <div onClick={(e) => e.stopPropagation()}>
+                                  <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginBottom: 4, letterSpacing: "0.3px", textTransform: "uppercase", fontWeight: 600 }}>
+                                    Repeats
+                                  </div>
+                                  <RecurringPicker
+                                    value={taskDraft.recurring}
+                                    onChange={(v) => setTaskDraft((d) => ({ ...d, recurring: v }))} />
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <div style={{
+                                  fontSize: 16,
+                                  color: isDoneOn(t) ? "var(--color-text-tertiary)" : "var(--color-text-primary)",
+                                  textDecoration: isDoneOn(t) ? "line-through" : "none",
+                                  display: "flex", alignItems: "center", gap: 6, minWidth: 0,
+                                }}>
+                                  {isRecurring(t) && (
+                                    <span aria-hidden title="Recurring habit"
+                                      style={{ fontSize: 13, color: "var(--gold)", flexShrink: 0 }}>🔁</span>
+                                  )}
+                                  <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    {t.text}
+                                  </span>
+                                </div>
+                                <div style={{ fontSize: 13, color: "var(--color-text-secondary)", marginTop: 2, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                  {isRecurring(t) ? (
+                                    <>
+                                      <span style={{ color: "var(--gold)" }}>
+                                        {scheduleLabel(t.recurring)}
+                                      </span>
+                                      {recurringStreak(t) > 0 && (
+                                        <span>· 🔥 {recurringStreak(t)} in a row</span>
+                                      )}
+                                      {!isScheduledOn(t) && (
+                                        <span style={{ color: "var(--color-text-tertiary)", fontStyle: "italic" }}>· not today</span>
+                                      )}
+                                      {t.totalTime > 0 && <span>· {fmtMins(t.totalTime)} total</span>}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <span>ETA {fmtMins(t.eta)}</span>
+                                      {t.totalTime > 0 && <span>· Logged {fmtMins(t.totalTime)}</span>}
+                                      {t.sessions > 0 && <span>· {t.sessions} session{t.sessions > 1 ? "s" : ""}</span>}
+                                    </>
+                                  )}
+                                </div>
+                              </>
+                            )}
+                          </div>
+                          <span style={S.pill(priC[t.priority], priT[t.priority])}>{t.priority}</span>
+                          {isActive && (
+                            <span style={{ fontSize: 13, color: "var(--gold)", fontWeight: 500 }}>
+                              {pomRunning ? "▶ " : "⏸ "}{fmtTime(pomSeconds)}
+                            </span>
+                          )}
+                          <div className="task-actions" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                            {isEditing ? (
+                              <>
+                                <button onClick={(e) => { e.stopPropagation(); saveTaskEdit(selected.id, t.id); }} style={{ fontSize: 13 }}>Save</button>
+                                <button onClick={(e) => { e.stopPropagation(); cancelTaskEdit(); }} style={{ fontSize: 13 }}>Cancel</button>
+                              </>
+                            ) : (
+                              <>
+                                <button onClick={(e) => { e.stopPropagation(); startTaskTimer(selected.id, t.id); }}
+                                  style={{ fontSize: 13 }}
+                                  aria-label={isActive ? `Open focus timer for ${t.text}` : `Start focus on ${t.text}`}>
+                                  {isActive ? "Focus" : "Start"}
+                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); startTaskEdit(t); }}
+                                  style={{ fontSize: 13 }}
+                                  aria-label={`Edit task: ${t.text}`}>Edit</button>
+                                <button onClick={(e) => { e.stopPropagation(); removeTask(selected.id, t.id); }}
+                                  style={{ fontSize: 13, color: "var(--color-text-tertiary)", background: "none", border: "none", cursor: "pointer" }}
+                                  aria-label={`Remove task: ${t.text}`} title="Remove task">
+                                  ✕
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
-                        <div style={{ fontSize: 13, color: "var(--color-text-secondary)", marginTop: 2, display: "flex", gap: 8 }}>
-                          <span>ETA {fmtMins(t.eta)}</span>
-                          {t.totalTime > 0 && <span>· Logged {fmtMins(t.totalTime)}</span>}
-                          {t.sessions > 0 && <span>· {t.sessions} session{t.sessions > 1 ? "s" : ""}</span>}
-                        </div>
-                      </>
-                    )}
-                  </div>
-                  <span style={S.pill(priC[t.priority], priT[t.priority])}>{t.priority}</span>
-                  {isActive && (
-                    <span style={{ fontSize: 13, color: "var(--gold)", fontWeight: 500 }}>
-                      {pomRunning ? "▶ " : "⏸ "}{fmtTime(pomSeconds)}
-                    </span>
-                  )}
-                  <div className="task-actions" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-                    {editingTaskId === t.id ? (
-                      <>
-                        <button onClick={(e) => { e.stopPropagation(); saveTaskEdit(selected.id, t.id); }} style={{ fontSize: 13 }}>Save</button>
-                        <button onClick={(e) => { e.stopPropagation(); cancelTaskEdit(); }} style={{ fontSize: 13 }}>Cancel</button>
-                      </>
-                    ) : (
-                      <>
-                        <button onClick={(e) => { e.stopPropagation(); startTaskTimer(selected.id, t.id); }} style={{ fontSize: 13 }}>
-                          {isActive ? "Focus" : "Start"}
-                        </button>
-                        <button onClick={(e) => { e.stopPropagation(); moveTask(selected.id, t.id, -1); }} style={{ fontSize: 13 }} disabled={idx === 0}>↑</button>
-                        <button onClick={(e) => { e.stopPropagation(); moveTask(selected.id, t.id, 1); }} style={{ fontSize: 13 }} disabled={idx === selected.tasks.length - 1}>↓</button>
-                        <button onClick={(e) => { e.stopPropagation(); startTaskEdit(t); }} style={{ fontSize: 13 }}>Edit</button>
-                        <button onClick={(e) => { e.stopPropagation(); removeTask(selected.id, t.id); }}
-                          style={{ fontSize: 13, color: "var(--color-text-tertiary)", background: "none", border: "none", cursor: "pointer" }}>
-                          ✕
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-            {selected.tasks.length === 0 && (
-              <EmptyState icon="✏️" title="Break this goal into 1–3 first steps"
-                hint="Tasks are where focus blocks attach. Smaller is better — keep each one under an hour."
-                padY={20} />
-            )}
-            {selected.tasks.length > 0 && filteredTasks.length === 0 && (
-              <EmptyState icon="🔍" title="No tasks match your filters" padY={16} />
-            )}
-          </div>
+                      )}
+                    </SortableRow>
+                  );
+                })}
+                {selected.tasks.length === 0 && (
+                  <EmptyState icon="✏️" title="Break this goal into 1–3 first steps"
+                    hint="Tasks are where focus blocks attach. Smaller is better — keep each one under an hour."
+                    padY={20} />
+                )}
+                {selected.tasks.length > 0 && filteredTasks.length === 0 && (
+                  <EmptyState icon="🔍" title="No tasks match your filters" padY={16} />
+                )}
+              </div>
+            </SortableContext>
+          </DndContext>
 
           {/* add-task row */}
           <div style={{ background: "var(--color-background-secondary)", borderRadius: "var(--border-radius-md)", padding: 12 }}>
@@ -349,7 +678,7 @@ export default function GoalDetail({
               onKeyDown={(e) => e.key === "Enter" && addTask(selected.id)}
               placeholder="Task description..."
               style={{ width: "100%", fontSize: 15, marginBottom: 8, boxSizing: "border-box" }} />
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8, marginBottom: 10 }}>
               <div>
                 <label style={{ fontSize: 13, color: "var(--color-text-secondary)", display: "block", marginBottom: 4 }}>Priority</label>
                 <select value={newTask.priority}
@@ -365,6 +694,16 @@ export default function GoalDetail({
                   style={{ width: "100%", fontSize: 15, boxSizing: "border-box" }} />
               </div>
               <button onClick={() => addTask(selected.id)} style={{ fontSize: 15, padding: "7px 14px", marginTop: 16 }}>Add</button>
+            </div>
+            {/* Recurring picker — defaults to "Once" so this stays out of
+                the way for normal one-shot tasks. Toggle Daily / Weekly to
+                turn this into a habit instead. ETA still applies (a focus
+                session targets the configured minutes per occurrence). */}
+            <div>
+              <label style={{ fontSize: 13, color: "var(--color-text-secondary)", display: "block", marginBottom: 4 }}>Repeats</label>
+              <RecurringPicker
+                value={newTask.recurring}
+                onChange={(v) => setNewTask((n) => ({ ...n, recurring: v }))} />
             </div>
           </div>
         </div>

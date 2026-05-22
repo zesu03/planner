@@ -1,4 +1,4 @@
-import { gold } from "../../lib/styles";
+import { goldA } from "../../lib/styles";
 
 export default function TypeToggle({ value, onChange }) {
   const opts = [
@@ -12,8 +12,8 @@ export default function TypeToggle({ value, onChange }) {
         return (
           <button key={opt.v} type="button" onClick={() => onChange(opt.v)}
             style={{
-              background: active ? "rgba(201,168,76,0.18)" : "var(--color-background-secondary)",
-              border: `0.5px solid ${active ? gold + "99" : "var(--color-border-tertiary)"}`,
+              background: active ? goldA(18) : "var(--color-background-secondary)",
+              border: `0.5px solid ${active ? goldA(60) : "var(--color-border-tertiary)"}`,
               color: active ? "var(--color-text-primary)" : "var(--color-text-secondary)",
               borderRadius: "var(--border-radius-md)",
               padding: "10px 12px",

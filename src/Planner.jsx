@@ -1,20 +1,26 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useUserData } from "./useFirestore";
+import { useVerse } from "./hooks/useVerse";
+import { usePrayer } from "./hooks/usePrayer";
+import { useFocusTimer } from "./hooks/useFocusTimer";
+import { useGoals } from "./hooks/useGoals";
 import { auth } from "./firebase";
 
 // Pure helpers and data — no React, no state. See src/lib/.
 import {
-  CAT_COLORS, PRAYERS, PRAYER_ICONS,
-  QUOTES, INTENTIONS, FALLBACK_VERSE,
-  DEFAULT_DURATIONS,
+  PRAYERS,
+  QUOTES, INTENTIONS,
 } from "./lib/constants";
 import { newId } from "./lib/ids";
-import { todayStr, localDateStr, addDays } from "./lib/dates";
-import { isGoalDone, pct } from "./lib/goals";
+import { todayStr, localDateStr } from "./lib/dates";
+import { isGoalDone, pct, isRecurring, isScheduledOn, isDoneOn, recurringStreak, recurringCompletionRate } from "./lib/goals";
 import { emptyMuhasabaEntry, isMuhasabaFilled, muhasabaStreak } from "./lib/muhasaba";
-import { getFocusSeconds, fmtTime } from "./lib/focus";
-import { getAudioCtx, playTimerSound } from "./lib/audio";
-import { gold, S } from "./lib/styles";
+import { emptyQaza, computeQazaOwed, QAZA_PRAYERS } from "./lib/qaza";
+import { dayPhase, prayersToday, focusToday, muhasabaState, yesterdayDua, firstOpenTask } from "./lib/daily";
+import { fmtTime, focusStreakDays, STREAK_MILESTONES } from "./lib/focus";
+import { goldA, S } from "./lib/styles";
+import CelebrationToast from "./components/CelebrationToast";
+import { GoalDetailProvider } from "./contexts/GoalDetailContext";
 
 // View components (one per tab).
 import Dashboard from "./views/Dashboard";
@@ -28,12 +34,14 @@ import Muhasaba from "./views/Muhasaba";
 
 // ── main component ─────────────────────────────────────────────────────────
 export default function Planner({ user }) {
-  const { goals: goalsFromDb, prayerLog: prayerLogFromDb, focusLog: focusLogFromDb, settings: settingsFromDb, muhasaba: muhasabaFromDb, loading, updateGoals, updatePrayerLog, updateFocusLog, updateSettings, updateMuhasaba } = useUserData(user.uid);
+  const { goals: goalsFromDb, prayerLog: prayerLogFromDb, focusLog: focusLogFromDb, settings: settingsFromDb, muhasaba: muhasabaFromDb, qaza: qazaFromDb, savedVerses: savedVersesFromDb, loading, updateGoals, updatePrayerLog, updateFocusLog, updateSettings, updateMuhasaba, updateQaza, updateSavedVerses } = useUserData(user.uid);
   const goals = goalsFromDb ?? [];
   const prayerLog = prayerLogFromDb ?? {};
   const focusLog = focusLogFromDb ?? [];
   const userSettings = settingsFromDb ?? {};
   const muhasaba = muhasabaFromDb ?? {};
+  const qaza = qazaFromDb ?? {};
+  const savedVerses = savedVersesFromDb ?? [];
   const [view,setView]         = useState("dashboard");
   const [filter,setFilter]     = useState("all");
   const [searchTerm,setSearchTerm] = useState("");
@@ -41,60 +49,31 @@ export default function Planner({ user }) {
   const [form,setForm]         = useState({title:"",type:"short",category:"Health",due:"",notes:"",intention:""});
   const [editingGoal,setEditingGoal] = useState(false);
   const [goalDraft,setGoalDraft] = useState(null);
-  const [newTask,setNewTask]   = useState({text:"",priority:"Medium",eta:30});
+  const [newTask,setNewTask]   = useState({text:"",priority:"Medium",eta:30,recurring:null});
   const [editingTaskId,setEditingTaskId] = useState(null);
   const [taskDraft,setTaskDraft] = useState({text:"",priority:"Medium",eta:30});
   const [editingNotes,setEditingNotes] = useState(false);
   const [notesVal,setNotesVal] = useState("");
   const [taskStatusFilter,setTaskStatusFilter] = useState("all");
   const [taskPriorityFilter,setTaskPriorityFilter] = useState("all");
-  const [verseOfDay,setVerseOfDay] = useState(null);
-  const [verseError,setVerseError] = useState("");
+  const { verseOfDay, refresh: refreshVerse } = useVerse();
   const [quoteIdx]             = useState(() => Math.floor(Math.random()*QUOTES.length));
   const [intentionIdx]         = useState(() => Math.floor(Math.random()*INTENTIONS.length));
   const [goalSort,setGoalSort] = useState("due"); // "due" | "progress" | "category" | "name"
 
-  // prayer
-  const [prayerTimes,setPrayerTimes]   = useState(null);
-  const [prayerCity,setPrayerCity]     = useState("");
-  const [cityInput,setCityInput]       = useState("");
-  const [countryInput,setCountryInput] = useState("");
-  const [prayerLoading,setPrayerLoading] = useState(false);
-  const [prayerError,setPrayerError]   = useState("");
-  const [hijriDate,setHijriDate]       = useState("");
-  const settingsAppliedRef = useRef(false);
+  // prayer — owned by the usePrayer hook (state + Aladhan fetchers + city
+  // persistence + restore-from-settings).
+  const {
+    prayerTimes, prayerCity, cityInput, countryInput,
+    prayerLoading, prayerError, hijriDate,
+    setPrayerTimes, setCityInput, setCountryInput,
+    fetchPrayers, fetchByGeo,
+  } = usePrayer({ settingsFromDb, userSettings, updateSettings });
 
   // muhasaba
   const [muhasabaDay,setMuhasabaDay] = useState(todayStr());
   const [aiLoadingDay,setAiLoadingDay] = useState(null); // day being generated, or null
   const [aiError,setAiError] = useState("");
-
-  // pomodoro — break mode is intentionally absent; the timer is focus-only.
-  const [pomDurations,setPomDurations] = useState(DEFAULT_DURATIONS);
-  const [pomSeconds,setPomSeconds] = useState(() => getFocusSeconds(null, DEFAULT_DURATIONS));
-  const [pomRunning,setPomRunning] = useState(false);
-  const [pomTaskId,setPomTaskId] = useState(null);
-  const [pomGoalId,setPomGoalId] = useState(null);
-  const [pomFocusTargetMins,setPomFocusTargetMins] = useState(DEFAULT_DURATIONS.defaultFocus);
-  const intervalRef = useRef(null);
-  const elapsedRef  = useRef(0);
-
-  // restore persisted settings (prayer city, timer durations) once on load
-  useEffect(() => {
-    if (settingsAppliedRef.current || !settingsFromDb) return;
-    settingsAppliedRef.current = true;
-    if (settingsFromDb.prayerCity && settingsFromDb.prayerCountry) {
-      setCityInput(settingsFromDb.prayerCity);
-      setCountryInput(settingsFromDb.prayerCountry);
-      // auto-fetch prayer times
-      fetchPrayersFromSettings(settingsFromDb.prayerCity, settingsFromDb.prayerCountry);
-    }
-    if (settingsFromDb.pomDurations) {
-      setPomDurations(settingsFromDb.pomDurations);
-      setPomSeconds(getFocusSeconds(null, settingsFromDb.pomDurations));
-      setPomFocusTargetMins(settingsFromDb.pomDurations.defaultFocus || DEFAULT_DURATIONS.defaultFocus);
-    }
-  }, [settingsFromDb]);
 
   // theme: apply data-theme to <html> based on settings (default dark)
   const theme = userSettings.theme === "light" ? "light" : "dark";
@@ -107,11 +86,71 @@ export default function Planner({ user }) {
 
   // Daily focus goal (minutes). Drives the Daily progress ring on the Focus
   // tab and the streak count. Persisted in settings; defaults to 60.
+  // Declared above the celebration block because the focus-streak effect
+  // depends on it — `const` is temporal-dead-zoned, so referencing it
+  // earlier throws ReferenceError at render time.
   const dailyFocusGoalMins = Number(userSettings.dailyFocusGoalMins) || 60;
   function updateDailyFocusGoal(mins) {
     const v = Math.max(1, Math.min(720, Number(mins) || 60));
     updateSettings({ ...userSettings, dailyFocusGoalMins: v });
   }
+
+  // Celebration toast — single slot, latest wins. Three sources:
+  //   1. A goal flipping from open → completedAt today
+  //   2. Focus streak crossing a milestone (7, 14, 30, 60, 100, 200, 365)
+  //   3. Muhasaba streak crossing a milestone
+  // Each source has its own ref tracking the previous state so we only
+  // celebrate the moment of the transition, not on every render — and not
+  // on first load when Firestore data hydrates into already-celebrated state.
+  const [celebration, setCelebration] = useState(null);
+
+  const prevGoalsRef = useRef(null);
+  useEffect(() => {
+    const prev = prevGoalsRef.current;
+    prevGoalsRef.current = goals;
+    if (prev === null) return;
+    const today = todayStr();
+    for (const g of goals) {
+      if (g.completedAt !== today) continue;
+      const prevG = prev.find((p) => p.id === g.id);
+      if (prevG && !prevG.completedAt) {
+        setCelebration({ kind: "goal", goal: g });
+        break;
+      }
+    }
+  }, [goals]);
+
+  // Focus streak crossings. Runs on focusLog / daily-goal changes.
+  const prevFocusStreakRef = useRef(null);
+  useEffect(() => {
+    const newStreak = focusStreakDays(focusLog, dailyFocusGoalMins);
+    const prev = prevFocusStreakRef.current;
+    prevFocusStreakRef.current = newStreak;
+    if (prev === null) return;
+    if (newStreak > prev && STREAK_MILESTONES.includes(newStreak)) {
+      setCelebration({ kind: "focusStreak", count: newStreak });
+    }
+  }, [focusLog, dailyFocusGoalMins]);
+
+  // Muhasaba streak crossings.
+  const prevMuhasabaStreakRef = useRef(null);
+  useEffect(() => {
+    const newStreak = muhasabaStreak(muhasaba);
+    const prev = prevMuhasabaStreakRef.current;
+    prevMuhasabaStreakRef.current = newStreak;
+    if (prev === null) return;
+    if (newStreak > prev && STREAK_MILESTONES.includes(newStreak)) {
+      setCelebration({ kind: "muhasabaStreak", count: newStreak });
+    }
+  }, [muhasaba]);
+
+  // Auto-dismiss after 12s. The timer resets if a new celebration replaces
+  // the current one (because the dep changes).
+  useEffect(() => {
+    if (!celebration) return;
+    const t = setTimeout(() => setCelebration(null), 12000);
+    return () => clearTimeout(t);
+  }, [celebration]);
 
   const applyGoalsUpdate = useCallback(
     (updater) => {
@@ -137,6 +176,29 @@ export default function Planner({ user }) {
     [focusLog, updateFocusLog]
   );
 
+  // Focus timer — dial state, the tick interval, session bookkeeping,
+  // and pom-duration persistence. Lives in its own hook so the timer
+  // logic doesn't bleed into Planner's other concerns.
+  const {
+    pomSeconds, pomRunning, pomTaskId, pomGoalId, pomFocusTargetMins, pomDurations,
+    activeTask, lastSession,
+    setPomRunning,
+    startTaskTimer, stopTimer, resetTimer, endFocusEarly, updatePomDuration,
+    dismissLastSession,
+  } = useFocusTimer({
+    goals,
+    applyGoalsUpdate,
+    applyFocusLogUpdate,
+    settingsFromDb,
+    userSettings,
+    updateSettings,
+    onSessionStart: () => setView("pomodoro"),
+  });
+
+  // Goal + task write callbacks (data-only). The wrapping functions below
+  // glue these to the local form state, confirms, and navigation.
+  const goalsHook = useGoals({ applyGoalsUpdate });
+
   const applyMuhasabaUpdate = useCallback(
     (updater) => {
       const next = typeof updater === "function" ? updater(muhasaba) : updater;
@@ -145,9 +207,85 @@ export default function Planner({ user }) {
     [muhasaba, updateMuhasaba]
   );
 
+  const applyQazaUpdate = useCallback(
+    (updater) => {
+      const next = typeof updater === "function" ? updater(qaza) : updater;
+      updateQaza(next);
+    },
+    [qaza, updateQaza]
+  );
+
+  // Seed the qaza ledger the first time the user reaches the app — startDate
+  // anchors counting to "from today forward" so pre-existing prayerLog gaps
+  // don't spawn a wall of qaza on first launch.
+  useEffect(() => {
+    if (!qazaFromDb) return;
+    if (qazaFromDb.startDate) return;
+    updateQaza(emptyQaza());
+  }, [qazaFromDb, updateQaza]);
+
+  // Pay off one qaza for a given prayer — increments paid[p], which the
+  // owed-computation subtracts from the missed-days count.
+  const payOneQaza = useCallback((prayer) => {
+    if (!QAZA_PRAYERS.includes(prayer)) return;
+    applyQazaUpdate((q) => {
+      const base = q?.startDate ? q : emptyQaza();
+      const paid = { ...(base.paid || {}) };
+      paid[prayer] = (paid[prayer] || 0) + 1;
+      return { ...base, paid };
+    });
+  }, [applyQazaUpdate]);
+
+  const undoOneQaza = useCallback((prayer) => {
+    if (!QAZA_PRAYERS.includes(prayer)) return;
+    applyQazaUpdate((q) => {
+      if (!q?.paid?.[prayer]) return q;
+      const paid = { ...q.paid, [prayer]: Math.max(0, q.paid[prayer] - 1) };
+      return { ...q, paid };
+    });
+  }, [applyQazaUpdate]);
+
+  // Saved verses — personal collection of bookmarked ayat from the
+  // verse-of-day card. De-duped by verseKey so re-saving the same verse is
+  // a no-op rather than producing duplicate rows. Newest-first ordering.
+  const applySavedVersesUpdate = useCallback(
+    (updater) => {
+      const next = typeof updater === "function" ? updater(savedVerses) : updater;
+      updateSavedVerses(next);
+    },
+    [savedVerses, updateSavedVerses]
+  );
+
+  const saveVerse = useCallback((verse) => {
+    if (!verse?.verseKey) return;
+    applySavedVersesUpdate((arr) => {
+      if (arr.some((v) => v.verseKey === verse.verseKey)) return arr;
+      const entry = {
+        id: newId(),
+        verseKey: verse.verseKey,
+        arabic: verse.arabic || "",
+        translation: verse.translation || "",
+        url: verse.url || `https://quran.com/${verse.verseKey}`,
+        savedAt: new Date().toISOString(),
+      };
+      return [entry, ...arr];
+    });
+  }, [applySavedVersesUpdate]);
+
+  const removeSavedVerse = useCallback((id) => {
+    applySavedVersesUpdate((arr) => arr.filter((v) => v.id !== id));
+  }, [applySavedVersesUpdate]);
+
+  const isVerseSaved = useCallback(
+    (verseKey) => savedVerses.some((v) => v.verseKey === verseKey),
+    [savedVerses]
+  );
+
   // Build a rich JSON payload for Gemini. The mentor needs enough context to
   // spot real patterns (recurring sins, stalling du'as, momentum) — not just
-  // a snapshot of today.
+  // a snapshot of today. Also includes the qaza ledger (so the mentor can
+  // hold the user to making up missed prayers) and any goals completed on
+  // this day (so the day's wins are visible alongside its gaps).
   const buildReportPayload = useCallback((day) => {
     const entry = muhasaba[day] || {};
     const today = todayStr();
@@ -176,15 +314,33 @@ export default function Planner({ user }) {
     // Goals snapshot
     const goalsState = goals.map(g => {
       const tasks = g.tasks || [];
-      const doneCount = tasks.filter(t => t.done).length;
+      // One-shot vs recurring split. Progress %, doneCount, tasksTotal
+      // describe one-shot tasks only (matching pct() in lib/goals.js).
+      // Recurring tasks are reported separately as `habits` so the mentor
+      // can reason about them in their own terms (daily/weekly cadence,
+      // streak, recent completion rate).
+      const oneShots = tasks.filter(t => !isRecurring(t));
+      const habits = tasks.filter(t => isRecurring(t)).map(t => ({
+        text: t.text,
+        priority: t.priority,
+        type: t.recurring.type,
+        days: t.recurring.days || null,
+        doneToday: isDoneOn(t),
+        scheduledToday: isScheduledOn(t),
+        streak: recurringStreak(t),
+        last30CompletionRate: recurringCompletionRate(t, 30),
+      }));
+      const doneCount = oneShots.filter(t => t.done).length;
       const dl = Math.ceil((new Date(g.due) - new Date(day)) / 86400000);
       return {
         title: g.title,
         category: g.category,
         type: g.type,
-        progressPct: tasks.length ? Math.round(doneCount/tasks.length*100) : 0,
+        progressPct: oneShots.length ? Math.round(doneCount/oneShots.length*100) : 0,
         tasksDone: doneCount,
-        tasksTotal: tasks.length,
+        tasksTotal: oneShots.length,
+        habitsTotal: habits.length,
+        habits, // detailed habit data; empty array if none
         daysUntilDue: dl,
         completed: !!g.completedAt,
         completedOn: g.completedAt || null,
@@ -258,6 +414,29 @@ export default function Planner({ user }) {
       if (r) niyyahTrendArr.push({ day: k, rating: r });
     }
 
+    // Qaza ledger — outstanding makeups per prayer + total. Tells the
+    // mentor where missed-prayer debt is accumulating, so a recurring miss
+    // can be named directly instead of as an abstract "consistency" note.
+    const qazaSummary = (() => {
+      const owed = computeQazaOwed(prayerLog, qaza);
+      const total = QAZA_PRAYERS.reduce((s, p) => s + (owed[p] || 0), 0);
+      const paid = QAZA_PRAYERS.reduce((s, p) => s + (qaza?.paid?.[p] || 0), 0);
+      const worst = QAZA_PRAYERS.reduce((acc, p) => (owed[p] || 0) > (owed[acc] || 0) ? p : acc, "Fajr");
+      return {
+        owed,
+        totalOwed: total,
+        totalPaid: paid,
+        worstPrayer: total > 0 ? worst : null,
+        startDate: qaza?.startDate || null,
+      };
+    })();
+
+    // Goals the user actually finished on this day — a real win to weigh
+    // against the day's gaps so the reflection isn't lopsidedly negative.
+    const goalsCompletedOnDay = goals
+      .filter(g => g.completedAt === day)
+      .map(g => ({ title: g.title, category: g.category, intention: g.intention || null }));
+
     return {
       day,
       dayOfWeek,
@@ -272,7 +451,9 @@ export default function Planner({ user }) {
       },
       focus: { totalMins: dayFocusMins, sessions: dayFocus.length, byGoal: focusByGoal },
       goals: goalsState,
+      goalsCompletedOnDay,
       daysSinceLastGoalCompletion,
+      qaza: qazaSummary,
       muhasaba: {
         quranPages: entry.quranPages || null,
         dhikr: !!entry.dhikr,
@@ -284,19 +465,64 @@ export default function Planner({ user }) {
         bestDeed: entry.bestDeed || null,
         shukr: (entry.shukr || []).filter(s => s && s.trim()),
         duaTomorrow: entry.duaTomorrow || null,
+        // Yesterday's-du'a verdict. status ∈ {honoured, partial, missed, null}.
+        // A non-null status closes the previous day's commitment loop and
+        // is the most direct behavioural-feedback signal the mentor has.
+        duaCheck: entry.duaCheck?.status
+          ? { status: entry.duaCheck.status, note: entry.duaCheck.note || null }
+          : null,
+        // Relational audit — map of relation → free-text repair plan. Only
+        // includes relations the user actually flagged (key present in the
+        // entry's `relations` object). The mentor should treat these as
+        // priority: rights of creation are heavier than abstract self-talk.
+        relations: Object.entries(entry.relations || {})
+          .filter(([, note]) => true) // include even relations with no note — selection itself is signal
+          .map(([who, note]) => ({ who, note: (note || "").trim() || null })),
+        // Tawbah conditions — three booleans the user affirmed tonight.
+        // Only sent when at least one is true; null otherwise so the model
+        // doesn't see noise. A partial affirmation (e.g. stopped=true,
+        // resolved=false) is itself a tell about honesty/readiness.
+        tawbah: (entry.tawbah?.stopped || entry.tawbah?.resolved || entry.tawbah?.restored)
+          ? {
+              stopped: !!entry.tawbah.stopped,
+              resolved: !!entry.tawbah.resolved,
+              restored: !!entry.tawbah.restored,
+            }
+          : null,
+        // Per-active-goal self-check. Map of goalId → "yes" | "partial" |
+        // "no". Joined with goal titles below so the mentor can call them
+        // by name without needing to cross-reference.
+        goalChecks: Object.entries(entry.goalChecks || {})
+          .map(([id, value]) => {
+            const g = goals.find((x) => x.id === id);
+            if (!g) return null;
+            return { title: g.title, category: g.category, value };
+          })
+          .filter(Boolean),
       },
       muhasabaStreak: muhasabaStreak(muhasaba),
       lastFiveDaysMuhasaba,
       recentDuas,
       niyyahTrend: niyyahTrendArr,
     };
-  }, [goals, prayerLog, focusLog, muhasaba, hijriDate]);
+  }, [goals, prayerLog, focusLog, muhasaba, hijriDate, qaza]);
 
   const generateReport = useCallback(async (day, { force=false } = {}) => {
     if (!day) return;
     const existing = muhasaba[day]?.aiReport;
     if (existing && !force) return;
     if (aiLoadingDay) return; // already generating something
+    // 30s cooldown between manual regenerates of the same day. Stops
+    // accidental double-clicks and reflex re-tries from burning Gemini quota.
+    if (force && existing?.generatedAt) {
+      const ageMs = Date.now() - new Date(existing.generatedAt).getTime();
+      const cooldownMs = 30_000;
+      if (ageMs < cooldownMs) {
+        const secs = Math.ceil((cooldownMs - ageMs) / 1000);
+        setAiError(`Just generated — wait ${secs}s before regenerating.`);
+        return;
+      }
+    }
     setAiError("");
     setAiLoadingDay(day);
     try {
@@ -334,66 +560,8 @@ export default function Planner({ user }) {
   // in the Mirror card. No automatic generation on filled muhasaba; saves API
   // quota and lets the user decide when they're ready to be reflected on.
 
-  // Verse of the day — fetches a random ayah from Quran.com, caches in
-  // localStorage keyed by date so each day's first load uses the network and
-  // subsequent loads reuse the cached value. `refreshVerse()` invalidates
-  // the cache so the user can intentionally fetch a new verse.
-  const fetchVerse = useCallback(async () => {
-    const today = todayStr();
-    const storageKey = "aakhirah_votd";
-    setVerseError("");
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
-    try {
-      const res = await fetch(
-        "https://api.quran.com/api/v4/verses/random?fields=text_uthmani&translations=20",
-        { signal: controller.signal }
-      );
-      if (!res.ok) throw new Error("Quran API request failed");
-      const json = await res.json();
-      const v = json?.verse;
-      const verseKey = v?.verse_key || FALLBACK_VERSE.verseKey;
-      const arabic = v?.text_uthmani || "";
-      const translation = (v?.translations?.[0]?.text || "").replace(/<[^>]*>/g, "");
-      if (!arabic || !translation) {
-        const fallback = { ...FALLBACK_VERSE, day: today };
-        setVerseOfDay(fallback);
-        setVerseError("Using a fallback verse. Please refresh to try again.");
-        localStorage.setItem(storageKey, JSON.stringify(fallback));
-        return;
-      }
-      const payload = { day: today, verseKey, arabic, translation, url: `https://quran.com/${verseKey}` };
-      setVerseOfDay(payload);
-      localStorage.setItem(storageKey, JSON.stringify(payload));
-    } catch {
-      setVerseOfDay({ ...FALLBACK_VERSE, day: today });
-      setVerseError("Using a fallback verse. Please refresh to try again.");
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  }, []);
-
-  function refreshVerse() {
-    try { localStorage.removeItem("aakhirah_votd"); } catch {}
-    fetchVerse();
-  }
-
-  useEffect(() => {
-    const today = todayStr();
-    const cached = localStorage.getItem("aakhirah_votd");
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        if (parsed?.day === today && parsed?.verseKey) {
-          setVerseOfDay(parsed);
-          return;
-        }
-      } catch { /* ignore cache parse errors */ }
-    }
-    fetchVerse();
-  }, [fetchVerse]);
   const selected   = goals.find(g => g.id===selectedId);
-  const activeTask = pomGoalId&&pomTaskId ? goals.find(g=>g.id===pomGoalId)?.tasks.find(t=>t.id===pomTaskId) : null;
+  // `activeTask` is returned by useFocusTimer.
 
   const overallPct = goals.length ? Math.round(goals.reduce((s,g)=>s+pct(g),0)/goals.length) : 0;
   // Used by Dashboard's stats grid. Stats view derives its own focus aggregates.
@@ -402,64 +570,6 @@ export default function Planner({ user }) {
   const rawName = user?.displayName || user?.email?.split("@")[0] || "Dost";
   const firstName = rawName.split(/[\s._-]+/)[0] || "Dost";
   const greetingName = firstName;
-
-  // fetch prayer times
-  async function fetchPrayersFromSettings(city, country) {
-    try {
-      const ts = Math.floor(Date.now()/1000);
-      const res = await fetch(`https://api.aladhan.com/v1/timingsByCity/${ts}?city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}&method=2`);
-      const data = await res.json();
-      if (data.code===200) {
-        setPrayerTimes(data.data.timings);
-        setPrayerCity(`${city}, ${country}`);
-        const h = data.data.date.hijri;
-        setHijriDate(`${h.day} ${h.month.en} ${h.year} AH`);
-      }
-    } catch {}
-  }
-
-  async function fetchPrayers(city, country) {
-    const safeCity = city.trim();
-    const safeCountry = country.trim();
-    if (!safeCity || !safeCountry) return;
-    setPrayerLoading(true); setPrayerError("");
-    try {
-      const today = new Date();
-      const ts = Math.floor(today.getTime()/1000);
-      const res = await fetch(`https://api.aladhan.com/v1/timingsByCity/${ts}?city=${encodeURIComponent(safeCity)}&country=${encodeURIComponent(safeCountry)}&method=2`);
-      const data = await res.json();
-      if (data.code===200) {
-        setPrayerTimes(data.data.timings);
-        setPrayerCity(`${safeCity}, ${safeCountry}`);
-        const h = data.data.date.hijri;
-        setHijriDate(`${h.day} ${h.month.en} ${h.year} AH`);
-        // persist city to settings
-        updateSettings({ ...userSettings, prayerCity: safeCity, prayerCountry: safeCountry });
-      } else { setPrayerError("City not found. Try again."); }
-    } catch { setPrayerError("Could not fetch. Check connection."); }
-    setPrayerLoading(false);
-  }
-
-  // get prayers via geolocation
-  async function fetchByGeo() {
-    if (!navigator.geolocation) { setPrayerError("Geolocation not supported."); return; }
-    setPrayerLoading(true); setPrayerError("");
-    navigator.geolocation.getCurrentPosition(async pos => {
-      try {
-        const {latitude:lat,longitude:lng} = pos.coords;
-        const ts = Math.floor(Date.now()/1000);
-        const res = await fetch(`https://api.aladhan.com/v1/timings/${ts}?latitude=${lat}&longitude=${lng}&method=2`);
-        const data = await res.json();
-        if (data.code===200) {
-          setPrayerTimes(data.data.timings);
-          setPrayerCity("Your location");
-          const h = data.data.date.hijri;
-          setHijriDate(`${h.day} ${h.month.en} ${h.year} AH`);
-        } else { setPrayerError("Could not get times for your location."); }
-      } catch { setPrayerError("Failed to fetch."); }
-      setPrayerLoading(false);
-    }, () => { setPrayerError("Location permission denied."); setPrayerLoading(false); });
-  }
 
   function togglePrayerLog(prayer) {
     const today = todayStr();
@@ -486,80 +596,14 @@ export default function Planner({ user }) {
     return streak;
   }
 
-  // focus timer
-  const stopTimer = useCallback(() => { clearInterval(intervalRef.current); setPomRunning(false); },[]);
-
-  useEffect(() => {
-    if (!pomRunning) return () => clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(() => {
-      setPomSeconds(s => {
-        if (s <= 1) {
-          // Session complete — log it, increment task sessions, chime, stop.
-          const mins = Math.max(1, Math.round(pomFocusTargetMins));
-          const at = new Date();
-          const entry = {
-            id: newId(),
-            taskId: pomTaskId,
-            goalId: pomGoalId,
-            mins,
-            at: at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-            day: localDateStr(at),
-          };
-          applyFocusLogUpdate(l => [entry, ...l].slice(0, 100));
-          if (pomGoalId && pomTaskId) {
-            applyGoalsUpdate(gs => gs.map(g => g.id !== pomGoalId ? g : { ...g, tasks: g.tasks.map(t => t.id !== pomTaskId ? t : { ...t, sessions: (t.sessions || 0) + 1, totalTime: (t.totalTime || 0) + mins }) }));
-          }
-          playTimerSound("focusEnd");
-          elapsedRef.current = 0;
-          // Reset the dial to the next session length (task eta or default).
-          const task = pomGoalId && pomTaskId ? goals.find(g => g.id === pomGoalId)?.tasks.find(t => t.id === pomTaskId) : null;
-          const nextMins = task?.eta || pomDurations.defaultFocus;
-          setPomFocusTargetMins(nextMins);
-          setPomRunning(false);
-          return getFocusSeconds(nextMins, pomDurations);
-        }
-        elapsedRef.current += 1;
-        return s - 1;
-      });
-    }, 1000);
-    return () => clearInterval(intervalRef.current);
-  }, [pomRunning, pomGoalId, pomTaskId, pomFocusTargetMins, pomDurations, goals, applyGoalsUpdate, applyFocusLogUpdate]);
-
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-secondary)" }}>
-        Loading…
+      <div role="status" aria-label="Loading your data"
+        style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, color: "var(--text-secondary)" }}>
+        <div className="loading-dots" aria-hidden="true"><span /><span /><span /></div>
+        <div style={{ fontSize: 13, opacity: 0.7 }}>Loading…</div>
       </div>
     );
-  }
-
-  function startTaskTimer(goalId,taskId) {
-    if (pomRunning && pomTaskId===taskId) { stopTimer(); return; }
-    const task = goals.find(g=>g.id===goalId)?.tasks.find(t=>t.id===taskId);
-    const focusMins = task?.eta || pomDurations.defaultFocus;
-    getAudioCtx(); // unlock audio under user gesture so end-of-session chime can play
-    stopTimer(); setPomGoalId(goalId); setPomTaskId(taskId);
-    setPomFocusTargetMins(focusMins); setPomSeconds(getFocusSeconds(focusMins, pomDurations)); elapsedRef.current=0; setPomRunning(true); setView("pomodoro");
-  }
-
-  // Reset has dual behaviour:
-  //  - If a task is linked, delink it and preserve the time the user has
-  //    left as a fresh general focus block. Lets you abort a task partway
-  //    through without losing the time you'd already set aside.
-  //  - With no task linked, just reset to the default focus length.
-  function resetTimer() {
-    stopTimer();
-    if (pomTaskId) {
-      const remainingMins = Math.max(1, Math.ceil(pomSeconds / 60));
-      setPomGoalId(null);
-      setPomTaskId(null);
-      setPomFocusTargetMins(remainingMins);
-      setPomSeconds(remainingMins * 60);
-      elapsedRef.current = 0;
-      return;
-    }
-    setPomSeconds(getFocusSeconds(pomFocusTargetMins, pomDurations));
-    elapsedRef.current = 0;
   }
 
   // Trigger a client-side download of the user's full data as JSON. Useful
@@ -607,51 +651,14 @@ export default function Planner({ user }) {
     }
   }
 
-  function endFocusEarly() {
-    if (!pomRunning) return;
-    const mins = Math.max(1, Math.round(elapsedRef.current / 60));
-    const at = new Date();
-    const entry = {
-      id: newId(),
-      taskId: pomTaskId,
-      goalId: pomGoalId,
-      mins,
-      at: at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-      day: localDateStr(at),
-    };
-    applyFocusLogUpdate(l=>[entry, ...l].slice(0, 100));
-    if (pomGoalId && pomTaskId) {
-      applyGoalsUpdate(gs=>gs.map(g=>g.id!==pomGoalId?g:{...g,tasks:g.tasks.map(t=>t.id!==pomTaskId?t:{...t,sessions:(t.sessions||0)+1,totalTime:(t.totalTime||0)+mins})}));
-    }
-    stopTimer();
-    elapsedRef.current = 0;
-    const task = pomGoalId && pomTaskId ? goals.find(g=>g.id===pomGoalId)?.tasks.find(t=>t.id===pomTaskId) : null;
-    const focusMins = task?.eta || pomDurations.defaultFocus;
-    setPomFocusTargetMins(focusMins);
-    setPomSeconds(getFocusSeconds(focusMins, pomDurations));
-  }
-
-  function updatePomDuration(field, value) {
-    // No upper hardcode — let the user pick a long deep-work block if they
-    // want. Just guard against zero / negative.
-    const nextVal = Math.max(1, Number(value) || 1);
-    const nextDurations = { ...pomDurations, [field]: nextVal };
-    setPomDurations(nextDurations);
-    updateSettings({ ...userSettings, pomDurations: nextDurations });
-    // Reflect the change in the visible dial right away when the user is
-    // sitting idle on the focus tab without a task linked. With a task linked,
-    // the task's own `eta` drives the dial and shouldn't be overridden.
-    if (!pomRunning && !pomTaskId && field === "defaultFocus") {
-      setPomFocusTargetMins(nextVal);
-      setPomSeconds(getFocusSeconds(nextVal, nextDurations));
-      elapsedRef.current = 0;
-    }
-  }
-
+  // Thin UI wrappers around useGoals. The hook is data-only; here we wire
+  // it to local form state, confirms, and navigation.
   function addGoal() {
-    if (!form.title.trim()||!form.due) return;
-    const g={...form,id:newId(),title:form.title.trim(),tasks:[],completedAt:null};
-    applyGoalsUpdate(gs=>[...gs,g]); setSelectedId(g.id); setForm({title:"",type:"short",category:"Health",due:"",notes:"",intention:""}); setView("detail");
+    const g = goalsHook.addGoal(form);
+    if (!g) return;
+    setSelectedId(g.id);
+    setForm({ title: "", type: "short", category: "Health", due: "", notes: "", intention: "" });
+    setView("detail");
   }
 
   function startGoalEdit() {
@@ -673,80 +680,53 @@ export default function Planner({ user }) {
   }
 
   function saveGoalEdit() {
-    if (!goalDraft || !goalDraft.title.trim() || !goalDraft.due) return;
-    applyGoalsUpdate(gs=>gs.map(g=>g.id!==selected.id?g:{...g,...goalDraft,title:goalDraft.title.trim()}));
+    if (!selected) return;
+    if (!goalsHook.saveGoalEdit(selected.id, goalDraft)) return;
     setEditingGoal(false);
     setGoalDraft(null);
   }
 
-  function toggleTask(gId,tId) {
-    applyGoalsUpdate(gs=>gs.map(g=>{
-      if (g.id!==gId) return g;
-      const tasks = g.tasks.map(t=>t.id===tId?{...t,done:!t.done}:t);
-      const allDone = tasks.length>0 && tasks.every(t=>t.done);
-      let completedAt = g.completedAt || null;
-      if (allDone && !completedAt) completedAt = todayStr();
-      else if (!allDone && completedAt) completedAt = null;
-      return { ...g, tasks, completedAt };
-    }));
-  }
-  function toggleGoalCompleted(gId) {
-    applyGoalsUpdate(gs=>gs.map(g=>{
-      if (g.id!==gId) return g;
-      if (g.completedAt) return { ...g, completedAt: null };
-      return { ...g, completedAt: todayStr() };
-    }));
-  }
+  const toggleTask = goalsHook.toggleTask;
+  const toggleGoalCompleted = goalsHook.toggleGoalCompleted;
+  const moveTask = goalsHook.moveTask;
+  const reorderTasks = goalsHook.reorderTasks;
+
   function addTask(gId) {
-    if (!newTask.text.trim()) return;
-    applyGoalsUpdate(gs=>gs.map(g=>{
-      if (g.id!==gId) return g;
-      const tasks = [...g.tasks,{id:newId(),text:newTask.text.trim(),done:false,priority:newTask.priority,eta:Number(newTask.eta)||30,sessions:0,totalTime:0}];
-      // a new open task means the goal is no longer fully done
-      return { ...g, tasks, completedAt: null };
-    }));
-    setNewTask({text:"",priority:"Medium",eta:30});
+    if (!goalsHook.addTask(gId, newTask)) return;
+    setNewTask({ text: "", priority: "Medium", eta: 30, recurring: null });
   }
+
   function startTaskEdit(t) {
     setEditingTaskId(t.id);
-    setTaskDraft({ text: t.text, priority: t.priority, eta: t.eta });
+    setTaskDraft({
+      text: t.text,
+      priority: t.priority,
+      eta: t.eta,
+      recurring: t.recurring ? { ...t.recurring, days: t.recurring.days ? [...t.recurring.days] : undefined } : null,
+    });
   }
   function cancelTaskEdit() { setEditingTaskId(null); }
+
   function saveTaskEdit(gId, tId) {
-    if (!taskDraft.text.trim()) return;
-    applyGoalsUpdate(gs=>gs.map(g=>g.id!==gId?g:{...g,tasks:g.tasks.map(t=>t.id!==tId?t:{...t,text:taskDraft.text.trim(),priority:taskDraft.priority,eta:Number(taskDraft.eta)||30})}));
+    if (!goalsHook.saveTaskEdit(gId, tId, taskDraft)) return;
     setEditingTaskId(null);
   }
-  function moveTask(gId, tId, dir) {
-    applyGoalsUpdate(gs=>gs.map(g=>{
-      if (g.id!==gId) return g;
-      const idx = g.tasks.findIndex(t=>t.id===tId);
-      const nextIdx = idx + dir;
-      if (idx<0 || nextIdx<0 || nextIdx>=g.tasks.length) return g;
-      const nextTasks = g.tasks.slice();
-      const tmp = nextTasks[idx];
-      nextTasks[idx] = nextTasks[nextIdx];
-      nextTasks[nextIdx] = tmp;
-      return { ...g, tasks: nextTasks };
-    }));
-  }
-  function removeTask(gId,tId) {
+
+  function removeTask(gId, tId) {
     if (!window.confirm("Remove this task?")) return;
-    applyGoalsUpdate(gs=>gs.map(g=>{
-      if (g.id!==gId) return g;
-      const tasks = g.tasks.filter(t=>t.id!==tId);
-      const allDone = tasks.length>0 && tasks.every(t=>t.done);
-      let completedAt = g.completedAt || null;
-      if (allDone && !completedAt) completedAt = todayStr();
-      else if (!allDone && completedAt) completedAt = null;
-      return { ...g, tasks, completedAt };
-    }));
+    goalsHook.removeTask(gId, tId);
   }
+
   function deleteGoal(id) {
     if (!window.confirm("Delete this goal and all its tasks? This cannot be undone.")) return;
-    applyGoalsUpdate(gs=>gs.filter(g=>g.id!==id)); setView("list");
+    goalsHook.deleteGoal(id);
+    setView("list");
   }
-  function saveNotes(gId) { applyGoalsUpdate(gs=>gs.map(g=>g.id!==gId?g:{...g,notes:notesVal})); setEditingNotes(false); }
+
+  function saveNotes(gId) {
+    goalsHook.saveNotes(gId, notesVal);
+    setEditingNotes(false);
+  }
 
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const matchesSearch = (g) => {
@@ -789,234 +769,93 @@ export default function Planner({ user }) {
   const quote=QUOTES[quoteIdx];
   const todayPrayers = PRAYERS.filter(p=>prayerTimes&&prayerTimes[p]);
 
-  // next prayer
+  // Next prayer logic. "Next" means the next thing to actually pray:
+  //   - if the current prayer window has begun and isn't logged done, surface
+  //     it as "due now" (gentle pressure to pray before the window ends)
+  //   - if the current window is logged done, advance to the next upcoming
+  //   - before Fajr / after Isha falls through to next-day Fajr
   let nextPrayer=null;
   if (prayerTimes) {
+    const today = todayStr();
+    const fivePrayers = ["Fajr","Dhuhr","Asr","Maghrib","Isha"].filter(p => prayerTimes[p]);
     const now=new Date();
     const nowMins=now.getHours()*60+now.getMinutes();
-    for (const p of ["Fajr","Dhuhr","Asr","Maghrib","Isha"]) {
-      if (!prayerTimes[p]) continue;
+    let currentPrayer = null;
+    for (const p of fivePrayers) {
       const [h,m]=prayerTimes[p].split(":").map(Number);
-      if (h*60+m>nowMins) { nextPrayer={name:p,time:prayerTimes[p]}; break; }
+      if (h*60+m <= nowMins) currentPrayer = p;
+      else break;
     }
-    if (!nextPrayer) nextPrayer={name:"Fajr",time:prayerTimes["Fajr"]};
+    const isDone = (p) => (prayerLog[p]||[]).includes(today);
+    if (currentPrayer && !isDone(currentPrayer)) {
+      nextPrayer = { name: currentPrayer, time: prayerTimes[currentPrayer], due: true };
+    } else {
+      for (const p of fivePrayers) {
+        const [h,m]=prayerTimes[p].split(":").map(Number);
+        if (h*60+m>nowMins) { nextPrayer={name:p,time:prayerTimes[p]}; break; }
+      }
+      if (!nextPrayer) nextPrayer={name:"Fajr",time:prayerTimes["Fajr"],tomorrow:true};
+    }
   }
 
   const englishDate = new Date().toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
   const dateLine = hijriDate ? `${englishDate} · ${hijriDate}` : englishDate;
 
-  // ── dashboard "Right now" hero ─────────────────────────────────────────
-  const hero = (() => {
-    const now = new Date();
-    const hour = now.getHours();
-    const nowMins = hour*60 + now.getMinutes();
-    const today = todayStr();
-    const muhasabaToday = muhasaba[today];
-    const muhasabaFilled = isMuhasabaFilled(muhasabaToday);
-
-    // 1. Active focus session
-    if (pomRunning) {
-      const activeT = activeTask;
-      return {
-        accent: "var(--gold)",
-        icon: "⏱",
-        eyebrow: "Focus in progress",
-        title: activeT?.text || "General focus",
-        subtitle: `${fmtTime(pomSeconds)} remaining`,
-        cta: "Open timer",
-        onClick: () => setView("pomodoro"),
-      };
+  // ── dashboard daily loop ───────────────────────────────────────────────
+  // Replaces the old "right now" cycling hero. Morning + Evening panels are
+  // always both visible — phase decides which gets emphasised. Computation
+  // lives in lib/daily.js; Planner just wires data through.
+  const phase = dayPhase(prayerTimes);
+  const yDuaInfo = yesterdayDua(muhasaba);
+  const todayDuaText = muhasaba[todayStr()]?.duaTomorrow || null;
+  const firstTaskInfo = firstOpenTask(goals);
+  const qazaOwedMap = computeQazaOwed(prayerLog, qaza);
+  const qazaOwedTotal = QAZA_PRAYERS.reduce((s, p) => s + (qazaOwedMap[p] || 0), 0);
+  const prayersTodaySummary = prayersToday(prayerLog);
+  const focusTodaySummary = focusToday(focusLog, dailyFocusGoalMins);
+  const muhasabaStateValue = muhasabaState(muhasaba[todayStr()], isMuhasabaFilled);
+  // Yesterday's AI mirror "tomorrow" → today's commitment. Closes the loop
+  // so the mentor's action survives across days instead of dying in
+  // muhasaba history. Only the day matters for routing; the text + a tiny
+  // hint of context (whether it was from a structured report) is enough.
+  const yMirrorTomorrow = (() => {
+    if (!yDuaInfo) {
+      // Fall back to computing the previous day key directly so we still
+      // surface the mentor's action even when no du'a was written.
+      const yKey = (() => {
+        const d = new Date(`${todayStr()}T12:00:00Z`);
+        d.setUTCDate(d.getUTCDate() - 1);
+        return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}-${String(d.getUTCDate()).padStart(2,"0")}`;
+      })();
+      const t = muhasaba[yKey]?.aiReport?.data?.tomorrow;
+      return t && t.trim() ? { day: yKey, text: t.trim() } : null;
     }
-
-    // 1.5 Just-completed goal — celebrate the same day. The hero quietly
-    // disappears tomorrow because completedAt no longer matches today.
-    const completedToday = goals.find(g => g.completedAt === today);
-    if (completedToday) {
-      return {
-        accent: CAT_COLORS[completedToday.category] || "var(--gold)",
-        icon: "✨",
-        eyebrow: "Alhamdulillah",
-        title: `You completed: ${completedToday.title}`,
-        subtitle: "May Allah accept it. One niyyah closer.",
-        cta: "Open goal",
-        onClick: () => { setSelectedId(completedToday.id); setView("detail"); },
-      };
-    }
-
-    // 1.6 Streak milestones — only fires on the exact day a round number is
-    // hit. Focus streak is read from focusLog; muhasaba streak from entries.
-    const milestoneOf = (n) => [7, 14, 30, 60, 100, 200, 365].includes(n);
-    // Compute today's focus streak inline (mirrors Pomodoro's helper).
-    const focusGoalMins = Number(userSettings.dailyFocusGoalMins) || 60;
-    const focusStreak = (() => {
-      let s = 0;
-      const cur = new Date();
-      for (let i = 0; i < 400; i++) {
-        const k = localDateStr(cur);
-        const m = focusLog.reduce((a, l) => l.day === k ? a + (l.mins || 0) : a, 0);
-        if (m >= focusGoalMins) s++;
-        else if (i > 0) break;
-        cur.setDate(cur.getDate() - 1);
-      }
-      return s;
-    })();
-    const muhStreak = muhasabaStreak(muhasaba);
-    if (milestoneOf(focusStreak) && focusStreak >= 7) {
-      return {
-        accent: "var(--gold)",
-        icon: "🔥",
-        eyebrow: "Focus streak",
-        title: `${focusStreak} days in a row`,
-        subtitle: "Consistency is louder than any single session. Keep going.",
-        cta: "Open Focus",
-        onClick: () => setView("pomodoro"),
-      };
-    }
-    if (milestoneOf(muhStreak) && muhStreak >= 7) {
-      return {
-        accent: "#7BB6C7",
-        icon: "🌙",
-        eyebrow: "Muhasaba streak",
-        title: `${muhStreak} nights of self-accounting`,
-        subtitle: "ʿUmar would be pleased. Don't break the chain tonight.",
-        cta: "Open Muhasaba",
-        onClick: () => { setMuhasabaDay(today); setView("muhasaba"); },
-      };
-    }
-
-    // 2. Next prayer in <= 60 min
-    if (nextPrayer && prayerTimes?.[nextPrayer.name]) {
-      const [h,m] = prayerTimes[nextPrayer.name].split(":").map(Number);
-      const minsTo = (h*60+m) - nowMins;
-      if (minsTo > 0 && minsTo <= 60) {
-        const label = minsTo < 60 ? `in ${minsTo}m` : `in 1h`;
-        return {
-          accent: "#1D9E75",
-          icon: PRAYER_ICONS[nextPrayer.name] || "🕌",
-          eyebrow: "Next prayer",
-          title: `${nextPrayer.name} ${label}`,
-          subtitle: `${prayerTimes[nextPrayer.name]} · ${prayerCity || "your city"}`,
-          cta: "Prayer times",
-          onClick: () => setView("prayer"),
-        };
-      }
-    }
-
-    // 3. Overdue active goals
-    const todayMs = Date.now();
-    const activeGoals = goals.filter(g => !isGoalDone(g));
-    const overdueActive = activeGoals
-      .map(g => ({ g, dl: Math.ceil((new Date(g.due) - todayMs)/86400000) }))
-      .filter(x => x.dl < 0)
-      .sort((a,b) => a.dl - b.dl);
-    if (overdueActive.length > 0) {
-      const worst = overdueActive[0];
-      return {
-        accent: "#D85A30",
-        icon: "⚠",
-        eyebrow: overdueActive.length>1 ? `${overdueActive.length} goals overdue` : "Overdue",
-        title: worst.g.title,
-        subtitle: `${Math.abs(worst.dl)}d past due · ${pct(worst.g)}% done`,
-        cta: "Open goal",
-        onClick: () => { setSelectedId(worst.g.id); setView("detail"); },
-      };
-    }
-
-    // 4. Goal due in next 3 days
-    const upcoming = activeGoals
-      .map(g => ({ g, dl: Math.ceil((new Date(g.due) - todayMs)/86400000) }))
-      .filter(x => x.dl >= 0 && x.dl <= 3)
-      .sort((a,b) => a.dl - b.dl);
-    if (upcoming.length > 0) {
-      const next = upcoming[0];
-      const dueLabel = next.dl===0 ? "due today" : next.dl===1 ? "due tomorrow" : `due in ${next.dl}d`;
-      return {
-        accent: CAT_COLORS[next.g.category] || "var(--gold)",
-        icon: "🎯",
-        eyebrow: "Up next",
-        title: next.g.title,
-        subtitle: `${dueLabel} · ${pct(next.g)}% done`,
-        cta: "Open goal",
-        onClick: () => { setSelectedId(next.g.id); setView("detail"); },
-      };
-    }
-
-    // 5. Evening: muhasaba unfilled
-    if (hour >= 20 && !muhasabaFilled) {
-      return {
-        accent: "var(--gold)",
-        icon: "🌙",
-        eyebrow: "Tonight",
-        title: "Time for muhasaba",
-        subtitle: "Hold yourself accountable before being held accountable.",
-        cta: "Start reflection",
-        onClick: () => { setMuhasabaDay(today); setView("muhasaba"); },
-      };
-    }
-
-    // 6. Morning du'a from yesterday — keeps last night's commitment alive
-    // through the day. Higher priority than the action nudge so the spiritual
-    // anchor lands first.
-    if (hour < 12) {
-      const yKey = addDays(-1);
-      const yDua = muhasaba[yKey]?.duaTomorrow;
-      if (yDua && yDua.trim()) {
-        return {
-          accent: "#7BB6C7",
-          icon: "🤲",
-          eyebrow: "Yesterday's du'a",
-          title: yDua.length > 70 ? yDua.slice(0, 70).replace(/\s\S*$/, "") + "…" : yDua,
-          subtitle: "Today is the test. Honour what you asked Allah for.",
-          cta: "Open muhasaba",
-          onClick: () => { setMuhasabaDay(yKey); setView("muhasaba"); },
-        };
-      }
-    }
-
-    // 7. Morning, with active goals: nudge a focus block
-    if (hour < 12 && activeGoals.length > 0) {
-      const firstGoal = activeGoals[0];
-      const firstOpenTask = firstGoal.tasks.find(t => !t.done);
-      if (firstOpenTask) {
-        return {
-          accent: CAT_COLORS[firstGoal.category] || "var(--gold)",
-          icon: "☀️",
-          eyebrow: "Morning",
-          title: firstOpenTask.text,
-          subtitle: `${firstGoal.title} · ${firstOpenTask.eta || 30}m`,
-          cta: "Start focus",
-          onClick: () => startTaskTimer(firstGoal.id, firstOpenTask.id),
-        };
-      }
-    }
-
-    // 7. Muhasaba review (filled, evening still)
-    if (muhasabaFilled) {
-      return {
-        accent: "#7BB6C7",
-        icon: "📖",
-        eyebrow: "Today's muhasaba",
-        title: "Saved · review or add",
-        subtitle: muhasabaToday?.duaTomorrow ? `Du'a: "${(muhasabaToday.duaTomorrow||"").slice(0,60)}${(muhasabaToday.duaTomorrow||"").length>60?"…":""}"` : "Tap to continue tonight's reflection.",
-        cta: "Open",
-        onClick: () => { setMuhasabaDay(today); setView("muhasaba"); },
-      };
-    }
-
-    // 8. Default
-    return {
-      accent: "var(--gold)",
-      icon: "✨",
-      eyebrow: "Today",
-      title: "All clear — make du'a",
-      subtitle: "Renew your niyyah. Every small deed counts towards your Aakhirah.",
-      cta: null,
-      onClick: null,
-    };
+    const t = muhasaba[yDuaInfo.day]?.aiReport?.data?.tomorrow;
+    return t && t.trim() ? { day: yDuaInfo.day, text: t.trim() } : null;
   })();
 
+  // Celebration toast handler — routes the "Open" action based on kind.
+  const onCelebrationOpen = () => {
+    if (!celebration) return;
+    if (celebration.kind === "goal") {
+      setSelectedId(celebration.goal.id);
+      setView("detail");
+    } else if (celebration.kind === "focusStreak") {
+      setView("pomodoro");
+    } else if (celebration.kind === "muhasabaStreak") {
+      setMuhasabaDay(todayStr());
+      setView("muhasaba");
+    }
+    setCelebration(null);
+  };
+
   return (
-    <div style={{padding:"var(--page-padding)",maxWidth:1060,margin:"0 auto"}}>
+    <div style={{padding:"var(--page-padding)",maxWidth:1280,margin:"0 auto"}}>
+      <CelebrationToast
+        celebration={celebration}
+        onDismiss={() => setCelebration(null)}
+        onOpen={onCelebrationOpen}
+      />
 
       {/* header */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6,flexWrap:"wrap",gap:12}}>
@@ -1030,7 +869,7 @@ export default function Planner({ user }) {
           </div>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-          {pomRunning && <span style={{fontSize:14,padding:"3px 10px",borderRadius:99,background:"rgba(201,168,76,0.15)",color:"var(--gold)",fontWeight:500}}>● Focus {fmtTime(pomSeconds)}</span>}
+          {pomRunning && <span style={{fontSize:14,padding:"3px 10px",borderRadius:99,background:goldA(15),color:"var(--gold)",fontWeight:500}}>● Focus {fmtTime(pomSeconds)}</span>}
           <button onClick={toggleTheme} title={`Switch to ${theme==="dark"?"light":"dark"} mode`}
             style={{fontSize:15,padding:"6px 11px",lineHeight:1,minWidth:38,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>
             {theme==="dark" ? "☀" : "☾"}
@@ -1041,7 +880,7 @@ export default function Planner({ user }) {
       </div>
 
       {/* nav */}
-      <div className="tabbar" style={{borderBottom:`0.5px solid ${gold}44`,marginBottom:22,display:"flex",marginTop:14,overflowX:"auto",gap:4}}>
+      <div className="tabbar" style={{borderBottom:`0.5px solid ${goldA(27)}`,marginBottom:22,display:"flex",marginTop:14,overflowX:"auto",gap:4}}>
         {["dashboard","list","prayer","pomodoro","muhasaba","stats"].map((v)=>{
           const labels = { dashboard:"Dashboard", list:"Goals", prayer:"Prayer", pomodoro:"Focus", muhasaba:"Muhasaba", stats:"Stats" };
           const icons = { dashboard:"☀️", list:"🎯", prayer:"🕌", pomodoro:"⏱", muhasaba:"🌙", stats:"📊" };
@@ -1062,16 +901,30 @@ export default function Planner({ user }) {
           totalFocusMins={totalFocusMins}
           totalSessions={totalSessions}
           overallPct={overallPct}
-          hero={hero}
-          nextPrayer={nextPrayer}
           prayerTimes={prayerTimes}
           intentionIdx={intentionIdx}
           verseOfDay={verseOfDay}
           refreshVerse={refreshVerse}
+          savedVerses={savedVerses}
+          saveVerse={saveVerse}
+          removeSavedVerse={removeSavedVerse}
+          isVerseSaved={isVerseSaved}
           lastActivityByGoal={lastActivityByGoal}
           setView={setView}
           setMuhasabaDay={setMuhasabaDay}
           onSelectGoal={openGoal}
+          dayPhase={phase}
+          yDua={yDuaInfo}
+          yMirrorTomorrow={yMirrorTomorrow}
+          todayDua={todayDuaText}
+          nextPrayer={nextPrayer}
+          prayerCity={prayerCity}
+          firstTask={firstTaskInfo}
+          qazaOwedTotal={qazaOwedTotal}
+          prayersTodaySummary={prayersTodaySummary}
+          focusTodaySummary={focusTodaySummary}
+          muhasabaStateValue={muhasabaStateValue}
+          startTaskTimer={startTaskTimer}
         />
       )}
 
@@ -1098,44 +951,33 @@ export default function Planner({ user }) {
 
       {/* ── DETAIL ── */}
       {view==="detail" && selected && (
-        <GoalDetail
-          selected={selected}
-          goBack={()=>setView("list")}
-          toggleGoalCompleted={toggleGoalCompleted}
-          startGoalEdit={startGoalEdit}
-          editingGoal={editingGoal}
-          goalDraft={goalDraft}
-          setGoalDraft={setGoalDraft}
-          saveGoalEdit={saveGoalEdit}
-          cancelGoalEdit={cancelGoalEdit}
-          deleteGoal={deleteGoal}
-          taskStatusFilter={taskStatusFilter}
-          setTaskStatusFilter={setTaskStatusFilter}
-          taskPriorityFilter={taskPriorityFilter}
-          setTaskPriorityFilter={setTaskPriorityFilter}
-          newTask={newTask}
-          setNewTask={setNewTask}
-          addTask={addTask}
-          toggleTask={toggleTask}
-          removeTask={removeTask}
-          moveTask={moveTask}
-          editingTaskId={editingTaskId}
-          taskDraft={taskDraft}
-          setTaskDraft={setTaskDraft}
-          startTaskEdit={startTaskEdit}
-          cancelTaskEdit={cancelTaskEdit}
-          saveTaskEdit={saveTaskEdit}
-          startTaskTimer={startTaskTimer}
-          editingNotes={editingNotes}
-          setEditingNotes={setEditingNotes}
-          notesVal={notesVal}
-          setNotesVal={setNotesVal}
-          saveNotes={saveNotes}
-          pomGoalId={pomGoalId}
-          pomTaskId={pomTaskId}
-          pomRunning={pomRunning}
-          pomSeconds={pomSeconds}
-        />
+        <GoalDetailProvider value={{
+          focusLog,
+          // goal-level
+          toggleGoalCompleted, deleteGoal,
+          editingGoal, goalDraft, setGoalDraft,
+          startGoalEdit, saveGoalEdit, cancelGoalEdit,
+          // task list filters
+          taskStatusFilter, setTaskStatusFilter,
+          taskPriorityFilter, setTaskPriorityFilter,
+          // task add form
+          newTask, setNewTask, addTask,
+          // task edit form
+          editingTaskId, taskDraft, setTaskDraft,
+          startTaskEdit, cancelTaskEdit, saveTaskEdit,
+          // task ops
+          toggleTask, removeTask, moveTask, reorderTasks,
+          startTaskTimer,
+          // notes
+          editingNotes, setEditingNotes, notesVal, setNotesVal, saveNotes,
+          // focus-timer state (for highlighting the active task in the list)
+          pomGoalId, pomTaskId, pomRunning, pomSeconds,
+        }}>
+          <GoalDetail
+            selected={selected}
+            goBack={() => setView("list")}
+          />
+        </GoalDetailProvider>
       )}
 
       {/* ── PRAYER ── */}
@@ -1158,6 +1000,10 @@ export default function Planner({ user }) {
           togglePrayerLog={togglePrayerLog}
           prayerDoneToday={prayerDoneToday}
           prayerStreak={prayerStreak}
+          qaza={qaza}
+          qazaOwed={computeQazaOwed(prayerLog, qaza)}
+          payOneQaza={payOneQaza}
+          undoOneQaza={undoOneQaza}
         />
       )}
 
@@ -1181,6 +1027,8 @@ export default function Planner({ user }) {
           startTaskTimer={startTaskTimer}
           dailyFocusGoalMins={dailyFocusGoalMins}
           updateDailyFocusGoal={updateDailyFocusGoal}
+          lastSession={lastSession}
+          dismissLastSession={dismissLastSession}
         />
       )}
 
@@ -1193,6 +1041,7 @@ export default function Planner({ user }) {
           applyMuhasabaUpdate={applyMuhasabaUpdate}
           prayerLog={prayerLog}
           focusLog={focusLog}
+          goals={goals}
           aiLoadingDay={aiLoadingDay}
           aiError={aiError}
           generateReport={generateReport}
@@ -1201,7 +1050,16 @@ export default function Planner({ user }) {
 
       {/* ── STATS ── */}
       {view==="stats" && (
-        <Stats goals={goals} focusLog={focusLog} muhasaba={muhasaba} onSelectGoal={openGoal} onDeleteFocusEntry={deleteFocusEntry} onExport={exportData} />
+        <Stats
+          goals={goals}
+          focusLog={focusLog}
+          muhasaba={muhasaba}
+          prayerLog={prayerLog}
+          qaza={qaza}
+          onSelectGoal={openGoal}
+          onDeleteFocusEntry={deleteFocusEntry}
+          onExport={exportData}
+        />
       )}
 
     </div>

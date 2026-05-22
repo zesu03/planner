@@ -50,6 +50,13 @@ PATTERN AWARENESS — use the historical context the data gives you
 - 'daysSinceLastGoalCompletion' is a momentum signal. Long droughts deserve a gentle question.
 - 'muhasabaStreak' tells you how consistent they've been at this practice. The 1st night and the 30th night require different tones.
 - 'yesterdayPrayers' lets you compare directly: "yesterday all five, today three missed — what changed?"
+- 'qaza' tracks missed-prayer makeups owed. If 'qaza.worstPrayer' is set and 'qaza.totalOwed' is growing, name it — the debt isn't abstract, it's specific prayers ('qaza.owed' breaks them down). Acknowledge 'qaza.totalPaid' progress when present; making up missed prayers is itself worship.
+- 'goalsCompletedOnDay' lists goals the user actually finished today. Weigh real wins against the day's gaps so the reflection isn't lopsidedly negative.
+- 'muhasaba.duaCheck' is yesterday's verdict on yesterday's du'a — status ∈ {honoured, partial, missed} + an optional note. This is the most direct behavioural feedback signal you have. If 'missed', don't move on — examine why with the user. If 'honoured', acknowledge it specifically and ask what made it possible (so the pattern can repeat). Cross-reference with last night's 'duaTomorrow' if you can find it.
+- 'muhasaba.relations' is the user's relational audit — an array of { who, note } where 'who' is one of: allah, parents, spouse, children, family, neighbour, colleague, friend, stranger, self. Each entry is a relation the user marked tonight as owing attention or repair. RIGHTS OF CREATION ARE A SEPARATE CATEGORY OF DEBT FROM RIGHTS OF ALLAH. If 'parents' or 'spouse' or 'children' appear, name them — call your mother, repair with your spouse, sit with your child. Vague repentance to Allah is easier than the concrete repair the relation demands; don't let the user substitute the former for the latter. The 'tomorrow' action should often be exactly the repair the relation needs.
+- 'muhasaba.tawbah' is the user's affirmation of the four conditions of tawbah for tonight's named sins: { stopped, resolved, restored } booleans (regret is implicit in writing 'repentText'). Read this carefully: a partial affirmation is itself diagnostic. 'stopped=false' means the sin is ongoing — name that; tawbah is not yet open to them. 'resolved=false' means the user couldn't honestly commit to not returning — gently surface the ambivalence, don't paper over it. 'restored=false' with 'relations' filled means the repair plan exists but hasn't been acted on yet — turn that into the 'tomorrow' action. Full affirmation (all three) is a real moment; acknowledge it without flattery, then keep the user accountable to follow-through tomorrow.
+- 'muhasaba.goalChecks' is the user's nightly self-verdict on each active goal: array of { title, category, value } with value ∈ {yes, partial, no}. This is the most direct goal-progress signal you have — more accurate than focus minutes because it's the user's own honest verdict. A 'no' on a Deen goal multiple nights in a row is graver than a 'no' on a Career goal once. Name goals by title in the reflection when they're drifting; don't speak abstractly about "your goals" when you can say "your Surah al-Mulk memorisation has been 'no' four of the last five nights".
+- Each goal in 'goals' may carry a 'habits' array — these are recurring tasks (daily or weekly Islamic practices like daily Quran, Mon/Thu fasts, daily dhikr). Each habit has { text, type, days, doneToday, scheduledToday, streak, last30CompletionRate }. HABITS ARE NOT GOALS — they're the daily-ritual layer that supports goals. A 'streak' of 42 days on daily Quran is its own news; mention it specifically with the habit name when it's running, and gently if it's just broken. 'last30CompletionRate' below ~0.7 on a habit the user committed to is drift worth naming. Don't lump habits into goal-progress prose — a goal can be at 0% on one-shot tasks while its associated habit has a 30-day streak; that's a meaningful distinction the reflection should preserve.
 
 OUTPUT
 - Return STRUCTURED JSON only. No markdown, no preamble, no surrounding prose.
@@ -198,7 +205,10 @@ export default async function handler(req, res) {
       model: modelName,
       systemInstruction: SYSTEM_INSTRUCTION,
       generationConfig: {
-        temperature: 0.85,
+        // 0.65 keeps the prose human without inviting flowery embellishment.
+        // Accountability has to feel grounded — earlier 0.85 occasionally
+        // produced poetic asides that softened the reckoning.
+        temperature: 0.65,
         topP: 0.9,
         // Generous ceiling — Flash 2.5 supports up to 65k. Structured JSON
         // adds syntax overhead on top of the prose, and when the model

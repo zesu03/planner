@@ -27,24 +27,53 @@ React 18 + Vite SPA. No TypeScript, no router, no state management library, no c
 
 ```
 src/
-  Planner.jsx          ← state + effects + view dispatch (orchestrator, ~1000 lines)
+  Planner.jsx          ← orchestrator: UI form state, navigation, derived
+                         data, and view dispatch. Per-domain hooks own the
+                         heavy state below.
   useFirestore.jsx     ← single doc-per-user hook, debounced writes
   firebase.js, AuthWrapper.jsx, App.jsx, main.jsx, index.css
+
+  hooks/               per-domain custom hooks (extracted from Planner)
+    useVerse.js        verse-of-day fetch + localStorage cache + refresh
+    usePrayer.js       Aladhan timings (Hanafi Asr) + city persistence
+                       + auto-restore from settings + geolocation path
+    useFocusTimer.js   dial state, the 1-second tick interval, end-of-session
+                       bookkeeping (focusLog entry + task counters + chime),
+                       reset/end-early semantics, pom-duration persistence
+    useGoals.js        data-only goal/task write callbacks (no UI, no confirm,
+                       no navigation — those live in the consumer)
+
+  contexts/            React contexts for components with large prop bags
+    GoalDetailContext  exports <GoalDetailProvider> + useGoalDetail(). Planner
+                       wraps the GoalDetail render with the provider; GoalDetail
+                       pulls form state + write callbacks + focus indicators
+                       via useGoalDetail() instead of taking 30+ explicit props.
+                       Only `selected` + `goBack` remain as props (route-specific).
 
   lib/                 pure helpers — no React, no state
     constants.js       CATEGORIES, CAT_COLORS, PRAYERS, QUOTES, INTENTIONS,
                        FALLBACK_VERSE, DUE_PRESETS, SIN_TAGS, NIYYAH_LABELS,
                        DEFAULT_DURATIONS, PRIORITIES
-    dates.js           todayStr, daysLeft, fmt, addDays, endOfYear
+    dates.js           todayStr, daysLeft, fmt, addDays, endOfYear, eachDayBetween
     ids.js             newId (crypto.randomUUID with fallback)
-    goals.js           isGoalDone, pct
-    muhasaba.js        emptyMuhasabaEntry, isMuhasabaFilled, muhasabaStreak
-    focus.js           getFocusSeconds, getBreakSeconds, fmtTime, fmtMins
+    goals.js           isGoalDone, pct, isRecurring, isScheduledOn, isDoneOn,
+                       recurringStreak, recurringCompletionRate, oneShotTasks,
+                       recurringTasks, scheduleLabel, DOW_LABELS, DOW_LONG
+    muhasaba.js        emptyMuhasabaEntry, isMuhasabaFilled, canGenerateMirror, muhasabaStreak
+    qaza.js            emptyQaza, computeQazaOwed, missedDaysForPrayer, QAZA_PRAYERS
+    daily.js           dayPhase, prayersToday, focusToday, muhasabaState, yesterdayDua, firstOpenTask
+    focus.js           getFocusSeconds, getBreakSeconds, fmtTime, fmtMins,
+                       focusStreakDays, STREAK_MILESTONES
     audio.js           getAudioCtx, playTimerSound (Web Audio chime)
-    styles.js          gold (JS const), S object (S.card/goldCard/pill/tab/filterBtn)
+    styles.js          gold (JS const), goldA(pct), tintA(color, pct),
+                       goldLight, goldWashGradient,
+                       S object (S.card/goldCard/pill/tab/filterBtn)
 
   components/          shared presentation
-    EmptyState, ProgressBar, GoalCard
+    EmptyState, ProgressBar, GoalCard, Modal
+    DailyPanels.jsx    MorningPanel + EveningPanel (the Dashboard daily loop)
+    CelebrationToast   fixed-position top toast (goal-complete / focus-streak /
+                       muhasaba-streak variants; latest wins)
     goal-form/         TypeToggle, CategoryTiles, DueChips, NiyyahChips
 
   views/               one file per tab
@@ -55,23 +84,40 @@ api/
                        proxies to Gemini, returns the candid-reflection text.
 ```
 
+**Stats is a spiritual dashboard, not just productivity.** The top two sections are **Prayer Health** (per-prayer 30-day grid + completion % + this-month total + qaza balance) and **Habit Health** (per-recurring-task streak + 30-day rate across all active goals). Productivity sections — focus heatmap, niyyah trend, mirror patterns, per-goal sparklines, top focus tasks, recent sessions — follow below. When adding new sections, default to spiritual signals before productivity ones.
+
 ### Where state lives
 
-**[Planner.jsx](src/Planner.jsx) owns everything stateful.** All `useState`, all `useEffect`, all write callbacks (`addGoal`, `toggleTask`, `togglePrayerLog`, `generateReport`, `startTaskTimer`, etc.), all derived state (`visibleGoals`, `lastActivityByGoal`, `hero`, `nextPrayer`, `overallPct`). Views are pure presentation — they receive data + callbacks as props and never reach into Firestore directly. When adding a new write path, define it in `Planner.jsx` and pass it through props; don't sneak Firestore calls into a view.
+**[Planner.jsx](src/Planner.jsx) is the orchestrator.** It owns Firestore subscription (via `useUserData`), UI-only state (current view, search/filter, form drafts, navigation), derived data (`visibleGoals`, `lastActivityByGoal`, daily-loop summaries), and the view dispatch. The heavy domain state lives in **per-domain hooks** under [src/hooks/](src/hooks):
+
+- **useVerse** — verse fetch, cache, refresh
+- **usePrayer** — Aladhan timings, city persistence, geolocation
+- **useFocusTimer** — dial state, tick interval, session bookkeeping
+- **useGoals** — pure goal/task write callbacks (no UI side-effects)
+
+**Views are pure presentation.** They receive data + callbacks as props and never reach into Firestore directly. When adding a new write path, prefer extending the relevant hook over growing Planner. The Planner-level functions for goals (`addGoal`, `addTask`, `removeTask`, `deleteGoal`, `saveNotes`, etc.) are thin wrappers that wire `useGoals` callbacks to local form state + confirms + navigation — keep that pattern.
 
 ### Firestore data shape
 
-All user data lives in a single document at `users/{uid}`, managed by the `useUserData` hook in [src/useFirestore.jsx](src/useFirestore.jsx). Five top-level fields:
+All user data lives in a single document at `users/{uid}`, managed by the `useUserData` hook in [src/useFirestore.jsx](src/useFirestore.jsx). Seven top-level fields:
 
-- `goals[]` — each `{ id, title, type, category, due, notes, intention, completedAt, tasks[] }`
+- `goals[]` — each `{ id, title, type, category, due, notes, intention, completedAt, tasks[] }`. **Two task flavours in the same `tasks[]` array** (see helpers in [src/lib/goals.js](src/lib/goals.js)):
+   - **One-shot task**: `{ id, text, priority, eta, done, sessions, totalTime }`. Standard task — flips `done` once, gates goal completion via the auto-complete check ("all one-shots done → set completedAt").
+   - **Recurring task (habit)**: `{ id, text, priority, eta, sessions, totalTime, recurring: { type: "daily" | "weekly", days?: [0..6] }, completions: ["YYYY-MM-DD", ...] }`. Doesn't have a permanent `done`; today's tick comes from `completions.includes(todayStr())`. Weekly tasks use JS day-of-week (0=Sun…6=Sat); the classical Sunnah-fasting cadence is `{ type: "weekly", days: [1, 4] }`. Habits never gate goal completion and don't count in `pct()` — they're tracked via per-task streak and 30-day completion rate instead.
 - `prayerLog: { [Prayer]: ["YYYY-MM-DD", ...] }` — per-prayer day arrays
 - `focusLog[]` — capped at 100 entries (`.slice(0, 100)`); `{ id, taskId, goalId, mins, at, day }`
 - `settings: { prayerCity, prayerCountry, pomDurations, theme }`
-- `muhasaba: { "YYYY-MM-DD": entry }` — entry includes `quranPages, dhikr, makeupNote, repentText, sinTags, ghaflahNote, niyyahRating, bestDeed, shukr[3], duaTomorrow, updatedAt, aiReport`
+- `muhasaba: { "YYYY-MM-DD": entry }` — entry includes `quranPages, dhikr, makeupNote, repentText, sinTags, ghaflahNote, niyyahRating, bestDeed, shukr[3], duaTomorrow, duaCheck: { status, note }, relations: { [slug]: note }, tawbah: { stopped, resolved, restored }, goalChecks: { [goalId]: "yes" | "partial" | "no" }, updatedAt, aiReport`. **Continuity / depth fields** added on top of the original five-pillar set:
+   - `duaCheck` — tonight's verdict on **yesterday's** du'a (status ∈ honoured/partial/missed/null). Closes the previous day's commitment loop.
+   - `relations` — map keyed by relation slug (see `RELATION_OPTIONS` in `lib/muhasaba.js`: allah, parents, spouse, children, family, neighbour, colleague, friend, stranger, self). Key present = user marked that relation as owing attention tonight; value is their free-text repair plan.
+   - `tawbah` — three booleans the user affirms when they've named a sin: `stopped` (not ongoing), `resolved` (won't return), `restored` (repair done or no human right owed). The 4th classical condition (regret) is implicit in writing `repentText` at all.
+   - `goalChecks` — per-active-goal nightly self-verdict, keyed by `goal.id` with values `"yes" | "partial" | "no"`. The most accurate goal-progress signal (more honest than focus minutes).
+- `qaza: { startDate, paid: { Fajr, Dhuhr, Asr, Maghrib, Isha } }` — qaza ledger. **Owed is DERIVED, not stored** (see [src/lib/qaza.js](src/lib/qaza.js)): for each day from `startDate` (inclusive) to yesterday (inclusive), any prayer not in `prayerLog[p]` is one qaza owed, minus `paid[p]`. `startDate` is seeded to today on first launch so pre-existing prayerLog gaps don't spawn a wall of qaza retroactively. Today is never counted as missed — the user may still pray it.
+- `savedVerses[]` — bookmarked ayat from the verse-of-day card; `{ id, verseKey, arabic, translation, url, savedAt }`. De-duped by `verseKey` (re-saving is a no-op). Newest-first.
 
-The hook subscribes via `onSnapshot`, exposes five `update*` setters, and writes via a **1.2-second debounced** `setDoc(..., { merge: true })`. Because writes are debounced, the hook keeps `latest*Ref` mirrors so rapid updates don't lose data. **When adding a new top-level field, mirror the pattern: state + ref + include in the merged write payload.**
+The hook subscribes via `onSnapshot`, exposes seven `update*` setters, and writes via a **1.2-second debounced** `setDoc(..., { merge: true })`. Because writes are debounced, the hook keeps `latest*Ref` mirrors so rapid updates don't lose data. **When adding a new top-level field, mirror the pattern: state + ref + include in the merged write payload.**
 
-`Planner.jsx` wraps each setter in an `apply*Update(updaterOrValue)` callback that accepts either a value or a functional updater `(prev) => next`. **Always go through `applyGoalsUpdate` / `applyPrayerLogUpdate` / `applyFocusLogUpdate` / `applyMuhasabaUpdate`** — calling the raw `update*` directly bypasses the functional-updater pattern.
+`Planner.jsx` wraps each setter in an `apply*Update(updaterOrValue)` callback that accepts either a value or a functional updater `(prev) => next`. **Always go through `applyGoalsUpdate` / `applyPrayerLogUpdate` / `applyFocusLogUpdate` / `applyMuhasabaUpdate` / `applyQazaUpdate` / `applySavedVersesUpdate`** — calling the raw `update*` directly bypasses the functional-updater pattern.
 
 ### Pomodoro timer
 
@@ -80,8 +126,8 @@ The focus timer (`pomMode` = `"focus"` | `"break"`) runs off a single `setInterv
 ### External APIs
 
 - **Quran.com** (`api.quran.com/api/v4/verses/random`) for the verse of the day, cached in `localStorage` under `aakhirah_votd` keyed by date, with `FALLBACK_VERSE` on failure/8s timeout.
-- **Aladhan** (`api.aladhan.com/v1/timingsByCity` and `/v1/timings`) for prayer times by city or geolocation. Selected city is persisted to `settings.prayerCity` / `settings.prayerCountry` and re-fetched on load via `settingsAppliedRef`.
-- **Gemini via `/api/gemini-report`** — Planner calls this from `generateReport(day, { force })`. The endpoint verifies the caller's Firebase ID token (no anonymous traffic, no quota burn), forwards the muhasaba/prayers/focus/goals snapshot to Gemini with a "candid Muslim mentor" prompt, and returns the text. Result cached in `muhasaba[day].aiReport = { text, generatedAt, model }`. Auto-trigger fires once per session per day when today's muhasaba becomes filled.
+- **Aladhan** (`api.aladhan.com/v1/timingsByCity` and `/v1/timings`) for prayer times by city or geolocation. All three fetch sites pass `method=2&school=1` — ISNA calculation method, Hanafi Asr (later shadow length). Selected city is persisted to `settings.prayerCity` / `settings.prayerCountry` and re-fetched on load via `settingsAppliedRef`.
+- **Gemini via `/api/gemini-report`** — Planner calls this from `generateReport(day, { force })`. The endpoint verifies the caller's Firebase ID token (no anonymous traffic, no quota burn), forwards a rich snapshot — muhasaba, prayers, focus, goals, **qaza ledger**, **goals completed on the day**, plus historical context (last-5-day muhasaba, recent du'as, niyyah trend, prayer streaks) — to Gemini with a "candid Muslim mentor" system prompt, and returns structured JSON `{ summary, pushBack?, scriptureAnchor?, tomorrow, patterns? }`. Result cached in `muhasaba[day].aiReport = { data, text?, generatedAt, model }`. **Invocation is manual only** (button click) — no auto-trigger. Manual regenerate has a **30s client-side cooldown** to prevent reflex double-taps from burning quota. The Gate to generate is `canGenerateMirror(entry, day, prayerLog, focusLog)` — looser than `isMuhasabaFilled`: any muhasaba field, any prayer logged today, or any focus minutes today unlocks it. **Temperature 0.65** (lowered from 0.85) keeps prose grounded for accountability.
 
 ### Theme
 

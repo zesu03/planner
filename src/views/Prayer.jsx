@@ -1,6 +1,7 @@
 import { PRAYERS, PRAYER_ICONS, PRAYER_COLORS } from "../lib/constants";
 import { localDateStr } from "../lib/dates";
-import { gold, S } from "../lib/styles";
+import { QAZA_PRAYERS } from "../lib/qaza";
+import { S } from "../lib/styles";
 
 // Prayer tab. All state-touching behaviour comes through props so this view
 // stays purely presentational.
@@ -22,7 +23,27 @@ export default function Prayer({
   togglePrayerLog,
   prayerDoneToday,
   prayerStreak,
+  qaza,
+  qazaOwed,
+  payOneQaza,
+  undoOneQaza,
 }) {
+  // Identify the "current" prayer window — the latest prayer whose time has
+  // already arrived today. Used so the list can flag it visually (rather than
+  // burying it between two visually-identical rows).
+  let currentPrayerName = null;
+  if (prayerTimes) {
+    const now = new Date();
+    const nowMins = now.getHours() * 60 + now.getMinutes();
+    for (const p of ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"]) {
+      if (!prayerTimes[p]) continue;
+      const [h, m] = prayerTimes[p].split(":").map(Number);
+      if (h * 60 + m <= nowMins) currentPrayerName = p;
+      else break;
+    }
+  }
+  const totalOwed = qazaOwed ? QAZA_PRAYERS.reduce((s, p) => s + (qazaOwed[p] || 0), 0) : 0;
+  const totalPaid = qaza?.paid ? QAZA_PRAYERS.reduce((s, p) => s + (qaza.paid[p] || 0), 0) : 0;
   return (
     <div className="view-content">
       {hijriDate && (
@@ -79,16 +100,45 @@ export default function Prayer({
             </button>
           </div>
 
-          {nextPrayer && (
-            <div style={{ ...S.goldCard, display: "flex", alignItems: "center", gap: 14, marginBottom: 14, padding: "14px 18px" }}>
-              <span style={{ fontSize: 28 }}>{PRAYER_ICONS[nextPrayer.name]}</span>
-              <div>
-                <div style={{ fontSize: 13, color: "var(--color-text-secondary)" }}>Next prayer</div>
-                <div style={{ fontSize: 21, fontWeight: 500, color: "var(--gold)" }}>{nextPrayer.name}</div>
-                <div style={{ fontSize: 15, color: "var(--color-text-secondary)" }}>{nextPrayer.time}</div>
+          {nextPrayer && (() => {
+            const due = !!nextPrayer.due;
+            const accent = due ? (PRAYER_COLORS[nextPrayer.name] || "var(--gold)") : "var(--gold)";
+            const eyebrow = due ? "Due now · not prayed" : nextPrayer.tomorrow ? "Tomorrow's first prayer" : "Next prayer";
+            return (
+              <div style={{
+                ...S.goldCard,
+                display: "flex",
+                alignItems: "center",
+                gap: 14,
+                marginBottom: 14,
+                padding: "14px 18px",
+                borderColor: due ? accent + "88" : undefined,
+                background: due ? `linear-gradient(90deg, ${accent}1a 0%, ${accent}08 100%)` : undefined,
+              }}>
+                <span style={{ fontSize: 28 }}>{PRAYER_ICONS[nextPrayer.name]}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 13, color: due ? accent : "var(--color-text-secondary)", fontWeight: due ? 600 : 400 }}>{eyebrow}</div>
+                  <div style={{ fontSize: 21, fontWeight: 500, color: due ? accent : "var(--gold)" }}>{nextPrayer.name}</div>
+                  <div style={{ fontSize: 15, color: "var(--color-text-secondary)" }}>{nextPrayer.time}</div>
+                </div>
+                {due && (
+                  <button onClick={() => togglePrayerLog(nextPrayer.name)}
+                    style={{
+                      fontSize: 14,
+                      padding: "6px 14px",
+                      borderRadius: 99,
+                      background: accent,
+                      color: "#fff",
+                      border: `0.5px solid ${accent}`,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}>
+                    Mark prayed
+                  </button>
+                )}
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
             {PRAYERS.filter((p) => prayerTimes[p]).map((p) => {
@@ -96,6 +146,7 @@ export default function Prayer({
               const streak = prayerStreak(p);
               const isSunrise = p === "Sunrise";
               const pColor = PRAYER_COLORS[p];
+              const isCurrent = p === currentPrayerName && !isSunrise && !done;
               return (
                 <div key={p} className="tile-hover"
                   style={{
@@ -108,12 +159,18 @@ export default function Prayer({
                     transition: "transform 0.12s ease, border-color 0.18s ease, background 0.18s ease",
                     background: done
                       ? `linear-gradient(90deg, ${pColor}14 0%, ${pColor}08 100%)`
-                      : "var(--color-background-primary)",
-                    borderColor: done ? pColor + "55" : "var(--color-border-tertiary)",
+                      : isCurrent
+                        ? `linear-gradient(90deg, ${pColor}22 0%, ${pColor}0a 100%)`
+                        : "var(--color-background-primary)",
+                    borderColor: done
+                      ? pColor + "55"
+                      : isCurrent
+                        ? pColor + "88"
+                        : "var(--color-border-tertiary)",
                     overflow: "hidden",
                   }}>
                   {/* prayer-time-of-day accent edge */}
-                  <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: pColor, opacity: done ? 1 : 0.55 }} />
+                  <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: pColor, opacity: done ? 1 : isCurrent ? 1 : 0.55 }} />
                   <span style={{
                     fontSize: 18, width: 32, height: 32, borderRadius: 10,
                     background: pColor + "22", display: "flex",
@@ -122,7 +179,21 @@ export default function Prayer({
                     {PRAYER_ICONS[p]}
                   </span>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 500, fontSize: 16, color: pColor }}>{p}</div>
+                    <div style={{ fontWeight: 500, fontSize: 16, color: pColor, display: "flex", alignItems: "center", gap: 8 }}>
+                      {p}
+                      {isCurrent && (
+                        <span style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          letterSpacing: "0.5px",
+                          textTransform: "uppercase",
+                          padding: "2px 7px",
+                          borderRadius: 99,
+                          background: pColor,
+                          color: "#fff",
+                        }}>Now</span>
+                      )}
+                    </div>
                     <div style={{ fontSize: 14, color: "var(--color-text-secondary)" }}>
                       {prayerTimes[p]}{streak > 0 && !isSunrise ? ` · 🔥 ${streak} day streak` : ""}
                     </div>
@@ -147,6 +218,87 @@ export default function Prayer({
               );
             })}
           </div>
+
+          {/* Qaza ledger — missed-prayer makeups owed. Counts past days
+              from qaza.startDate up to yesterday; today is still in play
+              so it isn't counted as missed yet. */}
+          {qazaOwed && (
+            <div style={{ ...S.card, marginBottom: 20 }}>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4 }}>
+                <div style={{ fontSize: 15, fontWeight: 500 }}>Qaza ledger</div>
+                <div style={{ fontSize: 13, color: "var(--color-text-secondary)" }}>
+                  {totalOwed > 0 ? `${totalOwed} owed` : "All clear · alhamdulillah"}
+                  {totalPaid > 0 ? ` · ${totalPaid} made up` : ""}
+                </div>
+              </div>
+              <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginBottom: 12 }}>
+                Tracking since {qaza?.startDate || "today"}. Tap + when you make one up.
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
+                {QAZA_PRAYERS.map((p) => {
+                  const owed = qazaOwed[p] || 0;
+                  const paid = qaza?.paid?.[p] || 0;
+                  const pColor = PRAYER_COLORS[p];
+                  const isClear = owed === 0;
+                  return (
+                    <div key={p} style={{
+                      position: "relative",
+                      padding: "10px 12px",
+                      borderRadius: 10,
+                      border: `0.5px solid ${isClear ? "var(--color-border-tertiary)" : pColor + "66"}`,
+                      background: isClear ? "var(--color-background-primary)" : `linear-gradient(135deg, ${pColor}0f 0%, ${pColor}05 100%)`,
+                      overflow: "hidden",
+                    }}>
+                      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: pColor, opacity: isClear ? 0.3 : 1 }} />
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, paddingLeft: 6 }}>
+                        <span style={{ fontSize: 14 }}>{PRAYER_ICONS[p]}</span>
+                        <span style={{ fontSize: 14, fontWeight: 500, color: pColor }}>{p}</span>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingLeft: 6 }}>
+                        <div>
+                          <div style={{ fontSize: 22, fontWeight: 600, lineHeight: 1, color: isClear ? "var(--color-text-tertiary)" : "var(--color-text-primary)" }}>
+                            {owed}
+                          </div>
+                          {paid > 0 && (
+                            <div style={{ fontSize: 11, color: "var(--color-text-tertiary)", marginTop: 2 }}>
+                              {paid} paid
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ display: "flex", gap: 4 }}>
+                          {paid > 0 && (
+                            <button onClick={() => undoOneQaza(p)}
+                              title="Undo last made-up qaza"
+                              style={{
+                                fontSize: 13,
+                                padding: "3px 8px",
+                                borderRadius: 99,
+                                background: "transparent",
+                                color: "var(--color-text-secondary)",
+                                border: "0.5px solid var(--color-border-secondary)",
+                                cursor: "pointer",
+                              }}>−</button>
+                          )}
+                          <button onClick={() => payOneQaza(p)}
+                            title={`Mark one ${p} qaza as made up`}
+                            style={{
+                              fontSize: 13,
+                              fontWeight: 600,
+                              padding: "3px 10px",
+                              borderRadius: 99,
+                              background: pColor,
+                              color: "#fff",
+                              border: `0.5px solid ${pColor}`,
+                              cursor: "pointer",
+                            }}>+</button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* 7-day tracker */}
           <div style={S.card}>
@@ -187,8 +339,8 @@ export default function Prayer({
                                 width: 20,
                                 height: 20,
                                 borderRadius: 4,
-                                background: done ? gold : "var(--color-background-secondary)",
-                                border: `0.5px solid ${done ? gold : "var(--color-border-tertiary)"}`,
+                                background: done ? "var(--gold)" : "var(--color-background-secondary)",
+                                border: `0.5px solid ${done ? "var(--gold)" : "var(--color-border-tertiary)"}`,
                                 margin: "0 auto",
                                 display: "flex",
                                 alignItems: "center",
@@ -205,7 +357,7 @@ export default function Prayer({
                           textAlign: "center",
                           paddingLeft: 8,
                           fontWeight: 500,
-                          color: doneCount === 7 ? gold : doneCount >= 4 ? "var(--color-text-success)" : "var(--color-text-secondary)",
+                          color: doneCount === 7 ? "var(--gold)" : doneCount >= 4 ? "var(--color-text-success)" : "var(--color-text-secondary)",
                         }}>
                           {Math.round((doneCount / 7) * 100)}%
                         </td>

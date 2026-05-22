@@ -1,38 +1,20 @@
 import { useState } from "react";
 import { CAT_COLORS } from "../lib/constants";
 import { todayStr, addDays, localDateStr } from "../lib/dates";
-import { fmtTime, fmtMins, getFocusSeconds } from "../lib/focus";
-import { isGoalDone } from "../lib/goals";
+import { fmtTime, fmtMins, getFocusSeconds, focusStreakDays } from "../lib/focus";
+import { isGoalDone, pct, isRecurring, isScheduledOn, isDoneOn } from "../lib/goals";
 import { getAudioCtx } from "../lib/audio";
-import { S } from "../lib/styles";
+import { goldA, S } from "../lib/styles";
 
 // Sum focusLog minutes for a YYYY-MM-DD key.
 function minsForDay(focusLog, dayKey) {
   return focusLog.reduce((s, l) => (l.day === dayKey ? s + (l.mins || 0) : s), 0);
 }
 
-// Streak = consecutive days hitting `goalMins`. Today not yet hit doesn't
-// break the count (so the streak survives mid-day before the user finishes).
-function computeStreak(focusLog, goalMins) {
-  let streak = 0;
-  const cursor = new Date();
-  for (let i = 0; i < 60; i++) {
-    const k = localDateStr(cursor);
-    const m = minsForDay(focusLog, k);
-    if (m >= goalMins) {
-      streak++;
-    } else if (i > 0) {
-      break;
-    }
-    cursor.setDate(cursor.getDate() - 1);
-  }
-  return streak;
-}
-
 // Daily progress: today's mins toward the goal, yesterday's total, streak,
 // and a 7-day mini bar chart so the user sees the week at a glance.
 // Designed to sit beside the timer dial as a sibling block.
-function DailyProgress({ focusLog, todayMins, yesterdayMins, streak, goalMins, onEditGoal, style }) {
+function DailyProgress({ focusLog, todayMins, yesterdayMins, streak, goalMins, onEditGoal, style, liveSessionMins = 0 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(goalMins));
 
@@ -154,7 +136,7 @@ function DailyProgress({ focusLog, todayMins, yesterdayMins, streak, goalMins, o
       <div style={{ textAlign: "center", marginTop: 16, fontSize: 13, color: todayMins >= goalMins ? "var(--color-text-success)" : "var(--color-text-secondary)" }}>
         {todayMins >= goalMins
           ? `Goal reached · ${todayMins} minute${todayMins === 1 ? "" : "s"} today`
-          : `Completed: ${todayMins} minute${todayMins === 1 ? "" : "s"}`}
+          : `Today: ${todayMins} of ${goalMins} minutes`}
       </div>
 
       {/* 7-day mini bar chart — last 7 days oldest→newest, today on the right.
@@ -167,7 +149,15 @@ function DailyProgress({ focusLog, todayMins, yesterdayMins, streak, goalMins, o
           const d = new Date();
           d.setDate(d.getDate() - i);
           const k = localDateStr(d);
-          days.push({ key: k, mins: minsForDay(focusLog, k), label: d.toLocaleDateString("en", { weekday: "narrow" }), isToday: i === 0 });
+          // Today's bar adds liveSessionMins so it matches the ring + the
+          // "Today: X of Y" text. Other days are completed-only.
+          const isTodayBar = i === 0;
+          days.push({
+            key: k,
+            mins: minsForDay(focusLog, k) + (isTodayBar ? liveSessionMins : 0),
+            label: d.toLocaleDateString("en", { weekday: "narrow" }),
+            isToday: isTodayBar,
+          });
         }
         const max = Math.max(goalMins, ...days.map(d => d.mins), 1);
         return (
@@ -223,6 +213,8 @@ export default function Pomodoro({
   startTaskTimer,
   dailyFocusGoalMins,
   updateDailyFocusGoal,
+  lastSession,
+  dismissLastSession,
 }) {
   const [editingFocus, setEditingFocus] = useState(false);
   const [focusDraft, setFocusDraft] = useState(String(pomDurations.defaultFocus));
@@ -241,11 +233,17 @@ export default function Pomodoro({
   const activeGoal = pomGoalId ? goals.find((g) => g.id === pomGoalId) : null;
   const ringColor = activeGoal ? CAT_COLORS[activeGoal.category] : "var(--gold)";
 
+  // "Open" handles both flavours: one-shot tasks are open if !done; habit
+  // tasks are open only when scheduled today AND not yet ticked. Avoids
+  // surfacing Mon/Thu habits on a Wednesday in the "up next" list.
   const upcoming = goals
     .filter((g) => !isGoalDone(g))
     .flatMap((g) =>
       g.tasks
-        .filter((t) => !t.done && !(g.id === pomGoalId && t.id === pomTaskId))
+        .filter((t) => {
+          if (g.id === pomGoalId && t.id === pomTaskId) return false;
+          return isRecurring(t) ? (isScheduledOn(t) && !isDoneOn(t)) : !t.done;
+        })
         .map((t) => ({ g, t }))
     )
     .sort((a, b) => new Date(a.g.due) - new Date(b.g.due))
@@ -253,9 +251,20 @@ export default function Pomodoro({
 
   const today = todayStr();
   const yKey = addDays(-1);
-  const todayMins = minsForDay(focusLog, today);
+  // Live in-progress minutes from the current session. `total - pomSeconds`
+  // is the elapsed seconds while running AND holds the paused value when
+  // the user pauses (because the interval clears but pomSeconds keeps its
+  // last value). Resets cleanly on session-complete / endFocusEarly /
+  // resetTimer because each of those sets pomSeconds = total. Math.floor
+  // so a partial minute doesn't bump the display prematurely.
+  const liveSessionMins = Math.floor(Math.max(0, total - pomSeconds) / 60);
+  const todayLoggedMins = minsForDay(focusLog, today);
+  const todayMins = todayLoggedMins + liveSessionMins;
   const yesterdayMins = minsForDay(focusLog, yKey);
-  const streak = computeStreak(focusLog, dailyFocusGoalMins);
+  // Streak still uses focusLog only — a streak is about completed sessions
+  // hitting the goal, not in-progress work. A 59/60 min session in progress
+  // shouldn't claim the streak before it lands.
+  const streak = focusStreakDays(focusLog, dailyFocusGoalMins);
 
   const handleStart = () => {
     if (pomRunning) {
@@ -273,8 +282,84 @@ export default function Pomodoro({
     setEditingFocus(false);
   };
 
+  // Session-complete celebration. Renders only when `lastSession` is set
+  // (cleared on new session or manual dismiss). Looks up the linked task +
+  // goal to show what the minutes moved forward; gracefully handles a
+  // general focus block with no task linkage.
+  const sessionBanner = (() => {
+    if (!lastSession) return null;
+    const goal = lastSession.goalId ? goals.find((g) => g.id === lastSession.goalId) : null;
+    const task = goal ? goal.tasks.find((t) => t.id === lastSession.taskId) : null;
+    const cat = goal ? CAT_COLORS[goal.category] : "var(--gold)";
+    const goalPct = goal && goal.tasks.length
+      ? Math.round(goal.tasks.filter((t) => t.done).length / goal.tasks.length * 100)
+      : null;
+    const eyebrow = lastSession.kind === "early" ? "Session ended" : "Session complete";
+    return (
+      <div className="pop-in" style={{
+        position: "relative",
+        padding: "18px 20px",
+        borderRadius: "var(--border-radius-lg)",
+        background: `linear-gradient(135deg, ${goldA(18)} 0%, ${goldA(4)} 100%), var(--color-background-primary)`,
+        border: `0.5px solid ${goldA(45)}`,
+        marginBottom: 16,
+        overflow: "hidden",
+      }}>
+        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: "var(--gold)" }} />
+        <button onClick={dismissLastSession}
+          aria-label="Dismiss"
+          style={{
+            position: "absolute", top: 10, right: 10,
+            fontSize: 14, padding: "2px 8px",
+            background: "transparent",
+            border: "0.5px solid var(--color-border-tertiary)",
+            borderRadius: 99,
+            color: "var(--color-text-tertiary)",
+            cursor: "pointer", lineHeight: 1,
+          }}>
+          ✕
+        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <span style={{
+            width: 46, height: 46, borderRadius: 12,
+            background: goldA(22),
+            border: `0.5px solid ${goldA(44)}`,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: 22, flexShrink: 0,
+          }}>✨</span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 700, letterSpacing: "0.6px", textTransform: "uppercase", marginBottom: 3 }}>
+              {eyebrow} · Alhamdulillah
+            </div>
+            <div style={{ fontSize: 17, fontWeight: 600, color: "var(--color-text-primary)", lineHeight: 1.3 }}>
+              {lastSession.mins} {lastSession.mins === 1 ? "minute" : "minutes"} for Allah
+            </div>
+            {(task || goal) && (
+              <div style={{ fontSize: 13, color: "var(--color-text-secondary)", marginTop: 4, lineHeight: 1.45 }}>
+                {task?.text || "General focus"}
+                {goal && (
+                  <>
+                    <span style={{ color: "var(--color-text-tertiary)", margin: "0 6px" }}>→</span>
+                    <span style={{ color: cat, fontWeight: 500 }}>{goal.title}</span>
+                    {goalPct != null && (
+                      <span style={{ color: "var(--color-text-tertiary)", marginLeft: 6 }}>· {goalPct}%</span>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+            <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginTop: 6, fontStyle: "italic" }}>
+              "إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ" — actions are by intentions.
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  })();
+
   return (
     <div className="view-content">
+      {sessionBanner}
       <div style={{ ...S.goldCard, textAlign: "center", marginBottom: 16, padding: "14px 20px" }}>
         <div style={{ fontSize: 13, color: "var(--gold)", marginBottom: 4, fontWeight: 600, letterSpacing: "0.4px", textTransform: "uppercase" }}>
           Reminder
@@ -300,7 +385,7 @@ export default function Pomodoro({
                 height: DIAL + 60,
                 transform: "translate(-50%, -50%)",
                 borderRadius: "50%",
-                background: "radial-gradient(circle, rgba(201,168,76,0.18) 0%, transparent 65%)",
+                background: `radial-gradient(circle, ${goldA(18)} 0%, transparent 65%)`,
                 opacity: pomRunning ? 0.7 : 0.25,
                 pointerEvents: "none",
                 transition: "opacity 0.4s ease",
@@ -384,39 +469,91 @@ export default function Pomodoro({
             </div>
           )}
 
-          {/* Working on (task linked) */}
-          {activeTask && activeGoal && (
-            <div style={{ textAlign: "center", marginTop: 10, width: "100%" }}>
-              <div style={{ fontSize: 11, color: "var(--color-text-tertiary)", letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: 4 }}>
-                Working on
-              </div>
-              <div style={{ fontSize: 16, fontWeight: 500, color: "var(--color-text-primary)" }}>
-                {activeTask.text}
-              </div>
-              <div style={{ fontSize: 13, color: CAT_COLORS[activeGoal.category], marginTop: 4 }}>
-                <span style={{ width: 7, height: 7, borderRadius: "50%", background: CAT_COLORS[activeGoal.category], display: "inline-block", marginRight: 6, verticalAlign: "middle" }} />
-                {activeGoal.title} · ETA {activeTask.eta}m
-              </div>
-              {activeGoal.intention && (
-                <div style={{
-                  marginTop: 10,
-                  padding: "10px 14px",
-                  fontSize: 13,
-                  fontStyle: "italic",
-                  color: "var(--color-text-primary)",
-                  background: "linear-gradient(135deg, rgba(201,168,76,0.10) 0%, rgba(201,168,76,0.03) 100%)",
-                  border: "0.5px solid rgba(201,168,76,0.28)",
-                  borderRadius: "var(--border-radius-md)",
-                  lineHeight: 1.55,
-                }}>
-                  <span style={{ color: "var(--gold)", fontStyle: "normal", fontWeight: 600, fontSize: 11, letterSpacing: "0.5px", textTransform: "uppercase", marginRight: 6 }}>
-                    Niyyah
-                  </span>
-                  {activeGoal.intention}
+          {/* Working on (task linked) — shows the parent goal's progress
+              and total focus logged to it, so each session feels like
+              moving the goal forward, not just clocking time. */}
+          {activeTask && activeGoal && (() => {
+            const goalPct = pct(activeGoal);
+            // Match the semantics of pct() — one-shot tasks only. The
+            // accompanying "N habits" label below adds habit-count context
+            // when the goal mixes tasks and habits.
+            const oneShots = activeGoal.tasks.filter((t) => !isRecurring(t));
+            const habits = activeGoal.tasks.filter((t) => isRecurring(t));
+            const tasksDone = oneShots.filter((t) => t.done).length;
+            const tasksTotal = oneShots.length;
+            const goalFocusMins = focusLog
+              .filter((l) => l.goalId === activeGoal.id)
+              .reduce((s, l) => s + (l.mins || 0), 0);
+            const catColor = CAT_COLORS[activeGoal.category];
+            return (
+              <div style={{ textAlign: "center", marginTop: 10, width: "100%" }}>
+                <div style={{ fontSize: 11, color: "var(--color-text-tertiary)", letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: 4 }}>
+                  Working on
                 </div>
-              )}
-            </div>
-          )}
+                <div style={{ fontSize: 16, fontWeight: 500, color: "var(--color-text-primary)" }}>
+                  {activeTask.text}
+                </div>
+                <div style={{ fontSize: 13, color: catColor, marginTop: 4 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: catColor, display: "inline-block", marginRight: 6, verticalAlign: "middle" }} />
+                  {activeGoal.title} · ETA {activeTask.eta}m
+                </div>
+
+                {/* Parent-goal progress strip — concrete proof that this
+                    session moves a bigger thing forward. */}
+                <div style={{
+                  marginTop: 12,
+                  padding: "10px 14px",
+                  background: "var(--color-background-secondary)",
+                  borderRadius: "var(--border-radius-md)",
+                  border: "0.5px solid var(--color-border-tertiary)",
+                  textAlign: "left",
+                }}>
+                  <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 6, gap: 8 }}>
+                    <span style={{ fontSize: 11, color: "var(--color-text-tertiary)", letterSpacing: "0.4px", textTransform: "uppercase", fontWeight: 600 }}>
+                      Goal progress
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: catColor }}>
+                      {goalPct}%
+                    </span>
+                  </div>
+                  <div style={{ height: 6, background: "var(--color-background-primary)", borderRadius: 99, overflow: "hidden" }}>
+                    <div style={{ height: "100%", width: `${goalPct}%`, background: catColor, transition: "width 0.4s ease" }} />
+                  </div>
+                  <div style={{ marginTop: 8, fontSize: 12, color: "var(--color-text-secondary)", display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                    <span>
+                      {tasksTotal > 0 && `${tasksDone}/${tasksTotal} task${tasksTotal === 1 ? "" : "s"} done`}
+                      {tasksTotal > 0 && habits.length > 0 && " · "}
+                      {habits.length > 0 && `${habits.length} habit${habits.length === 1 ? "" : "s"}`}
+                    </span>
+                    {goalFocusMins > 0 && (
+                      <span style={{ color: "var(--color-text-tertiary)" }}>
+                        {fmtMins(goalFocusMins)} logged total
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {activeGoal.intention && (
+                  <div style={{
+                    marginTop: 10,
+                    padding: "10px 14px",
+                    fontSize: 13,
+                    fontStyle: "italic",
+                    color: "var(--color-text-primary)",
+                    background: `linear-gradient(135deg, ${goldA(10)} 0%, ${goldA(3)} 100%)`,
+                    border: `0.5px solid ${goldA(28)}`,
+                    borderRadius: "var(--border-radius-md)",
+                    lineHeight: 1.55,
+                  }}>
+                    <span style={{ color: "var(--gold)", fontStyle: "normal", fontWeight: 600, fontSize: 11, letterSpacing: "0.5px", textTransform: "uppercase", marginRight: 6 }}>
+                      Niyyah
+                    </span>
+                    {activeGoal.intention}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
           {!activeTask && (
             <div style={{ marginTop: 8, fontSize: 13, color: "var(--color-text-tertiary)", textAlign: "center" }}>
               No task linked · general focus block
@@ -428,6 +565,7 @@ export default function Pomodoro({
         <DailyProgress
           focusLog={focusLog}
           todayMins={todayMins}
+          liveSessionMins={liveSessionMins}
           yesterdayMins={yesterdayMins}
           streak={streak}
           goalMins={dailyFocusGoalMins}

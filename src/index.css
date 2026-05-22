@@ -53,6 +53,7 @@ body {
   --body-glow-1: rgba(201,168,76,0.18);
   --body-glow-2: rgba(63,140,160,0.18);
   --input-bg: rgba(23, 26, 22, 0.9);
+  --btn-default-bg: rgba(17, 18, 16, 0.7);
 }
 
 /* Light theme — warm parchment palette. Deep ochre + olive on cream. */
@@ -85,6 +86,7 @@ body {
   --body-glow-1: rgba(122,88,16,0.18);
   --body-glow-2: rgba(63,140,160,0.10);
   --input-bg: rgba(255,251,238,0.92);
+  --btn-default-bg: rgba(255,249,231,0.85);
 }
 
 h1, h2, h3 {
@@ -107,13 +109,13 @@ input, textarea, select {
 }
 input:focus, textarea:focus, select:focus {
   border-color: var(--gold);
-  box-shadow: 0 0 0 2px rgba(201,168,76,0.15);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--gold) 15%, transparent);
 }
 select option { background: var(--bg-card); color: var(--text-primary); }
 
 button {
-  background: rgba(17, 18, 16, 0.7);
-  border: 0.5px solid rgba(201,168,76,0.35);
+  background: var(--btn-default-bg);
+  border: 0.5px solid color-mix(in srgb, var(--gold) 35%, transparent);
   border-radius: var(--radius-sm);
   color: var(--text-secondary);
   cursor: pointer;
@@ -144,12 +146,12 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   font-size: 15px;
   padding: 11px 20px;
   letter-spacing: 0.2px;
-  box-shadow: 0 8px 22px rgba(201, 168, 76, 0.18);
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--gold) 18%, transparent);
   transition: transform 0.12s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
-.btn-primary:hover { background: #d4af5a; border-color: #d4af5a; color: #0f0f0f; transform: translateY(-1px); box-shadow: 0 10px 26px rgba(201, 168, 76, 0.28); }
-.btn-primary:active { transform: translateY(0); box-shadow: 0 4px 12px rgba(201, 168, 76, 0.18); }
-.btn-primary:disabled { background: rgba(201, 168, 76, 0.35); border-color: rgba(201, 168, 76, 0.35); box-shadow: none; transform: none; cursor: not-allowed; }
+.btn-primary:hover { background: #d4af5a; border-color: #d4af5a; color: #0f0f0f; transform: translateY(-1px); box-shadow: 0 10px 26px color-mix(in srgb, var(--gold) 28%, transparent); }
+.btn-primary:active { transform: translateY(0); box-shadow: 0 4px 12px color-mix(in srgb, var(--gold) 18%, transparent); }
+.btn-primary:disabled { background: color-mix(in srgb, var(--gold) 35%, transparent); border-color: color-mix(in srgb, var(--gold) 35%, transparent); box-shadow: none; transform: none; cursor: not-allowed; }
 
 /* Arabic typography — tuned for reading Quranic verse and du'a. */
 .arabic {
@@ -179,8 +181,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
 @keyframes goldGlow {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(201, 168, 76, 0); }
-  50% { box-shadow: 0 0 0 6px rgba(201, 168, 76, 0.18); }
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--gold) 0%, transparent); }
+  50% { box-shadow: 0 0 0 6px color-mix(in srgb, var(--gold) 18%, transparent); }
 }
 
 /* Slow breath used as a halo behind the focus dial while running. */
@@ -189,6 +191,28 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   50% { transform: scale(1.06); opacity: 0.7; }
 }
 .dial-breath { animation: dialBreath 3.6s ease-in-out infinite; }
+
+/* Three-dot loading indicator used by AuthWrapper + Planner while Firebase
+   resolves. Each dot pulses with a 160ms stagger so the row feels alive
+   without spinning frantically — fits the app's quiet tone. */
+@keyframes loadingDotPulse {
+  0%, 80%, 100% { opacity: 0.25; transform: scale(0.85); }
+  40% { opacity: 1; transform: scale(1); }
+}
+.loading-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.loading-dots > span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gold);
+  animation: loadingDotPulse 1.2s ease-in-out infinite;
+}
+.loading-dots > span:nth-child(2) { animation-delay: 0.16s; }
+.loading-dots > span:nth-child(3) { animation-delay: 0.32s; }
 
 #root > * {
   animation: fadeUp 0.35s ease-out;
@@ -227,8 +251,12 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     font-size: 21px;
   }
 
+  /* Bump touch targets — Apple HIG recommends 44pt minimum, Material 48dp.
+     The previous 7×14 padding produced ~32px-tall buttons which were
+     finicky to tap reliably on a phone. */
   button {
-    padding: 7px 14px;
+    padding: 9px 16px;
+    min-height: 38px;
   }
 
   input, textarea, select {
@@ -236,21 +264,28 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   }
 
   .btn-primary {
-    padding: 10px 16px;
+    padding: 11px 18px;
     font-size: 14px;
+    min-height: 44px;
+  }
+
+  /* Task-row actions get their own row on narrow screens. Without this,
+     the action buttons + priority pill + timer indicator overflow off the
+     right edge of the task tile and the user can't see what's there. */
+  .task-actions {
+    flex-basis: 100%;
+    justify-content: flex-end;
+    margin-top: 4px;
   }
 
   .task-toolbar button,
   .task-actions button {
-    font-size: 12px;
-    padding: 5px 10px;
-  }
-
-  .task-actions {
-    justify-content: flex-end;
+    font-size: 13px;
+    padding: 7px 12px;
+    min-height: 34px;
   }
 }
 
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(201,168,76,0.2); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--gold) 20%, transparent); border-radius: 4px; }

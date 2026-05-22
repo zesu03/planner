@@ -1,5 +1,5 @@
 import { INTENTIONS } from "../../lib/constants";
-import { gold } from "../../lib/styles";
+import { goldA } from "../../lib/styles";
 
 // Three tap-to-fill chips drawn from the canonical INTENTIONS list. Lets the
 // user populate the Niyyah field without typing — also nudges towards a
@@ -14,7 +14,7 @@ export default function NiyyahChips({ onPick }) {
             padding: "4px 10px",
             borderRadius: 99,
             background: "var(--color-background-secondary)",
-            border: `0.5px solid ${gold}33`,
+            border: `0.5px solid ${goldA(20)}`,
             color: "var(--color-text-secondary)",
             cursor: "pointer",
             maxWidth: "100%",

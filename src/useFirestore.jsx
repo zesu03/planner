@@ -16,12 +16,16 @@ export function useUserData(userId) {
   const [focusLog, setFocusLog] = useState(null);
   const [settings, setSettings] = useState(null);
   const [muhasaba, setMuhasaba] = useState(null);
+  const [qaza, setQaza] = useState(null);
+  const [savedVerses, setSavedVerses] = useState(null);
   const [loading, setLoading] = useState(true);
   const latestGoalsRef = useRef([]);
   const latestPrayerRef = useRef({});
   const latestFocusRef = useRef([]);
   const latestSettingsRef = useRef({});
   const latestMuhasabaRef = useRef({});
+  const latestQazaRef = useRef({});
+  const latestSavedVersesRef = useRef([]);
 
   // Load once, then listen
   useEffect(() => {
@@ -35,27 +39,37 @@ export function useUserData(userId) {
         const nextFocusLog = data.focusLog || [];
         const nextSettings = data.settings || {};
         const nextMuhasaba = data.muhasaba || {};
+        const nextQaza = data.qaza || {};
+        const nextSavedVerses = data.savedVerses || [];
         latestGoalsRef.current = nextGoals;
         latestPrayerRef.current = nextPrayerLog;
         latestFocusRef.current = nextFocusLog;
         latestSettingsRef.current = nextSettings;
         latestMuhasabaRef.current = nextMuhasaba;
+        latestQazaRef.current = nextQaza;
+        latestSavedVersesRef.current = nextSavedVerses;
         setGoals(nextGoals);
         setPrayerLog(nextPrayerLog);
         setFocusLog(nextFocusLog);
         setSettings(nextSettings);
         setMuhasaba(nextMuhasaba);
+        setQaza(nextQaza);
+        setSavedVerses(nextSavedVerses);
       } else {
         latestGoalsRef.current = [];
         latestPrayerRef.current = {};
         latestFocusRef.current = [];
         latestSettingsRef.current = {};
         latestMuhasabaRef.current = {};
+        latestQazaRef.current = {};
+        latestSavedVersesRef.current = [];
         setGoals([]);
         setPrayerLog({});
         setFocusLog([]);
         setSettings({});
         setMuhasaba({});
+        setQaza({});
+        setSavedVerses([]);
       }
       setLoading(false);
     });
@@ -74,6 +88,8 @@ export function useUserData(userId) {
           focusLog: latestFocusRef.current,
           settings: latestSettingsRef.current,
           muhasaba: latestMuhasabaRef.current,
+          qaza: latestQazaRef.current,
+          savedVerses: latestSavedVersesRef.current,
         },
         { merge: true }
       );
@@ -111,5 +127,17 @@ export function useUserData(userId) {
     save();
   }
 
-  return { goals, prayerLog, focusLog, settings, muhasaba, loading, updateGoals, updatePrayerLog, updateFocusLog, updateSettings, updateMuhasaba };
+  function updateQaza(newQaza) {
+    latestQazaRef.current = newQaza;
+    setQaza(newQaza);
+    save();
+  }
+
+  function updateSavedVerses(newSavedVerses) {
+    latestSavedVersesRef.current = newSavedVerses;
+    setSavedVerses(newSavedVerses);
+    save();
+  }
+
+  return { goals, prayerLog, focusLog, settings, muhasaba, qaza, savedVerses, loading, updateGoals, updatePrayerLog, updateFocusLog, updateSettings, updateMuhasaba, updateQaza, updateSavedVerses };
 }

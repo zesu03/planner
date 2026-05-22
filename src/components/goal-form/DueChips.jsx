@@ -1,6 +1,6 @@
 import { DUE_PRESETS } from "../../lib/constants";
 import { todayStr } from "../../lib/dates";
-import { gold } from "../../lib/styles";
+import { goldA } from "../../lib/styles";
 
 export default function DueChips({ value, onChange }) {
   return (
@@ -11,8 +11,8 @@ export default function DueChips({ value, onChange }) {
         return (
           <button key={p.label} type="button" onClick={() => onChange(presetValue)}
             style={{
-              background: active ? "rgba(201,168,76,0.18)" : "var(--color-background-secondary)",
-              border: `0.5px solid ${active ? gold + "99" : "var(--color-border-tertiary)"}`,
+              background: active ? goldA(18) : "var(--color-background-secondary)",
+              border: `0.5px solid ${active ? goldA(60) : "var(--color-border-tertiary)"}`,
               color: active ? "var(--gold)" : "var(--color-text-secondary)",
               borderRadius: 99,
               padding: "5px 12px",

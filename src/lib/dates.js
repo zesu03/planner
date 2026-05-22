@@ -54,4 +54,23 @@ export const addDays = (n) => {
   return localDateStr(d);
 };
 
+// Iterate YYYY-MM-DD strings from startStr (inclusive) up to endStr (exclusive).
+// Operates purely on date strings — noon-UTC anchored to dodge DST drift —
+// so iteration matches the keys stored in prayerLog / muhasaba regardless of
+// the user's timezone.
+export const eachDayBetween = (startStr, endStr) => {
+  const out = [];
+  let cur = startStr;
+  while (cur < endStr) {
+    out.push(cur);
+    const d = new Date(`${cur}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + 1);
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+    const day = String(d.getUTCDate()).padStart(2, "0");
+    cur = `${y}-${m}-${day}`;
+  }
+  return out;
+};
+
 export const endOfYear = () => `${todayStr().slice(0, 4)}-12-31`;

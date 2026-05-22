@@ -12,8 +12,10 @@ import {
   emptyMuhasabaEntry,
   isMuhasabaFilled,
   muhasabaStreak,
+  canGenerateMirror,
+  RELATION_OPTIONS,
 } from "../lib/muhasaba";
-import { gold, S } from "../lib/styles";
+import { goldA, S } from "../lib/styles";
 import Modal from "../components/Modal";
 
 // Renders the AI Mirror report. Handles both shapes:
@@ -57,8 +59,8 @@ function MirrorContent({ report }) {
             marginTop: 14,
             padding: "12px 14px",
             borderRadius: "var(--border-radius-md)",
-            background: "linear-gradient(135deg, rgba(201,168,76,0.10) 0%, rgba(201,168,76,0.03) 100%)",
-            border: "0.5px solid rgba(201,168,76,0.32)",
+            background: `linear-gradient(135deg, ${goldA(10)} 0%, ${goldA(3)} 100%)`,
+            border: `0.5px solid ${goldA(32)}`,
           }}>
             <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 700, letterSpacing: "0.6px", textTransform: "uppercase", marginBottom: 6 }}>
               {d.scriptureAnchor.ref || "Scripture"}
@@ -81,8 +83,8 @@ function MirrorContent({ report }) {
             marginTop: 14,
             padding: "10px 14px",
             borderRadius: "var(--border-radius-md)",
-            background: "linear-gradient(135deg, rgba(201,168,76,0.16) 0%, rgba(201,168,76,0.06) 100%)",
-            border: "0.5px solid rgba(201,168,76,0.36)",
+            background: `linear-gradient(135deg, ${goldA(16)} 0%, ${goldA(6)} 100%)`,
+            border: `0.5px solid ${goldA(36)}`,
             display: "flex",
             alignItems: "flex-start",
             gap: 10,
@@ -139,8 +141,8 @@ function MirrorContent({ report }) {
             marginTop: 14,
             padding: "10px 14px",
             borderRadius: "var(--border-radius-md)",
-            background: "linear-gradient(135deg, rgba(201,168,76,0.16) 0%, rgba(201,168,76,0.06) 100%)",
-            border: "0.5px solid rgba(201,168,76,0.36)",
+            background: `linear-gradient(135deg, ${goldA(16)} 0%, ${goldA(6)} 100%)`,
+            border: `0.5px solid ${goldA(36)}`,
             display: "flex",
             alignItems: "flex-start",
             gap: 10,
@@ -209,6 +211,7 @@ export default function Muhasaba({
   applyMuhasabaUpdate,
   prayerLog,
   focusLog,
+  goals,
   aiLoadingDay,
   aiError,
   generateReport,
@@ -228,6 +231,33 @@ export default function Muhasaba({
   const toggleSinTag = (tag) => {
     const cur = entry.sinTags || [];
     updateEntry({ sinTags: cur.includes(tag) ? cur.filter((t) => t !== tag) : [...cur, tag] });
+  };
+
+  // Relational audit helpers. Toggle adds/removes a relation slug from the
+  // entry's `relations` map (key present = selected). Note edit replaces
+  // the value at that slug. We preserve the existing note when toggling
+  // off-then-on within the same session would lose the note, so toggling
+  // off clears the key entirely — the user can recreate it.
+  const toggleRelation = (slug) => {
+    const cur = entry.relations || {};
+    const next = { ...cur };
+    if (Object.prototype.hasOwnProperty.call(next, slug)) delete next[slug];
+    else next[slug] = "";
+    updateEntry({ relations: next });
+  };
+  const updateRelationNote = (slug, text) => {
+    const cur = entry.relations || {};
+    updateEntry({ relations: { ...cur, [slug]: text } });
+  };
+
+  // Per-active-goal nightly self-check. Tapping the same value twice
+  // toggles it off (back to unset) so the user can clear a misclick.
+  const setGoalCheck = (goalId, value) => {
+    const cur = entry.goalChecks || {};
+    const next = { ...cur };
+    if (cur[goalId] === value) delete next[goalId];
+    else next[goalId] = value;
+    updateEntry({ goalChecks: next });
   };
   const updateShukr = (idx, val) => {
     const next = [...(entry.shukr || ["", "", ""])];
@@ -260,6 +290,7 @@ export default function Muhasaba({
   const yesterdayDua = muhasaba[yesterdayDuaKey]?.duaTomorrow;
 
   const filled = isMuhasabaFilled(entry);
+  const canGenerate = canGenerateMirror(entry, day, prayerLog, focusLog);
   const report = entry.aiReport;
   const generating = aiLoadingDay === day;
 
@@ -304,8 +335,8 @@ export default function Muhasaba({
                 minWidth: 48,
                 padding: "7px 4px",
                 borderRadius: "var(--border-radius-md)",
-                background: active ? "rgba(201,168,76,0.18)" : "var(--color-background-secondary)",
-                border: `0.5px solid ${active ? gold + "99" : "var(--color-border-tertiary)"}`,
+                background: active ? goldA(18) : "var(--color-background-secondary)",
+                border: `0.5px solid ${active ? goldA(60) : "var(--color-border-tertiary)"}`,
                 color: active ? "var(--color-text-primary)" : "var(--color-text-secondary)",
                 cursor: "pointer",
                 display: "flex",
@@ -323,14 +354,131 @@ export default function Muhasaba({
         })}
       </div>
 
-      {yesterdayDua && (
-        <div style={{ ...S.card, marginBottom: 14, background: "rgba(63,140,160,0.08)", borderColor: "rgba(63,140,160,0.32)" }}>
-          <div style={{ fontSize: 12, color: "#7BB6C7", fontWeight: 600, letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: 5 }}>
-            Du'a from yesterday
+      {/* Yesterday's du'a → today's verdict. The user wrote a commitment
+          last night; tonight they answer honestly: honoured, partial, or
+          missed. This is the loop that turns daily reflection into actual
+          behavioural feedback. */}
+      {yesterdayDua && (() => {
+        const dc = entry.duaCheck || { status: null, note: "" };
+        const STATUSES = [
+          { value: "honoured", label: "Honoured", color: "var(--color-text-success)", bg: "rgba(127,190,143,0.18)" },
+          { value: "partial",  label: "Partial",  color: "var(--color-text-warning)", bg: "var(--color-background-warning)" },
+          { value: "missed",   label: "Missed",   color: "var(--color-text-danger)",  bg: "var(--color-background-danger)" },
+        ];
+        const setStatus = (next) => {
+          const nextStatus = dc.status === next ? null : next; // toggle off
+          updateEntry({ duaCheck: { status: nextStatus, note: dc.note || "" } });
+        };
+        const setNote = (text) => {
+          updateEntry({ duaCheck: { status: dc.status, note: text } });
+        };
+        return (
+          <div style={{ ...S.card, marginBottom: 14, background: "rgba(63,140,160,0.08)", borderColor: "rgba(63,140,160,0.32)" }}>
+            <div style={{ fontSize: 12, color: "#7BB6C7", fontWeight: 600, letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: 5 }}>
+              Yesterday's du'a — today is its test
+            </div>
+            <div style={{ fontSize: 15, color: "var(--color-text-primary)", fontStyle: "italic", marginBottom: 12 }}>
+              "{yesterdayDua}"
+            </div>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: dc.status ? 10 : 0 }}>
+              {STATUSES.map((s) => {
+                const active = dc.status === s.value;
+                return (
+                  <button key={s.value} type="button" onClick={() => setStatus(s.value)}
+                    aria-pressed={active}
+                    style={{
+                      fontSize: 13, padding: "5px 12px", borderRadius: 99, cursor: "pointer",
+                      background: active ? s.bg : "var(--color-background-secondary)",
+                      border: `0.5px solid ${active ? s.color : "var(--color-border-tertiary)"}`,
+                      color: active ? s.color : "var(--color-text-secondary)",
+                      fontWeight: active ? 600 : 400,
+                    }}>
+                    {s.label}
+                  </button>
+                );
+              })}
+            </div>
+            {dc.status && (
+              <textarea rows={2} value={dc.note || ""}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder={
+                  dc.status === "honoured" ? "How did Allah make it easy? What turned the tide?" :
+                  dc.status === "partial"  ? "What helped, what got in the way?" :
+                                             "What happened? What will I do differently?"
+                }
+                style={{ width: "100%", resize: "vertical", boxSizing: "border-box", marginTop: 2 }} />
+            )}
           </div>
-          <div style={{ fontSize: 15, color: "var(--color-text-primary)", fontStyle: "italic" }}>"{yesterdayDua}"</div>
-        </div>
-      )}
+        );
+      })()}
+
+      {/* Goals → Muhasaba — nightly self-check per active goal. Closes the
+          loop between the user's stated commitments (Goals tab) and tonight's
+          honest verdict. Three values per goal: yes / partial / no. Unset =
+          user hasn't answered for that goal yet. */}
+      {(() => {
+        const activeGoals = (goals || []).filter((g) => !g.completedAt);
+        if (activeGoals.length === 0) return null;
+        const checks = entry.goalChecks || {};
+        return (
+          <div style={{ ...S.card, marginBottom: 14, background: "rgba(127,119,221,0.05)", borderColor: "rgba(127,119,221,0.28)" }}>
+            <div style={{ fontSize: 12, color: "#9B92F2", fontWeight: 600, letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: 4 }}>
+              Tonight's goal check
+            </div>
+            <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginBottom: 12, fontStyle: "italic", lineHeight: 1.5 }}>
+              Did the day move your stated niyyahs forward? Be honest — drift is harder to repair the longer you avoid naming it.
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {activeGoals.map((g) => {
+                const value = checks[g.id]; // "yes" | "partial" | "no" | undefined
+                const STATUSES = [
+                  { v: "yes",     label: "Yes",     color: "var(--color-text-success)", bg: "rgba(127,190,143,0.18)" },
+                  { v: "partial", label: "Partial", color: "var(--color-text-warning)", bg: "var(--color-background-warning)" },
+                  { v: "no",      label: "No",      color: "var(--color-text-danger)",  bg: "var(--color-background-danger)" },
+                ];
+                return (
+                  <div key={g.id} style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "8px 10px",
+                    background: "var(--color-background-secondary)",
+                    borderRadius: "var(--border-radius-md)",
+                    flexWrap: "wrap",
+                  }}>
+                    <div style={{ flex: "1 1 200px", minWidth: 0 }}>
+                      <div style={{ fontSize: 14, fontWeight: 500, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {g.title}
+                      </div>
+                      {g.intention && (
+                        <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", fontStyle: "italic", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {g.intention}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: "flex", gap: 4, flexShrink: 0 }}>
+                      {STATUSES.map((s) => {
+                        const active = value === s.v;
+                        return (
+                          <button key={s.v} type="button" onClick={() => setGoalCheck(g.id, s.v)}
+                            aria-pressed={active}
+                            style={{
+                              fontSize: 12, padding: "4px 10px", borderRadius: 99, cursor: "pointer",
+                              background: active ? s.bg : "transparent",
+                              border: `0.5px solid ${active ? s.color : "var(--color-border-tertiary)"}`,
+                              color: active ? s.color : "var(--color-text-secondary)",
+                              fontWeight: active ? 600 : 400,
+                            }}>
+                            {s.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 1. Fara'id */}
       <Section n="1" title="Fara'id — Obligations" hint="The first thing accounted for on the Day of Judgement is the prayer." accent="#1D9E75">
@@ -361,7 +509,7 @@ export default function Muhasaba({
             display: "flex", alignItems: "center", gap: 7, fontSize: 14,
             color: "var(--color-text-secondary)", cursor: "pointer",
             padding: "10px 12px", background: "var(--color-background-secondary)",
-            border: `0.5px solid ${entry.dhikr ? gold + "99" : "var(--color-border-tertiary)"}`,
+            border: `0.5px solid ${entry.dhikr ? goldA(60) : "var(--color-border-tertiary)"}`,
             borderRadius: "var(--border-radius-md)",
           }}>
             <input type="checkbox" checked={!!entry.dhikr}
@@ -384,7 +532,7 @@ export default function Muhasaba({
           placeholder="What do I seek Allah's forgiveness for today?"
           style={{ width: "100%", resize: "vertical", boxSizing: "border-box", marginBottom: 10 }} />
         <div style={{ fontSize: 13, color: "var(--color-text-tertiary)", marginBottom: 6 }}>Tag (optional):</div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
           {SIN_TAGS.map((tag) => {
             const active = (entry.sinTags || []).includes(tag);
             return (
@@ -400,6 +548,125 @@ export default function Muhasaba({
             );
           })}
         </div>
+
+        {/* Relational audit — the half of muhasaba that's usually missing
+            from journaling apps. You can't repair what you haven't named.
+            Tap a relation to mark it owes attention; the note below is
+            where you write what specifically + what you'll do. */}
+        <div style={{
+          marginTop: 4, paddingTop: 14,
+          borderTop: "0.5px dashed var(--color-border-tertiary)",
+        }}>
+          <div style={{ fontSize: 13, color: "var(--color-text-secondary)", fontWeight: 500, marginBottom: 4 }}>
+            Who did I owe today?
+          </div>
+          <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginBottom: 8, fontStyle: "italic" }}>
+            "Rights are two: rights of Allah, and rights of His creation." — name where to repair, then do it.
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
+            {RELATION_OPTIONS.map((r) => {
+              const active = Object.prototype.hasOwnProperty.call(entry.relations || {}, r.slug);
+              const isAllah = r.slug === "allah";
+              const activeColor = isAllah ? "var(--gold)" : "#D85A30";
+              const activeBg = isAllah ? "rgba(201,168,76,0.18)" : "rgba(216,90,48,0.18)";
+              return (
+                <button key={r.slug} type="button" onClick={() => toggleRelation(r.slug)}
+                  aria-pressed={active}
+                  style={{
+                    fontSize: 13, padding: "4px 11px", borderRadius: 99, cursor: "pointer",
+                    background: active ? activeBg : "var(--color-background-secondary)",
+                    border: `0.5px solid ${active ? activeColor : "var(--color-border-tertiary)"}`,
+                    color: active ? activeColor : "var(--color-text-secondary)",
+                    fontWeight: active ? 600 : 400,
+                  }}>
+                  {r.label}
+                </button>
+              );
+            })}
+          </div>
+          {/* Per-selected-relation notes. Each selected chip gets its own
+              textarea so the user names the specific debt + repair plan. */}
+          {Object.keys(entry.relations || {}).length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {Object.entries(entry.relations || {}).map(([slug, note]) => {
+                const meta = RELATION_OPTIONS.find((r) => r.slug === slug) || { label: slug };
+                const isAllah = slug === "allah";
+                const accent = isAllah ? "var(--gold)" : "#D85A30";
+                return (
+                  <div key={slug} style={{
+                    padding: "10px 12px",
+                    background: "var(--color-background-secondary)",
+                    borderRadius: "var(--border-radius-md)",
+                    borderLeft: `3px solid ${accent}`,
+                  }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: accent, marginBottom: 4, letterSpacing: "0.3px", textTransform: "uppercase" }}>
+                      {meta.label}
+                    </div>
+                    <textarea rows={2} value={note}
+                      onChange={(e) => updateRelationNote(slug, e.target.value)}
+                      placeholder={
+                        isAllah ? "What did I owe Allah today, and what will I do tomorrow?" :
+                                   "What specifically? What's my next step to repair?"
+                      }
+                      style={{ width: "100%", resize: "vertical", boxSizing: "border-box", background: "var(--color-background-primary)" }} />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Tawbah conditions — only appears when the user has named
+            something to repent. Three affirmations the user taps
+            consciously; the act of tapping is part of the practice.
+            Classical condition #4 (regret) is implicit in writing
+            repentText at all — so we show three, not four. */}
+        {((entry.repentText && entry.repentText.trim()) || (entry.sinTags || []).length > 0) && (() => {
+          const t = entry.tawbah || { stopped: false, resolved: false, restored: false };
+          const setT = (key, val) => updateEntry({ tawbah: { ...t, [key]: val } });
+          const items = [
+            { key: "stopped",  label: "I have stopped — this is not ongoing right now." },
+            { key: "resolved", label: "I resolve not to return — by means and avoidance, not just words." },
+            { key: "restored", label: "I have repaired what I can — or no human right is owed." },
+          ];
+          return (
+            <div style={{
+              marginTop: 14,
+              padding: "12px 14px",
+              background: "rgba(216,90,48,0.06)",
+              borderRadius: "var(--border-radius-md)",
+              borderLeft: "3px solid rgba(216,90,48,0.55)",
+            }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#D85A30", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 4 }}>
+                Tawbah · the four conditions
+              </div>
+              <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginBottom: 12, fontStyle: "italic", lineHeight: 1.5 }}>
+                "And turn to Allah in repentance, all of you, O believers, that you may succeed." — Quran 24:31
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {items.map(({ key, label }) => {
+                  const checked = !!t[key];
+                  return (
+                    <label key={key} style={{
+                      display: "flex", alignItems: "flex-start", gap: 10,
+                      cursor: "pointer", fontSize: 14, lineHeight: 1.5,
+                      padding: "6px 8px", borderRadius: 8,
+                      background: checked ? "rgba(216,90,48,0.10)" : "transparent",
+                      transition: "background 0.15s ease",
+                    }}>
+                      <input type="checkbox" checked={checked}
+                        onChange={(e) => setT(key, e.target.checked)}
+                        style={{ width: 16, height: 16, marginTop: 3, cursor: "pointer", accentColor: "#D85A30", flexShrink: 0 }} />
+                      <span style={{ color: checked ? "var(--color-text-primary)" : "var(--color-text-secondary)", fontWeight: checked ? 500 : 400 }}>
+                        {label}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
       </Section>
 
       {/* 3. Ghaflah */}
@@ -425,9 +692,9 @@ export default function Muhasaba({
                 style={{
                   fontSize: 13, padding: "6px 11px", borderRadius: "var(--border-radius-md)",
                   cursor: "pointer", minWidth: 34,
-                  background: entry.niyyahRating === n ? "rgba(201,168,76,0.22)" : "var(--color-background-secondary)",
-                  border: `0.5px solid ${entry.niyyahRating === n ? gold : "var(--color-border-tertiary)"}`,
-                  color: entry.niyyahRating === n ? gold : "var(--color-text-secondary)",
+                  background: entry.niyyahRating === n ? goldA(22) : "var(--color-background-secondary)",
+                  border: `0.5px solid ${entry.niyyahRating === n ? "var(--gold)" : "var(--color-border-tertiary)"}`,
+                  color: entry.niyyahRating === n ? "var(--gold)" : "var(--color-text-secondary)",
                   fontWeight: entry.niyyahRating === n ? 600 : 400,
                 }}>
                 {n}
@@ -471,7 +738,7 @@ export default function Muhasaba({
       </div>
 
       {/* AI reflection */}
-      {!filled && !report && !generating ? (
+      {!canGenerate && !report && !generating ? (
         <div style={{
           ...S.card, marginBottom: 14, textAlign: "center",
           padding: "20px 16px", borderStyle: "dashed",
@@ -479,10 +746,10 @@ export default function Muhasaba({
         }}>
           <div style={{ fontSize: 30, marginBottom: 6, opacity: 0.7 }}>🪞</div>
           <div style={{ fontSize: 14, color: "var(--color-text-secondary)", fontWeight: 500, marginBottom: 3 }}>
-            Honest reflection unlocks once you fill today
+            The mirror needs something to read
           </div>
           <div style={{ fontSize: 13, color: "var(--color-text-tertiary)" }}>
-            Complete the sections above and a candid mentor's note will be generated for you.
+            Log a prayer, run a focus session, or fill any section above — then a candid mentor's note unlocks.
           </div>
         </div>
       ) : (
@@ -495,11 +762,13 @@ export default function Muhasaba({
               <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginTop: 3 }}>
                 {report
                   ? `Generated ${new Date(report.generatedAt).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}${report.model ? ` · ${report.model}` : ""}`
-                  : "Hold yourself to your own niyyah, not your own comfort."}
+                  : filled
+                    ? "Hold yourself to your own niyyah, not your own comfort."
+                    : "Reflection will be sharper if you fill the sections above first."}
               </div>
             </div>
             <button onClick={() => generateReport(day, { force: true })}
-              disabled={generating || !filled}
+              disabled={generating || !canGenerate}
               style={{ fontSize: 13, padding: "5px 12px" }}>
               {generating ? "Generating…" : report ? "Regenerate" : "Generate"}
             </button>
@@ -559,7 +828,7 @@ export default function Muhasaba({
                       border: "0.5px solid transparent",
                       transition: "border-color 0.15s",
                     }}
-                    onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = gold + "55"; }}
+                    onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = goldA(33); }}
                     onMouseLeave={(ev) => { ev.currentTarget.style.borderColor = "transparent"; }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                       <span style={{ fontSize: 13, color: "var(--color-text-secondary)", fontWeight: 500 }}>{fmt(d)}</span>

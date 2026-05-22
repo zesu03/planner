@@ -21,15 +21,20 @@ export default function AuthWrapper({ children }) {
   if (user === undefined) {
     return (
       <div
+        role="status"
+        aria-label="Loading Aakhirah Planner"
         style={{
           minHeight: "100vh",
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
+          gap: 14,
           color: "var(--text-secondary)",
         }}
       >
-        Loading…
+        <div className="loading-dots" aria-hidden="true"><span /><span /><span /></div>
+        <div style={{ fontSize: 13, opacity: 0.7 }}>Loading…</div>
       </div>
     );
   }
@@ -113,7 +118,15 @@ export default function AuthWrapper({ children }) {
             {user.displayName || user.email}
           </span>
         </div>
-        <button onClick={() => signOut(auth)} style={{ fontSize: 12, padding: "4px 12px" }}>
+        <button
+          onClick={() => {
+            // Small confirm so a stray tap doesn't drop the user out — the
+            // sign-out itself is harmless (data is on Firestore, nothing
+            // is lost) but the friction is high enough to be annoying.
+            if (window.confirm("Sign out of Aakhirah Planner?")) signOut(auth);
+          }}
+          style={{ fontSize: 12, padding: "4px 12px" }}
+        >
           Sign out
         </button>
       </div>

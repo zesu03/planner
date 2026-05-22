@@ -1,6 +1,6 @@
 import { CAT_COLORS } from "../lib/constants";
 import { daysLeft, fmt, todayStr } from "../lib/dates";
-import { isGoalDone, pct } from "../lib/goals";
+import { isGoalDone, pct, isRecurring } from "../lib/goals";
 import { S } from "../lib/styles";
 import ProgressBar from "./ProgressBar";
 
@@ -37,7 +37,12 @@ export default function GoalCard({ g, lastActivityDay, onSelect }) {
     ? "Due today"
     : `${dl}d left`;
 
-  // Recency line — only render when it carries signal.
+  // Recency line — only render when it carries signal. Three tiers of
+  // colour escalation so the user gets a soft nudge before a full warning:
+  //  0d           — success green ("active today")
+  //  1–6d         — muted ("active Nd ago")
+  //  7–13d        — warning yellow ("quiet for Nd") — early nudge
+  //  14d+         — warning yellow w/ ⚠ ("stale · Nd inactive") — stronger
   let recencyText = null;
   let recencyColor = "var(--color-text-tertiary)";
   if (!done) {
@@ -45,8 +50,9 @@ export default function GoalCard({ g, lastActivityDay, onSelect }) {
       const lastDays = Math.floor((new Date(todayStr()) - new Date(lastActivityDay)) / 86400000);
       if (lastDays === 0) { recencyText = "active today"; recencyColor = "var(--color-text-success)"; }
       else if (lastDays === 1) recencyText = "active yesterday";
-      else if (lastDays < 14) recencyText = `active ${lastDays}d ago`;
-      else { recencyText = `stale · ${lastDays}d inactive`; recencyColor = "var(--color-text-warning)"; }
+      else if (lastDays < 7) recencyText = `active ${lastDays}d ago`;
+      else if (lastDays < 14) { recencyText = `quiet for ${lastDays}d`; recencyColor = "var(--color-text-warning)"; }
+      else { recencyText = `⚠ stale · ${lastDays}d inactive`; recencyColor = "var(--color-text-warning)"; }
     } else if (g.tasks?.length > 0) {
       recencyText = "no focus logged yet";
     }
@@ -100,7 +106,19 @@ export default function GoalCard({ g, lastActivityDay, onSelect }) {
       <ProgressBar val={p} color={catColor} />
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 7, fontSize: 14, color: "var(--color-text-secondary)", gap: 8, flexWrap: "wrap" }}>
         <span>
-          {g.tasks.filter((t) => t.done).length}/{g.tasks.length} tasks · {g.type === "short" ? "Short" : "Long"}-term
+          {(() => {
+            const oneShots = g.tasks.filter((t) => !isRecurring(t));
+            const habits = g.tasks.filter((t) => isRecurring(t));
+            const oneShotPart = oneShots.length > 0
+              ? `${oneShots.filter((t) => t.done).length}/${oneShots.length} tasks`
+              : null;
+            const habitPart = habits.length > 0
+              ? `${habits.length} habit${habits.length === 1 ? "" : "s"}`
+              : null;
+            const parts = [oneShotPart, habitPart].filter(Boolean);
+            const lead = parts.length > 0 ? parts.join(" · ") : "no tasks yet";
+            return `${lead} · ${g.type === "short" ? "Short" : "Long"}-term`;
+          })()}
         </span>
         <span style={{ color: statusColor, textAlign: "right" }}>
           {statusText}
