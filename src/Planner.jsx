@@ -9,6 +9,7 @@ import { auth } from "./firebase";
 // Pure helpers and data — no React, no state. See src/lib/.
 import {
   PRAYERS,
+  VOLUNTARY_PRAYERS,
   QUOTES, INTENTIONS,
 } from "./lib/constants";
 import { newId } from "./lib/ids";
@@ -16,6 +17,7 @@ import { todayStr, localDateStr } from "./lib/dates";
 import { isGoalDone, pct, isRecurring, isScheduledOn, isDoneOn, recurringStreak, recurringCompletionRate } from "./lib/goals";
 import { emptyMuhasabaEntry, isMuhasabaFilled, muhasabaStreak } from "./lib/muhasaba";
 import { emptyQaza, computeQazaOwed, QAZA_PRAYERS } from "./lib/qaza";
+import { nextPrayer as computeNextPrayer } from "./lib/prayer";
 import { dayPhase, prayersToday, focusToday, muhasabaState, yesterdayDua, firstOpenTask } from "./lib/daily";
 import { fmtTime, focusStreakDays, STREAK_MILESTONES } from "./lib/focus";
 import { goldA, S } from "./lib/styles";
@@ -184,7 +186,7 @@ export default function Planner({ user }) {
     activeTask, lastSession,
     setPomRunning,
     startTaskTimer, stopTimer, resetTimer, endFocusEarly, updatePomDuration,
-    dismissLastSession,
+    dismissLastSession, updateLastSessionNote,
   } = useFocusTimer({
     goals,
     applyGoalsUpdate,
@@ -301,6 +303,37 @@ export default function Planner({ user }) {
       missed: PRAYERS.filter(p => p !== "Sunrise" && !(prayerLog[p]||[]).includes(yKey)),
     };
 
+    // Voluntary prayers (Tahajjud and any other nafl). Today's status +
+    // a 7-day recap per prayer so the mentor can name consistency (or its
+    // absence). Voluntary work is one of the strongest spiritual signals;
+    // omitting it would make any reflection ignore real effort.
+    const voluntary = VOLUNTARY_PRAYERS.map((p) => {
+      const log = prayerLog[p] || [];
+      const last7 = [];
+      const cursor = new Date(`${day}T12:00:00Z`);
+      let last7Count = 0;
+      let streak = 0;
+      let streakBroken = false;
+      for (let i = 0; i < 7; i++) {
+        const k = localDateStr(cursor);
+        const done = log.includes(k);
+        last7.push({ day: k, done });
+        if (done) last7Count++;
+        if (!streakBroken) {
+          if (done) streak++;
+          else if (i > 0) streakBroken = true;
+        }
+        cursor.setUTCDate(cursor.getUTCDate() - 1);
+      }
+      return {
+        name: p,
+        doneToday: log.includes(day),
+        streak,
+        last7Count,
+        last7,
+      };
+    });
+
     // Focus — today's mins + breakdown by goal
     const dayFocus = focusLog.filter(l => l.day === day);
     const dayFocusMins = dayFocus.reduce((s,l) => s + (l.mins||0), 0);
@@ -310,6 +343,22 @@ export default function Planner({ user }) {
       acc[key] = (acc[key] || 0) + (l.mins || 0);
       return acc;
     }, {});
+    // Honest one-line notes the user wrote at end-of-session. Real signal
+    // for the mentor — "distracted, slow" three sessions running is a
+    // pattern that raw minutes can't surface.
+    const dayFocusNotes = dayFocus
+      .filter(l => l.note && l.note.trim())
+      .map(l => {
+        const g = goals.find(x => x.id === l.goalId);
+        const t = g?.tasks.find(x => x.id === l.taskId);
+        return {
+          mins: l.mins,
+          at: l.at,
+          task: t?.text || "General focus",
+          goal: g?.title || null,
+          note: l.note.trim(),
+        };
+      });
 
     // Goals snapshot
     const goalsState = goals.map(g => {
@@ -418,7 +467,7 @@ export default function Planner({ user }) {
     // mentor where missed-prayer debt is accumulating, so a recurring miss
     // can be named directly instead of as an abstract "consistency" note.
     const qazaSummary = (() => {
-      const owed = computeQazaOwed(prayerLog, qaza);
+      const owed = computeQazaOwed(prayerLog, qaza, prayerTimes);
       const total = QAZA_PRAYERS.reduce((s, p) => s + (owed[p] || 0), 0);
       const paid = QAZA_PRAYERS.reduce((s, p) => s + (qaza?.paid?.[p] || 0), 0);
       const worst = QAZA_PRAYERS.reduce((acc, p) => (owed[p] || 0) > (owed[acc] || 0) ? p : acc, "Fajr");
@@ -449,7 +498,8 @@ export default function Planner({ user }) {
         sevenDayStreaks: streaks,
         yesterday: yesterdayPrayers,
       },
-      focus: { totalMins: dayFocusMins, sessions: dayFocus.length, byGoal: focusByGoal },
+      voluntary,
+      focus: { totalMins: dayFocusMins, sessions: dayFocus.length, byGoal: focusByGoal, notes: dayFocusNotes },
       goals: goalsState,
       goalsCompletedOnDay,
       daysSinceLastGoalCompletion,
@@ -571,13 +621,23 @@ export default function Planner({ user }) {
   const firstName = rawName.split(/[\s._-]+/)[0] || "Dost";
   const greetingName = firstName;
 
-  function togglePrayerLog(prayer) {
-    const today = todayStr();
+  function togglePrayerLogOnDay(prayer, day) {
+    if (!prayer || !day) return;
+    // Guard against the future — you can't retro-mark a prayer you haven't
+    // had the chance to pray yet.
+    if (day > todayStr()) return;
     applyPrayerLogUpdate((log) => {
       const prev = log[prayer] || [];
-      const already = prev.includes(today);
-      return { ...log, [prayer]: already ? prev.filter(d=>d!==today) : [today,...prev.slice(0,29)] };
+      const already = prev.includes(day);
+      const next = already
+        ? prev.filter((d) => d !== day)
+        : [day, ...prev.slice(0, 29)];
+      return { ...log, [prayer]: next };
     });
+  }
+
+  function togglePrayerLog(prayer) {
+    togglePrayerLogOnDay(prayer, todayStr());
   }
 
   function prayerDoneToday(prayer) {
@@ -769,34 +829,10 @@ export default function Planner({ user }) {
   const quote=QUOTES[quoteIdx];
   const todayPrayers = PRAYERS.filter(p=>prayerTimes&&prayerTimes[p]);
 
-  // Next prayer logic. "Next" means the next thing to actually pray:
-  //   - if the current prayer window has begun and isn't logged done, surface
-  //     it as "due now" (gentle pressure to pray before the window ends)
-  //   - if the current window is logged done, advance to the next upcoming
-  //   - before Fajr / after Isha falls through to next-day Fajr
-  let nextPrayer=null;
-  if (prayerTimes) {
-    const today = todayStr();
-    const fivePrayers = ["Fajr","Dhuhr","Asr","Maghrib","Isha"].filter(p => prayerTimes[p]);
-    const now=new Date();
-    const nowMins=now.getHours()*60+now.getMinutes();
-    let currentPrayer = null;
-    for (const p of fivePrayers) {
-      const [h,m]=prayerTimes[p].split(":").map(Number);
-      if (h*60+m <= nowMins) currentPrayer = p;
-      else break;
-    }
-    const isDone = (p) => (prayerLog[p]||[]).includes(today);
-    if (currentPrayer && !isDone(currentPrayer)) {
-      nextPrayer = { name: currentPrayer, time: prayerTimes[currentPrayer], due: true };
-    } else {
-      for (const p of fivePrayers) {
-        const [h,m]=prayerTimes[p].split(":").map(Number);
-        if (h*60+m>nowMins) { nextPrayer={name:p,time:prayerTimes[p]}; break; }
-      }
-      if (!nextPrayer) nextPrayer={name:"Fajr",time:prayerTimes["Fajr"],tomorrow:true};
-    }
-  }
+  // Next prayer — window-aware. A prayer is only "due now" while its window
+  // is open (e.g. Fajr stops being due after Sunrise even if unprayed). See
+  // lib/prayer.js for the window definitions.
+  const nextPrayer = computeNextPrayer(prayerTimes, prayerLog, todayStr());
 
   const englishDate = new Date().toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
   const dateLine = hijriDate ? `${englishDate} · ${hijriDate}` : englishDate;
@@ -809,7 +845,7 @@ export default function Planner({ user }) {
   const yDuaInfo = yesterdayDua(muhasaba);
   const todayDuaText = muhasaba[todayStr()]?.duaTomorrow || null;
   const firstTaskInfo = firstOpenTask(goals);
-  const qazaOwedMap = computeQazaOwed(prayerLog, qaza);
+  const qazaOwedMap = computeQazaOwed(prayerLog, qaza, prayerTimes);
   const qazaOwedTotal = QAZA_PRAYERS.reduce((s, p) => s + (qazaOwedMap[p] || 0), 0);
   const prayersTodaySummary = prayersToday(prayerLog);
   const focusTodaySummary = focusToday(focusLog, dailyFocusGoalMins);
@@ -998,10 +1034,11 @@ export default function Planner({ user }) {
           fetchPrayers={fetchPrayers}
           fetchByGeo={fetchByGeo}
           togglePrayerLog={togglePrayerLog}
+          togglePrayerLogOnDay={togglePrayerLogOnDay}
           prayerDoneToday={prayerDoneToday}
           prayerStreak={prayerStreak}
           qaza={qaza}
-          qazaOwed={computeQazaOwed(prayerLog, qaza)}
+          qazaOwed={computeQazaOwed(prayerLog, qaza, prayerTimes)}
           payOneQaza={payOneQaza}
           undoOneQaza={undoOneQaza}
         />
@@ -1029,6 +1066,7 @@ export default function Planner({ user }) {
           updateDailyFocusGoal={updateDailyFocusGoal}
           lastSession={lastSession}
           dismissLastSession={dismissLastSession}
+          updateLastSessionNote={updateLastSessionNote}
         />
       )}
 
@@ -1056,6 +1094,7 @@ export default function Planner({ user }) {
           muhasaba={muhasaba}
           prayerLog={prayerLog}
           qaza={qaza}
+          prayerTimes={prayerTimes}
           onSelectGoal={openGoal}
           onDeleteFocusEntry={deleteFocusEntry}
           onExport={exportData}

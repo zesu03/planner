@@ -37,7 +37,9 @@ export function useFocusTimer({
   const [pomFocusTargetMins, setPomFocusTargetMins] = useState(DEFAULT_DURATIONS.defaultFocus);
   // The most-recent finished session, used to render the celebration banner
   // on the Focus tab. Clears when a new session starts or the user dismisses.
-  // Shape: { taskId, goalId, mins, completedAt, kind: "complete" | "early" }
+  // Shape: { id, taskId, goalId, mins, completedAt, kind: "complete" | "early" }
+  // `id` matches the focusLog entry so the consumer can patch its `note`
+  // field from the post-session "What moved forward?" prompt.
   const [lastSession, setLastSession] = useState(null);
   const intervalRef = useRef(null);
   const elapsedRef = useRef(0);
@@ -86,7 +88,7 @@ export function useFocusTimer({
               }
             ));
           }
-          setLastSession({ taskId: pomTaskId, goalId: pomGoalId, mins, completedAt: at.toISOString(), kind: "complete" });
+          setLastSession({ id: entry.id, taskId: pomTaskId, goalId: pomGoalId, mins, completedAt: at.toISOString(), kind: "complete" });
           playTimerSound("focusEnd");
           elapsedRef.current = 0;
           const task = pomGoalId && pomTaskId
@@ -124,6 +126,21 @@ export function useFocusTimer({
   }, [pomRunning, pomTaskId, goals, pomDurations, stopTimer, onSessionStart]);
 
   const dismissLastSession = useCallback(() => setLastSession(null), []);
+
+  // Patch the `note` field on the most-recently-completed session's
+  // focusLog entry. Used by the "What moved forward?" prompt on the
+  // celebration banner. Empty strings are stored as undefined so the
+  // entry stays clean when the user backspaces everything out.
+  const updateLastSessionNote = useCallback((text) => {
+    if (!lastSession?.id) return;
+    const trimmed = (text || "").trim();
+    applyFocusLogUpdate((log) =>
+      log.map((l) => l.id !== lastSession.id ? l : (trimmed ? { ...l, note: trimmed } : (() => {
+        const { note: _drop, ...rest } = l;
+        return rest;
+      })())),
+    );
+  }, [lastSession, applyFocusLogUpdate]);
 
   // Dual behaviour:
   //  - If a task is linked, delink it but preserve remaining minutes as a
@@ -168,7 +185,7 @@ export function useFocusTimer({
         }
       ));
     }
-    setLastSession({ taskId: pomTaskId, goalId: pomGoalId, mins, completedAt: at.toISOString(), kind: "early" });
+    setLastSession({ id: entry.id, taskId: pomTaskId, goalId: pomGoalId, mins, completedAt: at.toISOString(), kind: "early" });
     stopTimer();
     elapsedRef.current = 0;
     const task = pomGoalId && pomTaskId
@@ -215,5 +232,6 @@ export function useFocusTimer({
     endFocusEarly,
     updatePomDuration,
     dismissLastSession,
+    updateLastSessionNote,
   };
 }

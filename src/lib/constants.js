@@ -15,9 +15,14 @@ export const PRIORITIES = ["Low", "Medium", "High"];
 
 // ── prayer ──
 export const PRAYERS = ["Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha"];
-export const PRAYER_ICONS = { Fajr: "🌙", Sunrise: "🌅", Dhuhr: "☀️", Asr: "🌤️", Maghrib: "🌇", Isha: "✨" };
+// Voluntary (nafl) prayers tracked separately — they're not obligatory, so
+// they're excluded from qaza, "prayers today" counts, and Prayer Health.
+// Kept in prayerLog under the same shape so the streak/cell helpers reuse.
+export const VOLUNTARY_PRAYERS = ["Tahajjud"];
+export const PRAYER_ICONS = { Fajr: "🌙", Sunrise: "🌅", Dhuhr: "☀️", Asr: "🌤️", Maghrib: "🌇", Isha: "✨", Tahajjud: "🌃" };
 // Colours mirror the time of day each prayer falls in: deep indigo dawn,
 // rising amber, gold midday, warm afternoon, sunset red, indigo night.
+// Tahajjud sits in the deepest part of night — darker indigo than Isha.
 export const PRAYER_COLORS = {
   Fajr:    "#3a4ba0",
   Sunrise: "#e0894a",
@@ -25,6 +30,7 @@ export const PRAYER_COLORS = {
   Asr:     "#d88e4a",
   Maghrib: "#c75a3a",
   Isha:    "#5a4a8c",
+  Tahajjud: "#2d2a6e",
 };
 
 // ── spiritual content ──

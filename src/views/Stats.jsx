@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CAT_COLORS, NIYYAH_LABELS, PRAYER_COLORS, PRAYER_ICONS } from "../lib/constants";
+import { CAT_COLORS, NIYYAH_LABELS, PRAYER_COLORS, PRAYER_ICONS, VOLUNTARY_PRAYERS } from "../lib/constants";
 import { fmt, localDateStr, todayStr } from "../lib/dates";
 import { fmtMins } from "../lib/focus";
 import { computeQazaOwed, QAZA_PRAYERS } from "../lib/qaza";
@@ -12,7 +12,7 @@ import Modal from "../components/Modal";
 // derives every metric inline. The two top sections — Prayer Health and
 // Habit Health — set the page's identity as a spiritual dashboard before
 // the productivity stats follow.
-export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, qaza = {}, onSelectGoal, onDeleteFocusEntry, onExport }) {
+export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, qaza = {}, prayerTimes = null, onSelectGoal, onDeleteFocusEntry, onExport }) {
   const [niyyahDrilldownOpen, setNiyyahDrilldownOpen] = useState(false);
   const [showAllSessions, setShowAllSessions] = useState(false);
   // ── prayer health (last 30 days) ──
@@ -54,10 +54,126 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
     const monthDays = new Date(year, mon, 0).getDate(); // last day of current month
     const monthMax = monthDays * FIVE.length;
     // Qaza ledger summary.
-    const qazaOwed = computeQazaOwed(prayerLog, qaza);
+    const qazaOwed = computeQazaOwed(prayerLog, qaza, prayerTimes);
     const totalOwed = QAZA_PRAYERS.reduce((s, p) => s + (qazaOwed[p] || 0), 0);
     const totalPaid = QAZA_PRAYERS.reduce((s, p) => s + (qaza?.paid?.[p] || 0), 0);
     return { DAYS, perPrayer, mostMissed, totalThisMonth, monthMax, totalOwed, totalPaid };
+  })();
+
+  // ── voluntary practice (Tahajjud and other nafl prayers tracked
+  //    in prayerLog). Reads the same 30-day window as Prayer Health but
+  //    stays in its own section because it isn't obligatory and shouldn't
+  //    skew prayer-completion rates. ──
+  const voluntary = (() => {
+    const DAYS = 30;
+    return VOLUNTARY_PRAYERS.map((p) => {
+      const log = prayerLog[p] || [];
+      let count = 0;
+      for (let i = 0; i < DAYS; i++) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        if (log.includes(localDateStr(d))) count++;
+      }
+      // Streak: consecutive days backwards from today.
+      let streak = 0;
+      const cur = new Date();
+      for (let i = 0; i < 400; i++) {
+        if (log.includes(localDateStr(cur))) streak++;
+        else if (i > 0) break;
+        cur.setDate(cur.getDate() - 1);
+      }
+      return { name: p, count, rate: count / DAYS, streak, days: DAYS };
+    });
+  })();
+
+  // ── qaza balance (per-prayer ledger). Outstanding = computeQazaOwed
+  //    (which already subtracts paid); Paid = raw paid count from the
+  //    ledger; Total missed = outstanding + paid (every paid was originally
+  //    a missed prayer). Sits below Prayer Health as a deeper drill-down. ──
+  const qazaBalance = (() => {
+    const owed = computeQazaOwed(prayerLog, qaza, prayerTimes);
+    const rows = QAZA_PRAYERS.map((p) => {
+      const o = owed[p] || 0;
+      const paid = qaza?.paid?.[p] || 0;
+      return { prayer: p, owed: o, paid, totalMissed: o + paid };
+    });
+    const totalOutstanding = rows.reduce((s, r) => s + r.owed, 0);
+    const totalPaid = rows.reduce((s, r) => s + r.paid, 0);
+    const totalMissed = rows.reduce((s, r) => s + r.totalMissed, 0);
+    return { rows, totalOutstanding, totalPaid, totalMissed, startDate: qaza?.startDate || null };
+  })();
+
+  // ── "This week" digest. Pinned to the top of the Stats view so the
+  //    "how am I doing" question is answered before any grid loads.
+  //    Compares the trailing 7 days against the 7 days before that and
+  //    picks 5-6 punchy facts — spiritual signals first, then focus,
+  //    then the top Mirror pattern when one exists. Cheap derivation,
+  //    no schema change. ──
+  const weekDigest = (() => {
+    const last7 = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      last7.push(localDateStr(d));
+    }
+    const prior7 = [];
+    for (let i = 13; i >= 7; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      prior7.push(localDateStr(d));
+    }
+
+    const FIVE = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
+    const prayerRateFor = (days) => {
+      let done = 0;
+      for (const d of days) for (const p of FIVE) if ((prayerLog[p] || []).includes(d)) done++;
+      return done / (days.length * FIVE.length);
+    };
+    const prayerThis = prayerRateFor(last7);
+    const prayerPrior = prayerRateFor(prior7);
+    const priorHasData = FIVE.some((p) => (prayerLog[p] || []).some((d) => prior7.includes(d)));
+
+    const missedCounts = FIVE.map((p) => ({ p, missed: last7.filter((d) => !(prayerLog[p] || []).includes(d)).length }))
+      .sort((a, b) => b.missed - a.missed);
+    const topMissed = missedCounts[0]?.missed > 0 ? missedCounts[0] : null;
+
+    const tahajjudThis = last7.filter((d) => (prayerLog.Tahajjud || []).includes(d)).length;
+    const tahajjudPrior = prior7.filter((d) => (prayerLog.Tahajjud || []).includes(d)).length;
+
+    const focusThis = focusLog.filter((l) => last7.includes(l.day)).reduce((s, l) => s + (l.mins || 0), 0);
+    const focusPrior = focusLog.filter((l) => prior7.includes(l.day)).reduce((s, l) => s + (l.mins || 0), 0);
+
+    // Top Mirror pattern in the trailing week, grouped by kind+label.
+    const patternMap = new Map();
+    for (const d of last7) {
+      const patterns = muhasaba[d]?.aiReport?.data?.patterns;
+      if (!Array.isArray(patterns)) continue;
+      for (const p of patterns) {
+        if (!p?.kind || !p?.label) continue;
+        const key = `${p.kind}|${p.label.toLowerCase()}`;
+        const prior = patternMap.get(key);
+        patternMap.set(key, { kind: p.kind, label: p.label, count: (prior?.count || 0) + 1 });
+      }
+    }
+    const topPattern = [...patternMap.values()].sort((a, b) => b.count - a.count)[0] || null;
+
+    // Niyyah this week (avg + direction vs prior week)
+    const niyyahFor = (days) => {
+      const ratings = days.map((d) => muhasaba[d]?.niyyahRating).filter(Boolean);
+      return ratings.length ? ratings.reduce((s, r) => s + r, 0) / ratings.length : null;
+    };
+    const niyyahThisAvg = niyyahFor(last7);
+    const niyyahPriorAvg = niyyahFor(prior7);
+
+    return {
+      prayer: { thisRate: prayerThis, priorRate: prayerPrior, priorHasData },
+      topMissed,
+      tahajjud: { thisCount: tahajjudThis, priorCount: tahajjudPrior },
+      focus: { thisMins: focusThis, priorMins: focusPrior },
+      niyyah: { thisAvg: niyyahThisAvg, priorAvg: niyyahPriorAvg },
+      topPattern,
+      range: { start: last7[0], end: last7[last7.length - 1] },
+    };
   })();
 
   // ── habit health (recurring tasks across all active goals) ──
@@ -274,8 +390,161 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
     return { DAYS, sparkW, sparkH, rows };
   })();
 
+  // Small format helpers for the digest rows. Centralised so arrow
+  // semantics stay consistent across rows.
+  const fmtPct = (r) => `${Math.round(r * 100)}%`;
+  const fmtPctDelta = (d) => `${d >= 0 ? "+" : ""}${Math.round(d * 100)}%`;
+  const fmtMinsDelta = (d) => `${d >= 0 ? "+" : "−"}${fmtMins(Math.abs(d))}`;
+  const fmtRange = (s, e) => {
+    const sd = new Date(`${s}T12:00:00Z`).toLocaleDateString("en", { month: "short", day: "numeric" });
+    const ed = new Date(`${e}T12:00:00Z`).toLocaleDateString("en", { month: "short", day: "numeric" });
+    return `${sd} – ${ed}`;
+  };
+
+  // direction: "up_good" | "down_good" | "down_bad" | "up_bad" | "neutral" | "missing"
+  const DigestRow = ({ icon, label, value, deltaLabel, direction, last }) => {
+    const good = direction === "up_good" || direction === "down_good";
+    const bad = direction === "down_bad" || direction === "up_bad";
+    const color = good ? "var(--color-text-success)" : bad ? "#BA7517" : "var(--color-text-tertiary)";
+    const arrow = direction === "up_good" || direction === "up_bad" ? "↑"
+      : direction === "down_good" || direction === "down_bad" ? "↓"
+      : direction === "missing" ? "" : "→";
+    return (
+      <div style={{
+        display: "flex", alignItems: "center", gap: 10,
+        padding: "10px 0",
+        borderBottom: last ? "none" : "0.5px dashed var(--color-border-tertiary)",
+      }}>
+        <span style={{ fontSize: 17, width: 24, textAlign: "center", flexShrink: 0 }}>{icon}</span>
+        <span style={{ flex: 1, fontSize: 13, color: "var(--color-text-secondary)" }}>{label}</span>
+        <span style={{ fontSize: 15, fontWeight: 600, color: "var(--color-text-primary)", whiteSpace: "nowrap" }}>{value}</span>
+        {deltaLabel && (
+          <span style={{ fontSize: 12, color, fontWeight: 600, minWidth: 70, textAlign: "right", whiteSpace: "nowrap" }}>
+            {arrow && <span style={{ marginRight: 4 }}>{arrow}</span>}{deltaLabel}
+          </span>
+        )}
+      </div>
+    );
+  };
+
+  // Build the digest rows. Each row decides its own direction so we don't
+  // hard-code which delta means "good" globally — Tahajjud up is good,
+  // missed prayers up is bad.
+  const digestRows = (() => {
+    const rows = [];
+    const w = weekDigest;
+
+    // Prayer rate
+    const dPrayer = w.prayer.thisRate - w.prayer.priorRate;
+    rows.push({
+      icon: "🕌",
+      label: "Prayer rate",
+      value: fmtPct(w.prayer.thisRate),
+      deltaLabel: w.prayer.priorHasData ? fmtPctDelta(dPrayer) : "no prior data",
+      direction: !w.prayer.priorHasData ? "missing"
+        : dPrayer > 0.02 ? "up_good"
+        : dPrayer < -0.02 ? "down_bad"
+        : "neutral",
+    });
+
+    // Top missed (only if any were missed)
+    if (w.topMissed) {
+      rows.push({
+        icon: "⚠",
+        label: "Most missed",
+        value: w.topMissed.p,
+        deltaLabel: `${w.topMissed.missed}/${7} days`,
+        direction: "down_bad",
+      });
+    }
+
+    // Tahajjud
+    const dTah = w.tahajjud.thisCount - w.tahajjud.priorCount;
+    if (w.tahajjud.thisCount > 0 || w.tahajjud.priorCount > 0) {
+      rows.push({
+        icon: "🌃",
+        label: "Tahajjud",
+        value: `${w.tahajjud.thisCount} / 7`,
+        deltaLabel: dTah === 0 ? "same" : `${dTah > 0 ? "+" : ""}${dTah}`,
+        direction: dTah > 0 ? "up_good" : dTah < 0 ? "down_bad" : "neutral",
+      });
+    }
+
+    // Niyyah
+    if (w.niyyah.thisAvg != null) {
+      const dN = w.niyyah.priorAvg != null ? w.niyyah.thisAvg - w.niyyah.priorAvg : null;
+      rows.push({
+        icon: "🪶",
+        label: "Niyyah avg",
+        value: w.niyyah.thisAvg.toFixed(1),
+        deltaLabel: dN == null ? "no prior data" : dN > 0.3 ? "rising" : dN < -0.3 ? "drifting" : "steady",
+        direction: dN == null ? "missing" : dN > 0.3 ? "up_good" : dN < -0.3 ? "down_bad" : "neutral",
+      });
+    }
+
+    // Focus
+    const dF = w.focus.thisMins - w.focus.priorMins;
+    if (w.focus.thisMins > 0 || w.focus.priorMins > 0) {
+      rows.push({
+        icon: "⏱",
+        label: "Focus",
+        value: fmtMins(w.focus.thisMins),
+        deltaLabel: w.focus.priorMins === 0 && w.focus.thisMins > 0 ? "new this week" : fmtMinsDelta(dF),
+        direction: dF > 5 ? "up_good" : dF < -5 ? "down_bad" : "neutral",
+      });
+    }
+
+    // Top mirror pattern this week
+    if (w.topPattern) {
+      const kindLabels = {
+        recurring_sin: "Recurring sin",
+        stalling_dua: "Stalling du'a",
+        niyyah_drift: "Niyyah drift",
+        momentum: "Momentum",
+        neglected_prayer: "Neglected prayer",
+        scripture_call: "Scripture",
+      };
+      rows.push({
+        icon: "🔁",
+        label: kindLabels[w.topPattern.kind] || w.topPattern.kind,
+        value: w.topPattern.label,
+        deltaLabel: `×${w.topPattern.count}`,
+        direction: w.topPattern.kind === "momentum" ? "up_good" : "down_bad",
+      });
+    }
+
+    return rows;
+  })();
+
   return (
     <div className="view-content">
+      {/* THIS WEEK — at-a-glance digest so the page answers "how am I
+          doing" in three seconds before any grid loads. Spiritual signals
+          first, focus + patterns after. Hidden only when the user has no
+          prayer/focus/muhasaba data at all (brand-new account). */}
+      {digestRows.length > 0 && (
+        <div style={{ ...S.goldCard, marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8, gap: 10, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase" }}>
+                This week
+              </div>
+              <div style={{ fontSize: 17, fontWeight: 600, color: "var(--color-text-primary)" }}>
+                Where you stand
+              </div>
+            </div>
+            <div style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>
+              {fmtRange(weekDigest.range.start, weekDigest.range.end)}
+            </div>
+          </div>
+          <div>
+            {digestRows.map((r, i) => (
+              <DigestRow key={i} {...r} last={i === digestRows.length - 1} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* PRAYER HEALTH — first section so the page reads as a spiritual
           dashboard, not a productivity tab. Per-prayer 30-day daily grid +
           completion rate + this-month total + qaza balance. */}
@@ -352,6 +621,116 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
           })()}
         </div>
       </div>
+
+      {/* QAZA BALANCE — per-prayer ledger. Sits right after Prayer Health
+          so the "how am I doing" question and "what's outstanding" question
+          are answered side-by-side. Hidden if the ledger is empty AND
+          nothing's been paid (fresh user has nothing to say here). */}
+      {(qazaBalance.totalMissed > 0 || qazaBalance.totalPaid > 0) && (
+        <div style={{ ...S.card, marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12, gap: 10, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 16, fontWeight: 500 }}>📿 Qaza balance</div>
+            <div style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>
+              {qazaBalance.startDate ? `since ${qazaBalance.startDate}` : "lifetime"}
+            </div>
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 320 }}>
+              <thead>
+                <tr>
+                  <th style={{ textAlign: "left", fontWeight: 400, color: "var(--color-text-tertiary)", paddingBottom: 8 }}>Prayer</th>
+                  <th style={{ textAlign: "right", fontWeight: 400, color: "var(--color-text-tertiary)", paddingBottom: 8, paddingLeft: 8 }}>Outstanding</th>
+                  <th style={{ textAlign: "right", fontWeight: 400, color: "var(--color-text-tertiary)", paddingBottom: 8, paddingLeft: 8 }}>Made up</th>
+                  <th style={{ textAlign: "right", fontWeight: 400, color: "var(--color-text-tertiary)", paddingBottom: 8, paddingLeft: 8 }}>Total missed</th>
+                </tr>
+              </thead>
+              <tbody>
+                {qazaBalance.rows.map((r) => {
+                  const color = PRAYER_COLORS[r.prayer];
+                  const clear = r.owed === 0;
+                  return (
+                    <tr key={r.prayer}>
+                      <td style={{ padding: "6px 0", color, fontWeight: 500 }}>
+                        <span style={{ marginRight: 6 }}>{PRAYER_ICONS[r.prayer]}</span>
+                        {r.prayer}
+                      </td>
+                      <td style={{ padding: "6px 0 6px 8px", textAlign: "right", fontWeight: 600, color: clear ? "var(--color-text-tertiary)" : "#BA7517" }}>
+                        {r.owed}
+                      </td>
+                      <td style={{ padding: "6px 0 6px 8px", textAlign: "right", color: r.paid > 0 ? "#1D9E75" : "var(--color-text-tertiary)" }}>
+                        {r.paid}
+                      </td>
+                      <td style={{ padding: "6px 0 6px 8px", textAlign: "right", color: "var(--color-text-secondary)" }}>
+                        {r.totalMissed}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr>
+                  <td style={{ paddingTop: 10, fontWeight: 500, borderTop: "0.5px solid var(--color-border-tertiary)" }}>Total</td>
+                  <td style={{ paddingTop: 10, paddingLeft: 8, textAlign: "right", fontWeight: 600, borderTop: "0.5px solid var(--color-border-tertiary)", color: qazaBalance.totalOutstanding > 0 ? "#BA7517" : "var(--color-text-success)" }}>
+                    {qazaBalance.totalOutstanding}
+                  </td>
+                  <td style={{ paddingTop: 10, paddingLeft: 8, textAlign: "right", fontWeight: 600, borderTop: "0.5px solid var(--color-border-tertiary)", color: "#1D9E75" }}>
+                    {qazaBalance.totalPaid}
+                  </td>
+                  <td style={{ paddingTop: 10, paddingLeft: 8, textAlign: "right", fontWeight: 600, borderTop: "0.5px solid var(--color-border-tertiary)", color: "var(--color-text-secondary)" }}>
+                    {qazaBalance.totalMissed}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+          <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginTop: 10, lineHeight: 1.5 }}>
+            Qaza is a lifetime ledger — nothing resets monthly. Use the <strong>+</strong> on the Prayer tab to log a makeup; tick the 7-day tracker if you actually prayed on time but forgot to mark it.
+          </div>
+        </div>
+      )}
+
+      {/* VOLUNTARY PRACTICE — Tahajjud and other nafl prayers. Hidden when
+          the user has no voluntary entries at all, to keep the page quiet
+          for someone not tracking nafl yet. */}
+      {voluntary.some((v) => v.count > 0 || v.streak > 0) && (
+        <div style={{ ...S.card, marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12, gap: 10, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 16, fontWeight: 500 }}>🌃 Voluntary practice</div>
+            <div style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>30-day window</div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+            {voluntary.map((v) => {
+              const color = PRAYER_COLORS[v.name] || "var(--gold)";
+              const ratePct = Math.round(v.rate * 100);
+              return (
+                <div key={v.name} style={{
+                  padding: "12px 14px",
+                  borderRadius: "var(--border-radius-md)",
+                  background: color + "0f",
+                  border: `0.5px solid ${color}44`,
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <span style={{ fontSize: 16 }}>{PRAYER_ICONS[v.name]}</span>
+                    <span style={{ fontSize: 14, fontWeight: 500, color }}>{v.name}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                    <div>
+                      <div style={{ fontSize: 22, fontWeight: 600, color, lineHeight: 1 }}>{ratePct}%</div>
+                      <div style={{ fontSize: 11, color: "var(--color-text-tertiary)", marginTop: 3 }}>{v.count} of {v.days} days</div>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <div style={{ fontSize: 16, fontWeight: 600, color: v.streak > 0 ? color : "var(--color-text-tertiary)" }}>
+                        {v.streak > 0 ? `🔥 ${v.streak}` : "—"}
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--color-text-tertiary)", marginTop: 3 }}>streak</div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* HABIT HEALTH — only renders when the user has at least one
           recurring task across all active goals. Sorted by longest streak
@@ -704,39 +1083,49 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
               const t = g?.tasks.find((x) => x.id === l.taskId);
               return (
                 <div key={l.id} style={{
-                  display: "flex", alignItems: "center", gap: 10,
                   padding: "8px 10px",
                   background: "var(--color-background-secondary)",
                   borderRadius: "var(--border-radius-md)",
                   fontSize: 14,
                 }}>
-                  <div style={{ width: 7, height: 7, borderRadius: "50%", background: g ? CAT_COLORS[g.category] : "#888", flexShrink: 0 }} />
-                  <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {t?.text || "General focus"}
-                    {g && <span style={{ color: "var(--color-text-tertiary)", marginLeft: 6 }}>· {g.title}</span>}
-                  </span>
-                  <span style={{ color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>
-                    {l.mins}m
-                  </span>
-                  <span style={{ color: "var(--color-text-tertiary)", fontSize: 12, whiteSpace: "nowrap" }}>
-                    {l.day} · {l.at}
-                  </span>
-                  {onDeleteFocusEntry && (
-                    <button
-                      onClick={() => onDeleteFocusEntry(l.id)}
-                      aria-label={`Delete ${l.mins}-minute session`}
-                      title="Delete this session"
-                      style={{
-                        fontSize: 13,
-                        padding: "3px 8px",
-                        background: "transparent",
-                        border: "0.5px solid var(--color-border-tertiary)",
-                        borderRadius: 6,
-                        color: "var(--color-text-tertiary)",
-                        cursor: "pointer",
-                      }}>
-                      ✕
-                    </button>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: g ? CAT_COLORS[g.category] : "#888", flexShrink: 0 }} />
+                    <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {t?.text || "General focus"}
+                      {g && <span style={{ color: "var(--color-text-tertiary)", marginLeft: 6 }}>· {g.title}</span>}
+                    </span>
+                    <span style={{ color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>
+                      {l.mins}m
+                    </span>
+                    <span style={{ color: "var(--color-text-tertiary)", fontSize: 12, whiteSpace: "nowrap" }}>
+                      {l.day} · {l.at}
+                    </span>
+                    {onDeleteFocusEntry && (
+                      <button
+                        onClick={() => onDeleteFocusEntry(l.id)}
+                        aria-label={`Delete ${l.mins}-minute session`}
+                        title="Delete this session"
+                        style={{
+                          fontSize: 13,
+                          padding: "3px 8px",
+                          background: "transparent",
+                          border: "0.5px solid var(--color-border-tertiary)",
+                          borderRadius: 6,
+                          color: "var(--color-text-tertiary)",
+                          cursor: "pointer",
+                        }}>
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                  {l.note && (
+                    <div style={{
+                      marginTop: 6, marginLeft: 17,
+                      fontSize: 13, color: "var(--color-text-secondary)",
+                      fontStyle: "italic", lineHeight: 1.45,
+                    }}>
+                      “{l.note}”
+                    </div>
                   )}
                 </div>
               );

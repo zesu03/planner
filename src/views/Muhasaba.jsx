@@ -1,6 +1,7 @@
 import { useState } from "react";
 import {
   PRAYERS,
+  VOLUNTARY_PRAYERS,
   PRAYER_ICONS,
   PRAYER_COLORS,
   SIN_TAGS,
@@ -267,6 +268,7 @@ export default function Muhasaba({
 
   // auto-fills for the selected day
   const dayPrayersDone = PRAYERS.filter((p) => (prayerLog[p] || []).includes(day));
+  const dayVoluntaryDone = VOLUNTARY_PRAYERS.filter((p) => (prayerLog[p] || []).includes(day));
   const dayFocusMins = focusLog.filter((l) => l.day === day).reduce((s, l) => s + (l.mins || 0), 0);
   const streak = muhasabaStreak(muhasaba);
 
@@ -482,7 +484,7 @@ export default function Muhasaba({
 
       {/* 1. Fara'id */}
       <Section n="1" title="Fara'id — Obligations" hint="The first thing accounted for on the Day of Judgement is the prayer." accent="#1D9E75">
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
           {PRAYERS.map((p) => {
             const done = dayPrayersDone.includes(p);
             const pColor = PRAYER_COLORS[p];
@@ -497,6 +499,32 @@ export default function Muhasaba({
               </span>
             );
           })}
+        </div>
+
+        {/* Voluntary night prayer (Tahajjud and any other nafl) — quiet
+            line below the fard pills, so the user sees their voluntary
+            effort alongside the obligations when reviewing the day. */}
+        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, marginBottom: 14, fontSize: 13 }}>
+          <span style={{ color: "var(--color-text-tertiary)", letterSpacing: "0.3px" }}>Voluntary:</span>
+          {VOLUNTARY_PRAYERS.map((p) => {
+            const done = dayVoluntaryDone.includes(p);
+            const pColor = PRAYER_COLORS[p] || "var(--gold)";
+            return (
+              <span key={p} style={{
+                ...S.pill(done ? pColor + "22" : "transparent", done ? pColor : "var(--color-text-tertiary)"),
+                border: `0.5px solid ${done ? pColor + "66" : "var(--color-border-tertiary)"}`,
+                display: "inline-flex", alignItems: "center", gap: 5,
+                opacity: done ? 1 : 0.7,
+              }}>
+                <span>{PRAYER_ICONS[p]}</span>{p}{done && <span> ✓</span>}
+              </span>
+            );
+          })}
+          {dayVoluntaryDone.length === 0 && (
+            <span style={{ color: "var(--color-text-tertiary)", fontStyle: "italic" }}>
+              none tonight — Tahajjud is in the last third of the night
+            </span>
+          )}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "end", marginBottom: 10 }}>
           <div>

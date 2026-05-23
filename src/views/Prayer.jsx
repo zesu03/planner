@@ -1,6 +1,7 @@
-import { PRAYERS, PRAYER_ICONS, PRAYER_COLORS } from "../lib/constants";
+import { PRAYERS, PRAYER_ICONS, PRAYER_COLORS, VOLUNTARY_PRAYERS } from "../lib/constants";
 import { localDateStr } from "../lib/dates";
 import { QAZA_PRAYERS } from "../lib/qaza";
+import { currentPrayerWindow } from "../lib/prayer";
 import { S } from "../lib/styles";
 
 // Prayer tab. All state-touching behaviour comes through props so this view
@@ -21,6 +22,7 @@ export default function Prayer({
   fetchPrayers,
   fetchByGeo,
   togglePrayerLog,
+  togglePrayerLogOnDay,
   prayerDoneToday,
   prayerStreak,
   qaza,
@@ -28,20 +30,10 @@ export default function Prayer({
   payOneQaza,
   undoOneQaza,
 }) {
-  // Identify the "current" prayer window — the latest prayer whose time has
-  // already arrived today. Used so the list can flag it visually (rather than
-  // burying it between two visually-identical rows).
-  let currentPrayerName = null;
-  if (prayerTimes) {
-    const now = new Date();
-    const nowMins = now.getHours() * 60 + now.getMinutes();
-    for (const p of ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"]) {
-      if (!prayerTimes[p]) continue;
-      const [h, m] = prayerTimes[p].split(":").map(Number);
-      if (h * 60 + m <= nowMins) currentPrayerName = p;
-      else break;
-    }
-  }
+  // The currently-active prayer window. Null between windows (e.g. between
+  // Sunrise and Dhuhr), so the "Now" badge doesn't cling to Fajr after its
+  // window has closed.
+  const currentPrayerName = currentPrayerWindow(prayerTimes);
   const totalOwed = qazaOwed ? QAZA_PRAYERS.reduce((s, p) => s + (qazaOwed[p] || 0), 0) : 0;
   const totalPaid = qaza?.paid ? QAZA_PRAYERS.reduce((s, p) => s + (qaza.paid[p] || 0), 0) : 0;
   return (
@@ -219,6 +211,85 @@ export default function Prayer({
             })}
           </div>
 
+          {/* Voluntary night prayer (Tahajjud). Nafl — never enters qaza
+              and never counts towards Prayer Health. Shows the start of the
+              last third of the night when available, plus a streak and a
+              7-day strip. Tap a cell to mark / unmark for that day. */}
+          {VOLUNTARY_PRAYERS.map((vp) => {
+            const color = PRAYER_COLORS[vp];
+            const streak = prayerStreak(vp);
+            const done = prayerDoneToday(vp);
+            const lastThird = prayerTimes?.Lastthird;
+            const days = Array.from({ length: 7 }).map((_, i) => {
+              const d = new Date();
+              d.setDate(d.getDate() - 6 + i);
+              return localDateStr(d);
+            });
+            const todayKey = localDateStr();
+            return (
+              <div key={vp} style={{ ...S.card, marginBottom: 20, position: "relative", overflow: "hidden" }}>
+                <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: color, opacity: done ? 1 : 0.55 }} />
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, gap: 10, flexWrap: "wrap", paddingLeft: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                    <span style={{
+                      fontSize: 18, width: 32, height: 32, borderRadius: 10,
+                      background: color + "22", display: "flex",
+                      alignItems: "center", justifyContent: "center", flexShrink: 0,
+                    }}>{PRAYER_ICONS[vp]}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 15, fontWeight: 500, color }}>Voluntary · {vp}</div>
+                      <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginTop: 2 }}>
+                        {lastThird ? `Best after ${lastThird} (last third of the night)` : "Pray in the last third of the night"}
+                        {streak > 0 ? ` · 🔥 ${streak} day streak` : ""}
+                      </div>
+                    </div>
+                  </div>
+                  <button onClick={() => togglePrayerLog(vp)}
+                    style={{
+                      fontSize: 14,
+                      padding: "5px 14px",
+                      borderRadius: 99,
+                      background: done ? color : "transparent",
+                      color: done ? "#fff" : "var(--color-text-secondary)",
+                      border: `0.5px solid ${done ? color : "var(--color-border-secondary)"}`,
+                      cursor: "pointer",
+                      fontWeight: done ? 600 : 400,
+                    }}>
+                    {done ? "✓ Prayed" : "Mark done"}
+                  </button>
+                </div>
+                <div style={{ display: "flex", gap: 4, paddingLeft: 8 }}>
+                  {days.map((d) => {
+                    const dDone = (prayerLog[vp] || []).includes(d);
+                    const isToday = d === todayKey;
+                    const title = dDone
+                      ? `${vp} prayed on ${d} — tap to unmark`
+                      : `Mark ${vp} as prayed on ${d}`;
+                    return (
+                      <button key={d}
+                        onClick={() => togglePrayerLogOnDay && togglePrayerLogOnDay(vp, d)}
+                        aria-label={title}
+                        title={title}
+                        style={{
+                          flex: 1,
+                          height: 22,
+                          padding: 0,
+                          borderRadius: 4,
+                          background: dDone ? color : "var(--color-background-secondary)",
+                          border: `0.5px solid ${dDone ? color : isToday ? "var(--color-border-secondary)" : "var(--color-border-tertiary)"}`,
+                          color: dDone ? "#fff" : "var(--color-text-tertiary)",
+                          fontSize: 11,
+                          cursor: "pointer",
+                        }}>
+                        {dDone ? "✓" : ""}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+
           {/* Qaza ledger — missed-prayer makeups owed. Counts past days
               from qaza.startDate up to yesterday; today is still in play
               so it isn't counted as missed yet. */}
@@ -232,7 +303,10 @@ export default function Prayer({
                 </div>
               </div>
               <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginBottom: 12 }}>
-                Tracking since {qaza?.startDate || "today"}. Tap + when you make one up.
+                Tracking since {qaza?.startDate || "today"}. Tap <strong>+</strong> when you make one up as qaza.
+                {totalOwed > 0 && (
+                  <> Prayed on time but forgot to mark it? Tick the missed day in the 7-day tracker below — it won't count as qaza.</>
+                )}
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
                 {QAZA_PRAYERS.map((p) => {
@@ -302,7 +376,10 @@ export default function Prayer({
 
           {/* 7-day tracker */}
           <div style={S.card}>
-            <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 12 }}>7-day tracker</div>
+            <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 4 }}>7-day tracker</div>
+            <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginBottom: 12 }}>
+              Tap any cell to mark / unmark — useful when you prayed but forgot to log it.
+            </div>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 340 }}>
                 <thead>
@@ -333,23 +410,33 @@ export default function Prayer({
                         <td style={{ paddingRight: 8, paddingBottom: 6, color: "var(--color-text-primary)", whiteSpace: "nowrap" }}>{p}</td>
                         {days.map((d) => {
                           const done = (prayerLog[p] || []).includes(d);
+                          const isToday = d === localDateStr();
+                          const title = done
+                            ? `Marked ${p} on ${d} — tap to unmark`
+                            : `Mark ${p} as prayed on ${d}`;
                           return (
                             <td key={d} style={{ textAlign: "center", paddingBottom: 6 }}>
-                              <div style={{
-                                width: 20,
-                                height: 20,
-                                borderRadius: 4,
-                                background: done ? "var(--gold)" : "var(--color-background-secondary)",
-                                border: `0.5px solid ${done ? "var(--gold)" : "var(--color-border-tertiary)"}`,
-                                margin: "0 auto",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                fontSize: 12,
-                                color: done ? "#fff" : "var(--color-text-tertiary)",
-                              }}>
+                              <button
+                                onClick={() => togglePrayerLogOnDay && togglePrayerLogOnDay(p, d)}
+                                aria-label={title}
+                                title={title}
+                                style={{
+                                  width: 24,
+                                  height: 24,
+                                  padding: 0,
+                                  borderRadius: 4,
+                                  background: done ? "var(--gold)" : "var(--color-background-secondary)",
+                                  border: `0.5px solid ${done ? "var(--gold)" : isToday ? "var(--color-border-secondary)" : "var(--color-border-tertiary)"}`,
+                                  margin: "0 auto",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  fontSize: 12,
+                                  color: done ? "#fff" : "var(--color-text-tertiary)",
+                                  cursor: "pointer",
+                                }}>
                                 {done ? "✓" : ""}
-                              </div>
+                              </button>
                             </td>
                           );
                         })}

@@ -1,14 +1,143 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { CAT_COLORS } from "../lib/constants";
 import { todayStr, addDays, localDateStr } from "../lib/dates";
 import { fmtTime, fmtMins, getFocusSeconds, focusStreakDays } from "../lib/focus";
 import { isGoalDone, pct, isRecurring, isScheduledOn, isDoneOn } from "../lib/goals";
 import { getAudioCtx } from "../lib/audio";
 import { goldA, S } from "../lib/styles";
+import { usePictureInPicture } from "../hooks/usePictureInPicture";
+import MiniTimer from "../components/MiniTimer";
 
 // Sum focusLog minutes for a YYYY-MM-DD key.
 function minsForDay(focusLog, dayKey) {
   return focusLog.reduce((s, l) => (l.day === dayKey ? s + (l.mins || 0) : s), 0);
+}
+
+// Session-complete celebration with a "What moved forward?" prompt. The
+// note saves on Enter or on blur (when non-empty), persists onto the
+// focusLog entry, and surfaces a brief "Saved ✓" confirmation. Owns its
+// own input state so dismissing the banner clears it cleanly.
+function SessionBanner({ lastSession, goals, dismissLastSession, updateLastSessionNote }) {
+  const [note, setNote] = useState("");
+  const [saved, setSaved] = useState(false);
+  const inputRef = useRef(null);
+  const sessionId = lastSession?.id;
+
+  // New session arriving (or banner dismissed-then-reopened) → reset.
+  useEffect(() => {
+    setNote("");
+    setSaved(false);
+    // Autofocus so the user can just start typing what they did.
+    if (sessionId && inputRef.current) inputRef.current.focus();
+  }, [sessionId]);
+
+  if (!lastSession) return null;
+  const goal = lastSession.goalId ? goals.find((g) => g.id === lastSession.goalId) : null;
+  const task = goal ? goal.tasks.find((t) => t.id === lastSession.taskId) : null;
+  const cat = goal ? CAT_COLORS[goal.category] : "var(--gold)";
+  const goalPct = goal && goal.tasks.length
+    ? Math.round(goal.tasks.filter((t) => t.done).length / goal.tasks.length * 100)
+    : null;
+  const eyebrow = lastSession.kind === "early" ? "Session ended" : "Session complete";
+
+  const commit = () => {
+    if (!updateLastSessionNote) return;
+    updateLastSessionNote(note);
+    setSaved(true);
+  };
+
+  return (
+    <div className="pop-in" style={{
+      position: "relative",
+      padding: "18px 20px",
+      borderRadius: "var(--border-radius-lg)",
+      background: `linear-gradient(135deg, ${goldA(18)} 0%, ${goldA(4)} 100%), var(--color-background-primary)`,
+      border: `0.5px solid ${goldA(45)}`,
+      marginBottom: 16,
+      overflow: "hidden",
+    }}>
+      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: "var(--gold)" }} />
+      <button onClick={dismissLastSession}
+        aria-label="Dismiss"
+        style={{
+          position: "absolute", top: 10, right: 10,
+          fontSize: 14, padding: "2px 8px",
+          background: "transparent",
+          border: "0.5px solid var(--color-border-tertiary)",
+          borderRadius: 99,
+          color: "var(--color-text-tertiary)",
+          cursor: "pointer", lineHeight: 1,
+        }}>
+        ✕
+      </button>
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        <span style={{
+          width: 46, height: 46, borderRadius: 12,
+          background: goldA(22),
+          border: `0.5px solid ${goldA(44)}`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: 22, flexShrink: 0,
+        }}>✨</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 700, letterSpacing: "0.6px", textTransform: "uppercase", marginBottom: 3 }}>
+            {eyebrow} · Alhamdulillah
+          </div>
+          <div style={{ fontSize: 17, fontWeight: 600, color: "var(--color-text-primary)", lineHeight: 1.3 }}>
+            {lastSession.mins} {lastSession.mins === 1 ? "minute" : "minutes"} for Allah
+          </div>
+          {(task || goal) && (
+            <div style={{ fontSize: 13, color: "var(--color-text-secondary)", marginTop: 4, lineHeight: 1.45 }}>
+              {task?.text || "General focus"}
+              {goal && (
+                <>
+                  <span style={{ color: "var(--color-text-tertiary)", margin: "0 6px" }}>→</span>
+                  <span style={{ color: cat, fontWeight: 500 }}>{goal.title}</span>
+                  {goalPct != null && (
+                    <span style={{ color: "var(--color-text-tertiary)", marginLeft: 6 }}>· {goalPct}%</span>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+          <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginTop: 6, fontStyle: "italic" }}>
+            "إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ" — actions are by intentions.
+          </div>
+        </div>
+      </div>
+
+      {/* What-moved-forward prompt. Honest journal beats raw minutes —
+          the note flows into Stats' Recent sessions and the AI Mirror,
+          so what you actually did becomes part of the reflection. */}
+      <div style={{ marginTop: 14, paddingTop: 14, borderTop: `0.5px dashed ${goldA(30)}` }}>
+        <label htmlFor="session-note-input"
+          style={{ display: "block", fontSize: 11, color: "var(--gold)", fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 6 }}>
+          What moved forward?
+        </label>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <input
+            id="session-note-input"
+            ref={inputRef}
+            type="text"
+            value={note}
+            onChange={(e) => { setNote(e.target.value); if (saved) setSaved(false); }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") { e.preventDefault(); commit(); }
+              else if (e.key === "Escape") dismissLastSession();
+            }}
+            onBlur={() => { if (note.trim() && !saved) commit(); }}
+            placeholder="e.g. drafted intro · fixed bug · distracted, slow"
+            style={{ flex: 1, fontSize: 14, padding: "8px 12px", boxSizing: "border-box" }}
+          />
+          {saved
+            ? <span style={{ fontSize: 12, color: "var(--color-text-success)", fontWeight: 600, whiteSpace: "nowrap" }}>Saved ✓</span>
+            : note.trim()
+              ? <button onClick={commit} className="btn-primary" style={{ padding: "6px 14px", fontSize: 13, whiteSpace: "nowrap" }}>Save</button>
+              : <span style={{ fontSize: 11, color: "var(--color-text-tertiary)", fontStyle: "italic", whiteSpace: "nowrap" }}>Optional</span>}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // Daily progress: today's mins toward the goal, yesterday's total, streak,
@@ -136,7 +265,7 @@ function DailyProgress({ focusLog, todayMins, yesterdayMins, streak, goalMins, o
       <div style={{ textAlign: "center", marginTop: 16, fontSize: 13, color: todayMins >= goalMins ? "var(--color-text-success)" : "var(--color-text-secondary)" }}>
         {todayMins >= goalMins
           ? `Goal reached · ${todayMins} minute${todayMins === 1 ? "" : "s"} today`
-          : `Today: ${todayMins} of ${goalMins} minutes`}
+          : `Today: ${todayMins} minute${todayMins === 1 ? "" : "s"} completed`}
       </div>
 
       {/* 7-day mini bar chart — last 7 days oldest→newest, today on the right.
@@ -215,9 +344,13 @@ export default function Pomodoro({
   updateDailyFocusGoal,
   lastSession,
   dismissLastSession,
+  updateLastSessionNote,
 }) {
   const [editingFocus, setEditingFocus] = useState(false);
   const [focusDraft, setFocusDraft] = useState(String(pomDurations.defaultFocus));
+  // Document Picture-in-Picture pop-out. Chromium-only; on Firefox/Safari
+  // `pip.supported` is false and the button shows a disabled tooltip.
+  const pip = usePictureInPicture({ width: 240, height: 290 });
 
   // Dial geometry.
   const DIAL = 280;
@@ -229,6 +362,11 @@ export default function Pomodoro({
   // timer is currently stopped. Idle = at full time, never started. Both
   // are "not running" but they need different visual signals.
   const paused = !pomRunning && prog > 0 && prog < 1;
+  // Elapsed seconds in this session. When paused we surface this in the
+  // dial center (Windows-stopwatch style — the captured time at pause)
+  // rather than the remaining countdown.
+  const elapsedSecs = Math.max(0, total - pomSeconds);
+  const dialSecs = paused ? elapsedSecs : pomSeconds;
 
   const activeGoal = pomGoalId ? goals.find((g) => g.id === pomGoalId) : null;
   const ringColor = activeGoal ? CAT_COLORS[activeGoal.category] : "var(--gold)";
@@ -282,84 +420,18 @@ export default function Pomodoro({
     setEditingFocus(false);
   };
 
-  // Session-complete celebration. Renders only when `lastSession` is set
-  // (cleared on new session or manual dismiss). Looks up the linked task +
-  // goal to show what the minutes moved forward; gracefully handles a
-  // general focus block with no task linkage.
-  const sessionBanner = (() => {
-    if (!lastSession) return null;
-    const goal = lastSession.goalId ? goals.find((g) => g.id === lastSession.goalId) : null;
-    const task = goal ? goal.tasks.find((t) => t.id === lastSession.taskId) : null;
-    const cat = goal ? CAT_COLORS[goal.category] : "var(--gold)";
-    const goalPct = goal && goal.tasks.length
-      ? Math.round(goal.tasks.filter((t) => t.done).length / goal.tasks.length * 100)
-      : null;
-    const eyebrow = lastSession.kind === "early" ? "Session ended" : "Session complete";
-    return (
-      <div className="pop-in" style={{
-        position: "relative",
-        padding: "18px 20px",
-        borderRadius: "var(--border-radius-lg)",
-        background: `linear-gradient(135deg, ${goldA(18)} 0%, ${goldA(4)} 100%), var(--color-background-primary)`,
-        border: `0.5px solid ${goldA(45)}`,
-        marginBottom: 16,
-        overflow: "hidden",
-      }}>
-        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: "var(--gold)" }} />
-        <button onClick={dismissLastSession}
-          aria-label="Dismiss"
-          style={{
-            position: "absolute", top: 10, right: 10,
-            fontSize: 14, padding: "2px 8px",
-            background: "transparent",
-            border: "0.5px solid var(--color-border-tertiary)",
-            borderRadius: 99,
-            color: "var(--color-text-tertiary)",
-            cursor: "pointer", lineHeight: 1,
-          }}>
-          ✕
-        </button>
-        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <span style={{
-            width: 46, height: 46, borderRadius: 12,
-            background: goldA(22),
-            border: `0.5px solid ${goldA(44)}`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 22, flexShrink: 0,
-          }}>✨</span>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 700, letterSpacing: "0.6px", textTransform: "uppercase", marginBottom: 3 }}>
-              {eyebrow} · Alhamdulillah
-            </div>
-            <div style={{ fontSize: 17, fontWeight: 600, color: "var(--color-text-primary)", lineHeight: 1.3 }}>
-              {lastSession.mins} {lastSession.mins === 1 ? "minute" : "minutes"} for Allah
-            </div>
-            {(task || goal) && (
-              <div style={{ fontSize: 13, color: "var(--color-text-secondary)", marginTop: 4, lineHeight: 1.45 }}>
-                {task?.text || "General focus"}
-                {goal && (
-                  <>
-                    <span style={{ color: "var(--color-text-tertiary)", margin: "0 6px" }}>→</span>
-                    <span style={{ color: cat, fontWeight: 500 }}>{goal.title}</span>
-                    {goalPct != null && (
-                      <span style={{ color: "var(--color-text-tertiary)", marginLeft: 6 }}>· {goalPct}%</span>
-                    )}
-                  </>
-                )}
-              </div>
-            )}
-            <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginTop: 6, fontStyle: "italic" }}>
-              "إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ" — actions are by intentions.
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  })();
+  // Session-complete celebration lives in <SessionBanner/> above — it owns
+  // the "What moved forward?" input state and writes the note back onto
+  // the focusLog entry. Pomodoro just supplies the data and callbacks.
 
   return (
     <div className="view-content">
-      {sessionBanner}
+      <SessionBanner
+        lastSession={lastSession}
+        goals={goals}
+        dismissLastSession={dismissLastSession}
+        updateLastSessionNote={updateLastSessionNote}
+      />
       <div style={{ ...S.goldCard, textAlign: "center", marginBottom: 16, padding: "14px 20px" }}>
         <div style={{ fontSize: 13, color: "var(--gold)", marginBottom: 4, fontWeight: 600, letterSpacing: "0.4px", textTransform: "uppercase" }}>
           Reminder
@@ -393,7 +465,9 @@ export default function Pomodoro({
             />
             <svg width={DIAL} height={DIAL} viewBox={`0 0 ${DIAL} ${DIAL}`}
               role="timer"
-              aria-label={`Focus timer ${paused ? "paused" : pomRunning ? "running" : "ready"}: ${fmtTime(pomSeconds)} remaining`}
+              aria-label={paused
+                ? `Focus timer paused: ${fmtTime(elapsedSecs)} elapsed, ${fmtTime(pomSeconds)} remaining`
+                : `Focus timer ${pomRunning ? "running" : "ready"}: ${fmtTime(pomSeconds)} remaining`}
               style={{ position: "relative" }}>
               <circle cx={DIAL / 2} cy={DIAL / 2} r={DIAL_R}
                 fill="none" stroke="var(--color-background-secondary)" strokeWidth="12" />
@@ -408,13 +482,13 @@ export default function Pomodoro({
                 opacity={paused ? 0.45 : 1}
                 style={{ transition: "stroke-dashoffset 0.5s, stroke 0.3s, opacity 0.3s" }} />
               <text x={DIAL / 2} y={DIAL / 2 - 6} textAnchor="middle"
-                opacity={paused ? 0.6 : 1}
-                style={{ fontSize: 52, fontWeight: 500, fill: "var(--color-text-primary)", fontFamily: "monospace", transition: "opacity 0.3s" }}>
-                {fmtTime(pomSeconds)}
+                opacity={paused ? 0.85 : 1}
+                style={{ fontSize: 52, fontWeight: 500, fill: paused ? "var(--gold)" : "var(--color-text-primary)", fontFamily: "monospace", transition: "opacity 0.3s, fill 0.3s" }}>
+                {fmtTime(dialSecs)}
               </text>
               <text x={DIAL / 2} y={DIAL / 2 + 26} textAnchor="middle"
                 style={{ fontSize: 14, fill: paused ? "var(--color-text-warning)" : "var(--color-text-secondary)", letterSpacing: "0.4px", textTransform: "uppercase", fontWeight: paused ? 600 : 400, transition: "fill 0.3s" }}>
-                {paused ? "paused" : "focus"}
+                {paused ? `paused · ${fmtTime(pomSeconds)} left` : "focus"}
               </text>
             </svg>
           </div>
@@ -577,7 +651,7 @@ export default function Pomodoro({
       {/* primary controls — full width below both blocks */}
       <div style={{ display: "flex", justifyContent: "center", gap: 10, marginBottom: 22, flexWrap: "wrap" }}>
         <button onClick={handleStart} className="btn-primary" style={{ padding: "11px 36px" }}>
-          {pomRunning ? "Pause" : "Bismillah — Start"}
+          {pomRunning ? "Pause" : paused ? "Resume" : "Bismillah — Start"}
         </button>
         <button
           onClick={resetTimer}
@@ -590,6 +664,15 @@ export default function Pomodoro({
             End focus
           </button>
         )}
+        <button
+          onClick={() => (pip.pipWindow ? pip.close() : pip.open())}
+          disabled={!pip.supported}
+          title={pip.supported
+            ? (pip.pipWindow ? "Close pop-out" : "Open a floating timer that stays on top")
+            : "Pop-out requires Chrome or Edge"}
+          style={{ fontSize: 16, padding: "9px 18px", opacity: pip.supported ? 1 : 0.5, cursor: pip.supported ? "pointer" : "not-allowed" }}>
+          {pip.pipWindow ? "Close pop-out" : "Pop out ⧉"}
+        </button>
       </div>
 
       {/* Up next */}
@@ -643,6 +726,20 @@ export default function Pomodoro({
             })}
           </div>
         </div>
+      )}
+
+      {/* PiP portal — only rendered when the pop-out window is open. The
+          portal lives in the parent React tree, so timer state updates
+          propagate automatically without any manual sync. */}
+      {pip.pipWindow && createPortal(
+        <MiniTimer
+          pomSeconds={pomSeconds}
+          pomRunning={pomRunning}
+          total={total}
+          ringColor={ringColor}
+          onToggle={handleStart}
+        />,
+        pip.pipWindow.document.body,
       )}
     </div>
   );
