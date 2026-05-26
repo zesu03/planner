@@ -167,23 +167,8 @@ function DailyProgress({ focusLog, todayMins, yesterdayMins, streak, goalMins, o
 
   return (
     <div style={{ ...S.card, display: "flex", flexDirection: "column", justifyContent: "center", ...style }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
+      <div style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-text-primary)" }}>Daily progress</div>
-        {!editing && (
-          <button onClick={() => { setDraft(String(goalMins)); setEditing(true); }}
-            title="Edit daily goal"
-            style={{
-              fontSize: 13,
-              padding: "4px 8px",
-              background: "transparent",
-              border: "0.5px solid var(--color-border-tertiary)",
-              borderRadius: 8,
-              cursor: "pointer",
-              color: "var(--color-text-secondary)",
-            }}>
-            ✎
-          </button>
-        )}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 14 }}>
@@ -216,36 +201,58 @@ function DailyProgress({ focusLog, todayMins, yesterdayMins, streak, goalMins, o
               Daily goal
             </div>
             {editing ? (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                <input
-                  type="number"
-                  min="1"
-                  max="720"
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") commit();
-                    else if (e.key === "Escape") setEditing(false);
-                  }}
-                  autoFocus
-                  style={{ width: 60, fontSize: 18, textAlign: "center", padding: "2px 4px" }}
-                />
-                <div style={{ display: "flex", gap: 4 }}>
-                  <button onClick={commit} className="btn-primary" style={{ padding: "4px 10px", fontSize: 12 }}>Save</button>
-                  <button onClick={() => setEditing(false)} style={{ padding: "4px 10px", fontSize: 12 }}>Cancel</button>
-                </div>
-                <div style={{ fontSize: 10, color: "var(--color-text-tertiary)" }}>minutes</div>
-              </div>
+              <input
+                type="number"
+                min="1"
+                max="720"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") commit();
+                  else if (e.key === "Escape") setEditing(false);
+                }}
+                onBlur={() => draft && commit()}
+                autoFocus
+                style={{
+                  width: 72,
+                  fontSize: 26,
+                  fontWeight: 500,
+                  color: "var(--gold)",
+                  textAlign: "center",
+                  padding: "0 4px",
+                  background: "transparent",
+                  border: "none",
+                  borderBottom: "2px solid var(--gold)",
+                  outline: "none",
+                  fontFamily: "inherit",
+                }}
+              />
             ) : (
-              <>
-                <div style={{ fontSize: 30, fontWeight: 500, color: "var(--gold)", lineHeight: 1 }}>
-                  {goalSplit.value}
-                </div>
-                <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginTop: 4 }}>
-                  {goalSplit.unit}
-                </div>
-              </>
+              <button
+                onClick={() => { setDraft(String(goalMins)); setEditing(true); }}
+                title="Click to set daily goal"
+                style={{
+                  fontSize: 30,
+                  fontWeight: 500,
+                  color: "var(--gold)",
+                  lineHeight: 1,
+                  background: "transparent",
+                  border: "none",
+                  padding: "0 2px",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                  borderBottom: "1px dashed transparent",
+                  transition: "border-color 0.15s",
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderBottomColor = goldA(50); }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderBottomColor = "transparent"; }}
+              >
+                {goalSplit.value}
+              </button>
             )}
+            <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginTop: 4 }}>
+              {editing ? "minutes" : goalSplit.unit}
+            </div>
           </div>
         </div>
 
@@ -261,6 +268,45 @@ function DailyProgress({ focusLog, todayMins, yesterdayMins, streak, goalMins, o
           </div>
         </div>
       </div>
+
+      {editing && (() => {
+        const GOAL_PRESETS = [30, 60, 90, 120, 240];
+        const apply = (m) => { onEditGoal(m); setEditing(false); };
+        return (
+          <div style={{ marginTop: 12, paddingTop: 10, borderTop: "0.5px dashed var(--color-border-tertiary)" }}>
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "center", alignItems: "center" }}>
+              <span style={{ fontSize: 11, color: "var(--color-text-tertiary)", letterSpacing: "0.4px", textTransform: "uppercase", marginRight: 4 }}>
+                quick set
+              </span>
+              {GOAL_PRESETS.map((m) => {
+                const active = m === goalMins;
+                const label = m >= 60 && m % 60 === 0 ? `${m / 60}h` : `${m}m`;
+                return (
+                  <button key={m} onClick={() => apply(m)}
+                    title={`${m} minutes daily goal`}
+                    style={{
+                      fontSize: 13,
+                      padding: "4px 10px",
+                      borderRadius: 99,
+                      background: active ? "var(--gold)" : "var(--color-background-secondary)",
+                      border: `0.5px solid ${active ? "var(--gold)" : "var(--color-border-tertiary)"}`,
+                      color: active ? "#fff" : "var(--color-text-primary)",
+                      cursor: "pointer",
+                      fontWeight: active ? 600 : 500,
+                    }}>
+                    {label}
+                  </button>
+                );
+              })}
+              <button onClick={() => setEditing(false)}
+                title="Close editor"
+                style={{ fontSize: 13, padding: "4px 10px", marginLeft: 4 }}>
+                Close
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       <div style={{ textAlign: "center", marginTop: 16, fontSize: 13, color: todayMins >= goalMins ? "var(--color-text-success)" : "var(--color-text-secondary)" }}>
         {todayMins >= goalMins
@@ -414,6 +460,24 @@ export default function Pomodoro({
     }
   };
 
+  // Keyboard shortcuts — Space toggles run/pause, Esc ends a session in
+  // progress. Suppressed while the user is typing in any input/textarea
+  // so the session-note field doesn't fight the shortcut.
+  useEffect(() => {
+    const onKey = (e) => {
+      const t = e.target;
+      if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.isContentEditable)) return;
+      if (e.key === " " || e.code === "Space") {
+        e.preventDefault();
+        handleStart();
+      } else if (e.key === "Escape") {
+        endFocusEarly();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [pomRunning, stopTimer, setPomRunning, endFocusEarly]);
+
   const commitFocusLength = () => {
     const v = Math.max(1, Number(focusDraft) || pomDurations.defaultFocus);
     updatePomDuration("defaultFocus", v);
@@ -445,103 +509,158 @@ export default function Pomodoro({
       <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 16, alignItems: "stretch" }}>
         {/* Focus block */}
         <div style={{ ...S.card, flex: "1 1 360px", display: "flex", flexDirection: "column", alignItems: "center", padding: "20px 16px" }}>
-          <div style={{ position: "relative", width: DIAL, height: DIAL, marginBottom: 4 }}>
-            <div
-              aria-hidden
-              className={pomRunning ? "dial-breath" : ""}
-              style={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                width: DIAL + 60,
-                height: DIAL + 60,
-                transform: "translate(-50%, -50%)",
-                borderRadius: "50%",
-                background: `radial-gradient(circle, ${goldA(18)} 0%, transparent 65%)`,
-                opacity: pomRunning ? 0.7 : 0.25,
-                pointerEvents: "none",
-                transition: "opacity 0.4s ease",
-              }}
-            />
-            <svg width={DIAL} height={DIAL} viewBox={`0 0 ${DIAL} ${DIAL}`}
-              role="timer"
-              aria-label={paused
-                ? `Focus timer paused: ${fmtTime(elapsedSecs)} elapsed, ${fmtTime(pomSeconds)} remaining`
-                : `Focus timer ${pomRunning ? "running" : "ready"}: ${fmtTime(pomSeconds)} remaining`}
-              style={{ position: "relative" }}>
-              <circle cx={DIAL / 2} cy={DIAL / 2} r={DIAL_R}
-                fill="none" stroke="var(--color-background-secondary)" strokeWidth="12" />
-              <circle cx={DIAL / 2} cy={DIAL / 2} r={DIAL_R}
-                fill="none"
-                stroke={ringColor}
-                strokeWidth="12"
-                strokeDasharray={DIAL_C}
-                strokeDashoffset={DIAL_C * (1 - prog)}
-                strokeLinecap="round"
-                transform={`rotate(-90 ${DIAL / 2} ${DIAL / 2})`}
-                opacity={paused ? 0.45 : 1}
-                style={{ transition: "stroke-dashoffset 0.5s, stroke 0.3s, opacity 0.3s" }} />
-              <text x={DIAL / 2} y={DIAL / 2 - 6} textAnchor="middle"
-                opacity={paused ? 0.85 : 1}
-                style={{ fontSize: 52, fontWeight: 500, fill: paused ? "var(--gold)" : "var(--color-text-primary)", fontFamily: "monospace", transition: "opacity 0.3s, fill 0.3s" }}>
-                {fmtTime(dialSecs)}
-              </text>
-              <text x={DIAL / 2} y={DIAL / 2 + 26} textAnchor="middle"
-                style={{ fontSize: 14, fill: paused ? "var(--color-text-warning)" : "var(--color-text-secondary)", letterSpacing: "0.4px", textTransform: "uppercase", fontWeight: paused ? 600 : 400, transition: "fill 0.3s" }}>
-                {paused ? `paused · ${fmtTime(pomSeconds)} left` : "focus"}
-              </text>
-            </svg>
-          </div>
-
-          {/* Inline focus-length editor — only when no task is linked. With a
-              task linked, the task's ETA drives the dial and this is hidden. */}
-          {!pomTaskId && (
-            <div style={{ marginTop: 6, marginBottom: 14, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
-              <span style={{ fontSize: 12, color: "var(--color-text-tertiary)", letterSpacing: "0.4px", textTransform: "uppercase" }}>
-                Focus length
-              </span>
-              {editingFocus ? (
-                <>
-                  <input
-                    type="number"
-                    min="1"
-                    value={focusDraft}
-                    onChange={(e) => setFocusDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") commitFocusLength();
-                      else if (e.key === "Escape") setEditingFocus(false);
-                    }}
-                    autoFocus
-                    style={{ width: 64, fontSize: 14, padding: "4px 8px", textAlign: "center" }}
-                  />
-                  <span style={{ fontSize: 13, color: "var(--color-text-tertiary)" }}>min</span>
-                  <button onClick={commitFocusLength} className="btn-primary" style={{ padding: "4px 10px", fontSize: 12 }}>
-                    Save
-                  </button>
-                  <button onClick={() => setEditingFocus(false)} style={{ padding: "4px 10px", fontSize: 12 }}>
-                    Cancel
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => { setFocusDraft(String(pomDurations.defaultFocus)); setEditingFocus(true); }}
-                  disabled={pomRunning}
-                  title={pomRunning ? "Pause to change focus length" : "Click to change"}
+          {(() => {
+            // Dial is directly click-to-edit when idle and no task is linked.
+            // Running / paused / linked-task states show the live countdown
+            // (or elapsed when paused) instead — editing those would be
+            // surprising mid-session.
+            const canEditDial = !pomRunning && !paused && !pomTaskId;
+            const enterDialEdit = () => {
+              if (!canEditDial) return;
+              setFocusDraft(String(pomDurations.defaultFocus));
+              setEditingFocus(true);
+            };
+            return (
+              <div style={{ position: "relative", width: DIAL, height: DIAL, marginBottom: 4 }}>
+                <div
+                  aria-hidden
+                  className={pomRunning ? "dial-breath" : ""}
                   style={{
-                    fontSize: 14,
-                    padding: "4px 12px",
-                    borderRadius: 99,
-                    background: "var(--color-background-secondary)",
-                    border: "0.5px solid var(--color-border-tertiary)",
-                    color: pomRunning ? "var(--color-text-tertiary)" : "var(--color-text-primary)",
-                    cursor: pomRunning ? "not-allowed" : "pointer",
-                    fontWeight: 500,
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    width: DIAL + 60,
+                    height: DIAL + 60,
+                    transform: "translate(-50%, -50%)",
+                    borderRadius: "50%",
+                    background: `radial-gradient(circle, ${goldA(18)} 0%, transparent 65%)`,
+                    opacity: pomRunning ? 0.7 : 0.25,
+                    pointerEvents: "none",
+                    transition: "opacity 0.4s ease",
+                  }}
+                />
+                <svg width={DIAL} height={DIAL} viewBox={`0 0 ${DIAL} ${DIAL}`}
+                  role="timer"
+                  aria-label={paused
+                    ? `Focus timer paused: ${fmtTime(elapsedSecs)} elapsed, ${fmtTime(pomSeconds)} remaining`
+                    : `Focus timer ${pomRunning ? "running" : "ready"}: ${fmtTime(pomSeconds)} remaining`}
+                  style={{ position: "relative" }}>
+                  <circle cx={DIAL / 2} cy={DIAL / 2} r={DIAL_R}
+                    fill="none" stroke="var(--color-background-secondary)" strokeWidth="12" />
+                  <circle cx={DIAL / 2} cy={DIAL / 2} r={DIAL_R}
+                    fill="none"
+                    stroke={ringColor}
+                    strokeWidth="12"
+                    strokeDasharray={DIAL_C}
+                    strokeDashoffset={DIAL_C * (1 - prog)}
+                    strokeLinecap="round"
+                    transform={`rotate(-90 ${DIAL / 2} ${DIAL / 2})`}
+                    opacity={paused ? 0.45 : 1}
+                    style={{ transition: "stroke-dashoffset 0.5s, stroke 0.3s, opacity 0.3s" }} />
+                  {!editingFocus && (
+                    <text x={DIAL / 2} y={DIAL / 2 - 6} textAnchor="middle"
+                      onClick={canEditDial ? enterDialEdit : undefined}
+                      opacity={paused ? 0.85 : 1}
+                      style={{
+                        fontSize: 52, fontWeight: 500,
+                        fill: paused ? "var(--gold)" : "var(--color-text-primary)",
+                        fontFamily: "monospace",
+                        transition: "opacity 0.3s, fill 0.3s",
+                        cursor: canEditDial ? "pointer" : "default",
+                      }}>
+                      {fmtTime(dialSecs)}
+                    </text>
+                  )}
+                  <text x={DIAL / 2} y={DIAL / 2 + 26} textAnchor="middle"
+                    onClick={canEditDial && !editingFocus ? enterDialEdit : undefined}
+                    style={{
+                      fontSize: 14,
+                      fill: paused ? "var(--color-text-warning)" : "var(--color-text-secondary)",
+                      letterSpacing: "0.4px",
+                      textTransform: "uppercase",
+                      fontWeight: paused ? 600 : 400,
+                      transition: "fill 0.3s",
+                      cursor: canEditDial && !editingFocus ? "pointer" : "default",
+                    }}>
+                    {editingFocus ? "set length" : paused ? `paused · ${fmtTime(pomSeconds)} left` : canEditDial ? "focus · tap to edit" : "focus"}
+                  </text>
+                </svg>
+                {editingFocus && (
+                  <div style={{
+                    position: "absolute", top: "50%", left: "50%",
+                    transform: "translate(-50%, -75%)",
+                    display: "flex", alignItems: "center", gap: 4,
                   }}>
-                  {pomDurations.defaultFocus} min ✎
-                </button>
-              )}
-            </div>
-          )}
+                    <input
+                      type="number"
+                      min="1"
+                      value={focusDraft}
+                      onChange={(e) => setFocusDraft(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") commitFocusLength();
+                        else if (e.key === "Escape") setEditingFocus(false);
+                      }}
+                      onBlur={() => focusDraft && commitFocusLength()}
+                      autoFocus
+                      style={{
+                        width: 90,
+                        fontSize: 44,
+                        fontWeight: 500,
+                        textAlign: "center",
+                        padding: "2px 4px",
+                        fontFamily: "monospace",
+                        background: "transparent",
+                        color: "var(--color-text-primary)",
+                        border: "none",
+                        borderBottom: `2px solid ${goldA(60)}`,
+                        outline: "none",
+                      }}
+                    />
+                    <span style={{ fontSize: 18, color: "var(--color-text-tertiary)", fontFamily: "monospace" }}>m</span>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Focus-length presets — only when no task is linked. With a task
+              linked, the task's ETA drives the dial and this is hidden.
+              The dial center itself is click-to-edit for custom values, so
+              there's no separate Custom / pen button here. */}
+          {!pomTaskId && (() => {
+            const FOCUS_PRESETS = [25, 45, 60, 90];
+            const cur = pomDurations.defaultFocus;
+            return (
+              <div style={{ marginTop: 6, marginBottom: 14, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
+                <span style={{ fontSize: 12, color: "var(--color-text-tertiary)", letterSpacing: "0.4px", textTransform: "uppercase" }}>
+                  Focus length
+                </span>
+                <div style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "center" }}>
+                  {FOCUS_PRESETS.map((m) => {
+                    const active = m === cur;
+                    return (
+                      <button key={m}
+                        onClick={() => !pomRunning && updatePomDuration("defaultFocus", m)}
+                        disabled={pomRunning}
+                        title={pomRunning ? "Pause to change focus length" : `Set focus to ${m} minutes`}
+                        style={{
+                          fontSize: 13,
+                          padding: "4px 10px",
+                          borderRadius: 99,
+                          background: active ? goldA(22) : "var(--color-background-secondary)",
+                          border: `0.5px solid ${active ? goldA(60) : "var(--color-border-tertiary)"}`,
+                          color: active ? "var(--gold)" : pomRunning ? "var(--color-text-tertiary)" : "var(--color-text-primary)",
+                          cursor: pomRunning ? "not-allowed" : "pointer",
+                          fontWeight: active ? 600 : 500,
+                        }}>
+                        {m}m
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Working on (task linked) — shows the parent goal's progress
               and total focus logged to it, so each session feels like
@@ -659,7 +778,7 @@ export default function Pomodoro({
           style={{ fontSize: 16, padding: "9px 18px" }}>
           Reset
         </button>
-        {pomRunning && (
+        {(pomRunning || paused) && (
           <button onClick={endFocusEarly} style={{ fontSize: 16, padding: "9px 18px" }}>
             End focus
           </button>

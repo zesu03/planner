@@ -8,6 +8,44 @@ import { goldA, S } from "../lib/styles";
 import EmptyState from "../components/EmptyState";
 import Modal from "../components/Modal";
 
+// Collapsible card for the long-tail productivity sections. Renders a
+// click-anywhere header with a chevron + optional right-side metric, and
+// shows children only when open. Defaults to closed so the page opens
+// quietly — the user expands what they want to drill into. The spiritual
+// cards above (Prayer / Qaza / Voluntary / Habits / Patterns) stay
+// always-visible because they're the page's identity.
+function CollapsibleSection({ title, icon, right, defaultOpen = false, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div style={{ ...S.card, marginBottom: 16, padding: open ? undefined : "12px 14px" }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          gap: 10, width: "100%",
+          background: "transparent", border: "none", padding: 0,
+          cursor: "pointer", textAlign: "left",
+          color: "var(--color-text-primary)",
+        }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 16, fontWeight: 500 }}>
+          <span style={{
+            display: "inline-block", width: 12, color: "var(--color-text-tertiary)",
+            transition: "transform 0.2s",
+            transform: open ? "rotate(90deg)" : "rotate(0deg)",
+          }}>›</span>
+          {icon && <span>{icon}</span>}
+          {title}
+        </span>
+        {right && (
+          <span style={{ fontSize: 12, color: "var(--color-text-tertiary)", fontWeight: 400 }}>{right}</span>
+        )}
+      </button>
+      {open && <div style={{ marginTop: 14 }}>{children}</div>}
+    </div>
+  );
+}
+
 // Pure presentation. Reads goals + focusLog + muhasaba + prayerLog + qaza,
 // derives every metric inline. The two top sections — Prayer Health and
 // Habit Health — set the page's identity as a spiritual dashboard before
@@ -16,9 +54,11 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
   const [niyyahDrilldownOpen, setNiyyahDrilldownOpen] = useState(false);
   const [showAllSessions, setShowAllSessions] = useState(false);
   // ── prayer health (last 30 days) ──
-  // Five obligatory prayers as a 30-cell daily grid each, plus the rates,
-  // most-missed prayer, this-month total, and qaza balance from the ledger.
-  // Sunrise excluded — it's a time marker, not a prayer to complete.
+  // Five obligatory prayers as a 30-cell daily grid each plus per-prayer
+  // completion rate. Sunrise excluded — it's a time marker, not a prayer
+  // to complete. Aggregate totals (this-month, most-missed, qaza balance)
+  // are surfaced elsewhere — Week digest at the top, Qaza Balance card —
+  // so they no longer need to be computed here.
   const prayerHealth = (() => {
     const DAYS = 30;
     const FIVE = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
@@ -35,29 +75,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
       const rate = doneCount / DAYS;
       return { name: p, series, doneCount, rate };
     });
-    // Most-missed is only meaningful when there's data to compare. Fresh
-    // user (all rates = 0): nothing's been tracked, not "missed." Perfect
-    // user (all rates = 1): nothing is "most missed." Both cases → null,
-    // which the UI renders as "—".
-    const totalDone = perPrayer.reduce((s, p) => s + p.doneCount, 0);
-    const allPerfect = perPrayer.every((p) => p.rate === 1);
-    const mostMissed = totalDone === 0 || allPerfect
-      ? null
-      : [...perPrayer].sort((a, b) => a.rate - b.rate)[0];
-    // Total prayed in the current calendar month (today's local YYYY-MM).
-    const today = todayStr();
-    const currentMonth = today.slice(0, 7);
-    const totalThisMonth = FIVE.reduce((sum, p) => {
-      return sum + (prayerLog[p] || []).filter((d) => d.startsWith(currentMonth)).length;
-    }, 0);
-    const [year, mon] = today.split("-").map(Number);
-    const monthDays = new Date(year, mon, 0).getDate(); // last day of current month
-    const monthMax = monthDays * FIVE.length;
-    // Qaza ledger summary.
-    const qazaOwed = computeQazaOwed(prayerLog, qaza, prayerTimes);
-    const totalOwed = QAZA_PRAYERS.reduce((s, p) => s + (qazaOwed[p] || 0), 0);
-    const totalPaid = QAZA_PRAYERS.reduce((s, p) => s + (qaza?.paid?.[p] || 0), 0);
-    return { DAYS, perPrayer, mostMissed, totalThisMonth, monthMax, totalOwed, totalPaid };
+    return { DAYS, perPrayer };
   })();
 
   // ── voluntary practice (Tahajjud and other nafl prayers tracked
@@ -203,8 +221,9 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
   })();
 
   // ── derived metrics ──
-  const totalFocusMins = focusLog.reduce((s, l) => s + (l.mins || 0), 0);
-  const avgFocusMins = focusLog.length ? Math.round(totalFocusMins / focusLog.length) : 0;
+  // (Productivity Overview tiles — Total focus / Sessions / Avg / Top task —
+  // were removed during the declutter pass; the heatmap, top-focus-tasks
+  // section, and Recent sessions already convey the same information.)
   const focusByTask = focusLog.reduce((acc, l) => {
     const g = goals.find((x) => x.id === l.goalId);
     const t = g?.tasks.find((x) => x.id === l.taskId);
@@ -213,14 +232,6 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
     return acc;
   }, {});
   const topFocusTasks = Object.entries(focusByTask).sort((a, b) => b[1] - a[1]).slice(0, 5);
-
-  // ── overview tiles ──
-  const overviewTiles = [
-    { label: "Total focus", value: `${totalFocusMins} min`, color: "var(--gold)" },
-    { label: "Sessions", value: focusLog.length, color: "#D88E4A" },
-    { label: "Avg session", value: `${avgFocusMins} min`, color: "#1D9E75" },
-    { label: "Top task", value: topFocusTasks[0]?.[0] || "—", color: "#7F77DD" },
-  ];
 
   // ── 12-week heatmap ──
   const heatmap = (() => {
@@ -593,33 +604,6 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
           })}
         </div>
 
-        {/* Summary tiles — this-month total, most-missed, qaza balance. */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10, marginTop: 16 }}>
-          {(() => {
-            const tiles = [
-              { label: "This month",  value: `${prayerHealth.totalThisMonth} / ${prayerHealth.monthMax}`, color: "var(--gold)" },
-              { label: "Most missed", value: prayerHealth.mostMissed?.name || "—", color: PRAYER_COLORS[prayerHealth.mostMissed?.name] || "#888" },
-              { label: "Qaza owed",   value: prayerHealth.totalOwed,    color: prayerHealth.totalOwed > 0 ? "#BA7517" : "var(--color-text-success)" },
-              { label: "Qaza paid",   value: prayerHealth.totalPaid,    color: "#1D9E75" },
-            ];
-            return tiles.map((t) => {
-              const isVar = String(t.color).startsWith("var(");
-              const tint = isVar ? goldA(12) : t.color + "1f";
-              const border = isVar ? goldA(28) : t.color + "44";
-              return (
-                <div key={t.label} style={{
-                  background: tint,
-                  borderRadius: "var(--border-radius-md)",
-                  padding: "10px 12px",
-                  border: `0.5px solid ${border}`,
-                }}>
-                  <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginBottom: 4 }}>{t.label}</div>
-                  <div style={{ fontSize: 17, fontWeight: 500, color: t.color, lineHeight: 1.2 }}>{t.value}</div>
-                </div>
-              );
-            });
-          })()}
-        </div>
       </div>
 
       {/* QAZA BALANCE — per-prayer ledger. Sits right after Prayer Health
@@ -798,163 +782,9 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
         </div>
       )}
 
-      {/* Productivity overview */}
-      <div style={{ ...S.card, marginBottom: 16 }}>
-        <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 10 }}>Productivity overview</div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 10 }}>
-          {overviewTiles.map((t) => {
-            const isVar = t.color.startsWith("var(");
-            const tint = isVar ? goldA(12) : t.color + "1f";
-            const border = isVar ? goldA(28) : t.color + "44";
-            return (
-              <div key={t.label}
-                style={{
-                  background: tint,
-                  borderRadius: "var(--border-radius-md)",
-                  padding: "10px 12px",
-                  border: `0.5px solid ${border}`,
-                }}>
-                <div style={{ fontSize: 13, color: "var(--color-text-secondary)", marginBottom: 4 }}>{t.label}</div>
-                <div style={{ fontSize: 18, fontWeight: 500, color: t.color }}>{t.value}</div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Focus heatmap */}
-      <div style={{ ...S.card, marginBottom: 16, overflowX: "auto" }}>
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10, gap: 10, flexWrap: "wrap" }}>
-          <div style={{ fontSize: 16, fontWeight: 500 }}>Focus heatmap</div>
-          <div style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>
-            {heatmap.totalDays} active day{heatmap.totalDays === 1 ? "" : "s"} · last {heatmap.weeks} weeks
-          </div>
-        </div>
-        <svg width={heatmap.width} height={heatmap.height + 18} style={{ display: "block" }}>
-          {heatmap.monthLabels.map(({ col, label }) => (
-            <text key={col} x={col * (heatmap.cellSize + heatmap.gap)} y={9} fontSize="10" fill="var(--color-text-tertiary)" fontFamily="inherit">
-              {label}
-            </text>
-          ))}
-          {heatmap.cells.map((c) => {
-            const a = heatmap.intensity(c.mins);
-            return (
-              <rect key={c.day}
-                x={c.col * (heatmap.cellSize + heatmap.gap)}
-                y={18 + c.row * (heatmap.cellSize + heatmap.gap)}
-                width={heatmap.cellSize}
-                height={heatmap.cellSize}
-                rx={3}
-                fill={a === 0 ? "var(--color-background-secondary)" : "var(--gold)"}
-                fillOpacity={a === 0 ? 1 : a}>
-                <title>{c.day} · {c.mins}m</title>
-              </rect>
-            );
-          })}
-        </svg>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, fontSize: 11, color: "var(--color-text-tertiary)" }}>
-          Less
-          {[0, 0.22, 0.4, 0.6, 0.8, 1].map((a) => (
-            <div key={a} style={{ width: 11, height: 11, borderRadius: 2, background: a === 0 ? "var(--color-background-secondary)" : "var(--gold)", opacity: a === 0 ? 1 : a }} />
-          ))}
-          More
-        </div>
-      </div>
-
-      {/* Niyyah trend */}
-      {niyyahTrend && (
-        <div
-          onClick={() => setNiyyahDrilldownOpen(true)}
-          className="tile-hover"
-          role="button"
-          tabIndex={0}
-          aria-label="Open niyyah trend details"
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setNiyyahDrilldownOpen(true); } }}
-          style={{ ...S.card, marginBottom: 16, cursor: "pointer" }}>
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12, gap: 10, flexWrap: "wrap" }}>
-            <div style={{ fontSize: 16, fontWeight: 500 }}>Niyyah trend</div>
-            <div style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>
-              {niyyahTrend.filledCount} entries · last {niyyahTrend.days} days · avg {niyyahTrend.avg.toFixed(1)}/5
-            </div>
-          </div>
-          <svg width="100%" height={niyyahTrend.sparkH + 24} viewBox={`0 0 ${niyyahTrend.sparkW} ${niyyahTrend.sparkH + 24}`} preserveAspectRatio="none" style={{ display: "block" }}>
-            {/* baseline rules at 1, 3, 5 */}
-            {[0, niyyahTrend.sparkH / 2, niyyahTrend.sparkH].map((y, i) => (
-              <line key={i} x1={0} x2={niyyahTrend.sparkW} y1={y} y2={y} stroke="var(--color-background-secondary)" strokeWidth="1" />
-            ))}
-            {/* trend line(s) */}
-            {niyyahTrend.segments.map((seg, i) => (
-              <polyline key={i} points={seg} fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-            ))}
-            {/* dots */}
-            {niyyahTrend.points.map((p, i) => {
-              if (!p.rating) return null;
-              const x = (i / (niyyahTrend.days - 1)) * niyyahTrend.sparkW;
-              const y = niyyahTrend.sparkH - ((p.rating - 1) / 4) * niyyahTrend.sparkH;
-              return <circle key={p.day} cx={x} cy={y} r="2.5" fill="var(--gold)"><title>{p.day} · {p.rating}/5</title></circle>;
-            })}
-            {/* axis labels */}
-            <text x={2} y={10} fontSize="9" fill="var(--color-text-tertiary)" fontFamily="inherit">5</text>
-            <text x={2} y={niyyahTrend.sparkH + 4} fontSize="9" fill="var(--color-text-tertiary)" fontFamily="inherit">1</text>
-          </svg>
-          {niyyahTrend.direction && (
-            <div style={{ fontSize: 13, color: niyyahTrend.direction.color, marginTop: 8, fontStyle: "italic" }}>
-              Recent week is <span style={{ fontWeight: 600 }}>{niyyahTrend.direction.word}</span> compared to the previous week.
-            </div>
-          )}
-          <div style={{ fontSize: 12, color: "var(--gold)", marginTop: 6, fontWeight: 500 }}>
-            View entries ›
-          </div>
-        </div>
-      )}
-
-      {/* Drill-down: list of recent muhasaba entries that produced the trend. */}
-      <Modal open={niyyahDrilldownOpen} onClose={() => setNiyyahDrilldownOpen(false)} title="Niyyah trend · entries">
-        {(() => {
-          const rows = niyyahTrend
-            ? niyyahTrend.points.filter((p) => p.rating).slice().reverse() // newest first
-            : [];
-          if (rows.length === 0) {
-            return <EmptyState icon="🪞" title="No rated entries yet" hint="Rate your niyyah at the bottom of any muhasaba entry." padY={16} />;
-          }
-          return (
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {rows.map((p) => {
-                const entry = muhasaba[p.day] || {};
-                return (
-                  <div key={p.day} style={{
-                    padding: "10px 12px",
-                    background: "var(--color-background-secondary)",
-                    borderRadius: "var(--border-radius-md)",
-                  }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: entry.bestDeed ? 6 : 0 }}>
-                      <div style={{ fontSize: 13, color: "var(--color-text-secondary)", fontWeight: 500 }}>
-                        {fmt(p.day)}
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ display: "inline-flex", gap: 1 }}>
-                          {[1, 2, 3, 4, 5].map((n) => (
-                            <span key={n} style={{ color: n <= p.rating ? "var(--gold)" : "var(--color-border-tertiary)", fontSize: 14 }}>★</span>
-                          ))}
-                        </span>
-                        <span style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>{NIYYAH_LABELS[p.rating]}</span>
-                      </div>
-                    </div>
-                    {entry.bestDeed && (
-                      <div style={{ fontSize: 13, color: "var(--color-text-primary)", lineHeight: 1.5 }}>
-                        <span style={{ color: "var(--color-text-tertiary)", marginRight: 6 }}>Best deed:</span>
-                        {entry.bestDeed}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          );
-        })()}
-      </Modal>
-
-      {/* Patterns from the Mirror — aggregated across recent AI reports */}
+      {/* PATTERNS FROM THE MIRROR — high-signal AI output. Moved up here
+          (was at the bottom) so the page lands on spiritual signals before
+          dropping into productivity history. Stays expanded always. */}
       {mirrorPatterns.groups.length > 0 && (
         <div style={{ ...S.card, marginBottom: 16 }}>
           <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12, gap: 10, flexWrap: "wrap" }}>
@@ -1015,10 +845,140 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
         </div>
       )}
 
-      {/* Per-goal sparklines */}
+      {/* Productivity sections below are collapsed by default — see the
+          CollapsibleSection wrappers. The four-tile Productivity Overview
+          card was removed since Total focus / Sessions / Avg / Top task
+          duplicate what the heatmap, recent sessions, and top focus tasks
+          already surface. */}
+
+      {/* Focus heatmap (collapsed by default) */}
+      <CollapsibleSection
+        icon="⏱"
+        title="Focus heatmap"
+        right={`${heatmap.totalDays} active day${heatmap.totalDays === 1 ? "" : "s"} · last ${heatmap.weeks} weeks`}>
+        <div style={{ overflowX: "auto" }}>
+          <svg width={heatmap.width} height={heatmap.height + 18} style={{ display: "block" }}>
+            {heatmap.monthLabels.map(({ col, label }) => (
+              <text key={col} x={col * (heatmap.cellSize + heatmap.gap)} y={9} fontSize="10" fill="var(--color-text-tertiary)" fontFamily="inherit">
+                {label}
+              </text>
+            ))}
+            {heatmap.cells.map((c) => {
+              const a = heatmap.intensity(c.mins);
+              return (
+                <rect key={c.day}
+                  x={c.col * (heatmap.cellSize + heatmap.gap)}
+                  y={18 + c.row * (heatmap.cellSize + heatmap.gap)}
+                  width={heatmap.cellSize}
+                  height={heatmap.cellSize}
+                  rx={3}
+                  fill={a === 0 ? "var(--color-background-secondary)" : "var(--gold)"}
+                  fillOpacity={a === 0 ? 1 : a}>
+                  <title>{c.day} · {c.mins}m</title>
+                </rect>
+              );
+            })}
+          </svg>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, fontSize: 11, color: "var(--color-text-tertiary)" }}>
+            Less
+            {[0, 0.22, 0.4, 0.6, 0.8, 1].map((a) => (
+              <div key={a} style={{ width: 11, height: 11, borderRadius: 2, background: a === 0 ? "var(--color-background-secondary)" : "var(--gold)", opacity: a === 0 ? 1 : a }} />
+            ))}
+            More
+          </div>
+        </div>
+      </CollapsibleSection>
+
+      {/* Niyyah trend (collapsed by default). The "View entries ›" link
+          opens the same drilldown Modal that lives just below. */}
+      {niyyahTrend && (
+        <CollapsibleSection
+          icon="🪶"
+          title="Niyyah trend"
+          right={`${niyyahTrend.filledCount} entries · avg ${niyyahTrend.avg.toFixed(1)}/5`}>
+          <svg width="100%" height={niyyahTrend.sparkH + 24} viewBox={`0 0 ${niyyahTrend.sparkW} ${niyyahTrend.sparkH + 24}`} preserveAspectRatio="none" style={{ display: "block" }}>
+            {[0, niyyahTrend.sparkH / 2, niyyahTrend.sparkH].map((y, i) => (
+              <line key={i} x1={0} x2={niyyahTrend.sparkW} y1={y} y2={y} stroke="var(--color-background-secondary)" strokeWidth="1" />
+            ))}
+            {niyyahTrend.segments.map((seg, i) => (
+              <polyline key={i} points={seg} fill="none" stroke="var(--gold)" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+            ))}
+            {niyyahTrend.points.map((p, i) => {
+              if (!p.rating) return null;
+              const x = (i / (niyyahTrend.days - 1)) * niyyahTrend.sparkW;
+              const y = niyyahTrend.sparkH - ((p.rating - 1) / 4) * niyyahTrend.sparkH;
+              return <circle key={p.day} cx={x} cy={y} r="2.5" fill="var(--gold)"><title>{p.day} · {p.rating}/5</title></circle>;
+            })}
+            <text x={2} y={10} fontSize="9" fill="var(--color-text-tertiary)" fontFamily="inherit">5</text>
+            <text x={2} y={niyyahTrend.sparkH + 4} fontSize="9" fill="var(--color-text-tertiary)" fontFamily="inherit">1</text>
+          </svg>
+          {niyyahTrend.direction && (
+            <div style={{ fontSize: 13, color: niyyahTrend.direction.color, marginTop: 8, fontStyle: "italic" }}>
+              Recent week is <span style={{ fontWeight: 600 }}>{niyyahTrend.direction.word}</span> compared to the previous week.
+            </div>
+          )}
+          <button onClick={() => setNiyyahDrilldownOpen(true)}
+            style={{
+              marginTop: 8, fontSize: 12, color: "var(--gold)", fontWeight: 500,
+              background: "transparent", border: "none", padding: 0, cursor: "pointer",
+            }}>
+            View entries ›
+          </button>
+        </CollapsibleSection>
+      )}
+
+      {/* Drill-down: list of recent muhasaba entries that produced the trend. */}
+      <Modal open={niyyahDrilldownOpen} onClose={() => setNiyyahDrilldownOpen(false)} title="Niyyah trend · entries">
+        {(() => {
+          const rows = niyyahTrend
+            ? niyyahTrend.points.filter((p) => p.rating).slice().reverse() // newest first
+            : [];
+          if (rows.length === 0) {
+            return <EmptyState icon="🪞" title="No rated entries yet" hint="Rate your niyyah at the bottom of any muhasaba entry." padY={16} />;
+          }
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {rows.map((p) => {
+                const entry = muhasaba[p.day] || {};
+                return (
+                  <div key={p.day} style={{
+                    padding: "10px 12px",
+                    background: "var(--color-background-secondary)",
+                    borderRadius: "var(--border-radius-md)",
+                  }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: entry.bestDeed ? 6 : 0 }}>
+                      <div style={{ fontSize: 13, color: "var(--color-text-secondary)", fontWeight: 500 }}>
+                        {fmt(p.day)}
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <span style={{ display: "inline-flex", gap: 1 }}>
+                          {[1, 2, 3, 4, 5].map((n) => (
+                            <span key={n} style={{ color: n <= p.rating ? "var(--gold)" : "var(--color-border-tertiary)", fontSize: 14 }}>★</span>
+                          ))}
+                        </span>
+                        <span style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>{NIYYAH_LABELS[p.rating]}</span>
+                      </div>
+                    </div>
+                    {entry.bestDeed && (
+                      <div style={{ fontSize: 13, color: "var(--color-text-primary)", lineHeight: 1.5 }}>
+                        <span style={{ color: "var(--color-text-tertiary)", marginRight: 6 }}>Best deed:</span>
+                        {entry.bestDeed}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+      </Modal>
+
+      {/* Per-goal sparklines (collapsed by default) */}
       {sparklines.rows.length > 0 && (
-        <div style={{ ...S.card, marginBottom: 16 }}>
-          <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 12 }}>Per-goal focus · last 30 days</div>
+        <CollapsibleSection
+          icon="📈"
+          title="Per-goal focus"
+          right={`${sparklines.rows.length} goal${sparklines.rows.length === 1 ? "" : "s"} · last 30 days`}>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {sparklines.rows.map(({ g, series, total }) => {
               const max = Math.max(1, ...series);
@@ -1047,15 +1007,16 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
               );
             })}
           </div>
-        </div>
+        </CollapsibleSection>
       )}
 
-      {/* Top focus tasks */}
-      <div style={{ ...S.card, marginBottom: 16 }}>
-        <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 10 }}>Top focus tasks</div>
-        {topFocusTasks.length === 0 ? (
-          <EmptyState icon="⏱" title="No focus sessions yet" hint="Start a 25-min block from any goal." padY={16} />
-        ) : (
+      {/* Top focus tasks (collapsed by default). Hidden entirely when
+          empty — no point teasing a section with no data. */}
+      {topFocusTasks.length > 0 && (
+        <CollapsibleSection
+          icon="🏆"
+          title="Top focus tasks"
+          right={`top ${topFocusTasks.length}`}>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {topFocusTasks.map(([label, mins]) => (
               <div key={label} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 15 }}>
@@ -1065,18 +1026,16 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </CollapsibleSection>
+      )}
 
-      {/* Recent sessions — manage / delete phantom entries (e.g. timer ran while AFK) */}
+      {/* Recent sessions (collapsed by default). Manage / delete phantom
+          entries from sessions where the timer kept running while AFK. */}
       {focusLog.length > 0 && (
-        <div style={S.card}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-            <div style={{ fontSize: 16, fontWeight: 500 }}>Recent sessions</div>
-            <div style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>
-              {focusLog.length} total{focusLog.length > 10 && !showAllSessions ? " · showing 10" : ""}
-            </div>
-          </div>
+        <CollapsibleSection
+          icon="📝"
+          title="Recent sessions"
+          right={`${focusLog.length} total`}>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {(showAllSessions ? focusLog : focusLog.slice(0, 10)).map((l) => {
               const g = goals.find((x) => x.id === l.goalId);
@@ -1139,7 +1098,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
               </button>
             </div>
           )}
-        </div>
+        </CollapsibleSection>
       )}
 
       {/* Footer — data export */}

@@ -163,7 +163,10 @@ export function useFocusTimer({
   }, [pomTaskId, pomSeconds, pomFocusTargetMins, pomDurations, stopTimer]);
 
   const endFocusEarly = useCallback(() => {
-    if (!pomRunning) return;
+    // Allow ending from either running OR paused state — both have real
+    // elapsed time worth crediting. Bail only when nothing has actually
+    // elapsed yet (idle dial / fresh reset).
+    if (elapsedRef.current <= 0) return;
     const mins = Math.max(1, Math.round(elapsedRef.current / 60));
     const at = new Date();
     const entry = {

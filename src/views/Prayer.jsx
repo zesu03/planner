@@ -24,6 +24,7 @@ export default function Prayer({
   togglePrayerLog,
   togglePrayerLogOnDay,
   prayerDoneToday,
+  canMarkPrayer,
   prayerStreak,
   qaza,
   qazaOwed,
@@ -190,22 +191,29 @@ export default function Prayer({
                       {prayerTimes[p]}{streak > 0 && !isSunrise ? ` · 🔥 ${streak} day streak` : ""}
                     </div>
                   </div>
-                  {!isSunrise && (
-                    <button onClick={() => togglePrayerLog(p)}
-                      style={{
-                        fontSize: 14,
-                        padding: "5px 14px",
-                        borderRadius: 99,
-                        background: done ? pColor : "transparent",
-                        color: done ? "#fff" : "var(--color-text-secondary)",
-                        border: `0.5px solid ${done ? pColor : "var(--color-border-secondary)"}`,
-                        cursor: "pointer",
-                        transition: "background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease",
-                        fontWeight: done ? 600 : 400,
-                      }}>
-                      {done ? <span key="done" className="pop-in" style={{ display: "inline-block" }}>✓ Prayed</span> : "Mark done"}
-                    </button>
-                  )}
+                  {!isSunrise && (() => {
+                    const canMark = canMarkPrayer ? canMarkPrayer(p) : true;
+                    const disabled = !done && !canMark;
+                    return (
+                      <button onClick={() => !disabled && togglePrayerLog(p)}
+                        disabled={disabled}
+                        title={disabled ? `${p} time hasn't started yet (${prayerTimes[p]})` : undefined}
+                        style={{
+                          fontSize: 14,
+                          padding: "5px 14px",
+                          borderRadius: 99,
+                          background: done ? pColor : "transparent",
+                          color: done ? "#fff" : "var(--color-text-secondary)",
+                          border: `0.5px solid ${done ? pColor : "var(--color-border-secondary)"}`,
+                          cursor: disabled ? "not-allowed" : "pointer",
+                          opacity: disabled ? 0.4 : 1,
+                          transition: "background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease",
+                          fontWeight: done ? 600 : 400,
+                        }}>
+                        {done ? <span key="done" className="pop-in" style={{ display: "inline-block" }}>✓ Prayed</span> : disabled ? "Not yet" : "Mark done"}
+                      </button>
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -244,19 +252,28 @@ export default function Prayer({
                       </div>
                     </div>
                   </div>
-                  <button onClick={() => togglePrayerLog(vp)}
-                    style={{
-                      fontSize: 14,
-                      padding: "5px 14px",
-                      borderRadius: 99,
-                      background: done ? color : "transparent",
-                      color: done ? "#fff" : "var(--color-text-secondary)",
-                      border: `0.5px solid ${done ? color : "var(--color-border-secondary)"}`,
-                      cursor: "pointer",
-                      fontWeight: done ? 600 : 400,
-                    }}>
-                    {done ? "✓ Prayed" : "Mark done"}
-                  </button>
+                  {(() => {
+                    const canMark = canMarkPrayer ? canMarkPrayer(vp) : true;
+                    const disabled = !done && !canMark;
+                    return (
+                      <button onClick={() => !disabled && togglePrayerLog(vp)}
+                        disabled={disabled}
+                        title={disabled ? `${vp} can be prayed after Isha (${prayerTimes?.Isha || "tonight"})` : undefined}
+                        style={{
+                          fontSize: 14,
+                          padding: "5px 14px",
+                          borderRadius: 99,
+                          background: done ? color : "transparent",
+                          color: done ? "#fff" : "var(--color-text-secondary)",
+                          border: `0.5px solid ${done ? color : "var(--color-border-secondary)"}`,
+                          cursor: disabled ? "not-allowed" : "pointer",
+                          opacity: disabled ? 0.4 : 1,
+                          fontWeight: done ? 600 : 400,
+                        }}>
+                        {done ? "✓ Prayed" : disabled ? "Not yet" : "Mark done"}
+                      </button>
+                    );
+                  })()}
                 </div>
                 <div style={{ display: "flex", gap: 4, paddingLeft: 8 }}>
                   {days.map((d) => {
