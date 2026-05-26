@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { PRAYERS, PRAYER_ICONS, PRAYER_COLORS, VOLUNTARY_PRAYERS } from "../lib/constants";
 import { localDateStr } from "../lib/dates";
 import { QAZA_PRAYERS } from "../lib/qaza";
@@ -37,6 +38,17 @@ export default function Prayer({
   const currentPrayerName = currentPrayerWindow(prayerTimes);
   const totalOwed = qazaOwed ? QAZA_PRAYERS.reduce((s, p) => s + (qazaOwed[p] || 0), 0) : 0;
   const totalPaid = qaza?.paid ? QAZA_PRAYERS.reduce((s, p) => s + (qaza.paid[p] || 0), 0) : 0;
+
+  // "Change city" used to call setPrayerTimes(null), which dumped the
+  // user into the city-input form with no way back if they tapped it by
+  // accident. Now it just opens an `editingCity` mode — the user can hit
+  // Cancel to return to the existing prayer view, or fetch new times
+  // which auto-closes the form via the effect below.
+  const [editingCity, setEditingCity] = useState(false);
+  useEffect(() => {
+    if (prayerTimes) setEditingCity(false);
+  }, [prayerTimes]);
+  const showCityForm = !prayerTimes || editingCity;
   return (
     <div className="view-content">
       {hijriDate && (
@@ -45,9 +57,11 @@ export default function Prayer({
         </div>
       )}
 
-      {!prayerTimes && (
+      {showCityForm && (
         <div style={{ ...S.card, marginBottom: 16 }}>
-          <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 14 }}>Set your location</div>
+          <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 14 }}>
+            {prayerTimes ? "Change location" : "Set your location"}
+          </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
             <div>
               <label style={{ fontSize: 14, color: "var(--color-text-secondary)", display: "block", marginBottom: 4 }}>City</label>
@@ -64,16 +78,23 @@ export default function Prayer({
                 style={{ width: "100%", boxSizing: "border-box", fontSize: 15 }} />
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button onClick={() => fetchPrayers(cityInput, countryInput)}
               disabled={prayerLoading || !cityInput.trim() || !countryInput.trim()}
               className="btn-primary"
-              style={{ flex: 1, padding: "9px 14px" }}>
+              style={{ flex: 1, minWidth: 140, padding: "9px 14px" }}>
               {prayerLoading ? "Loading..." : "Get prayer times"}
             </button>
             <button onClick={fetchByGeo} disabled={prayerLoading} style={{ fontSize: 15 }}>
               Use my location
             </button>
+            {/* Cancel only makes sense once the user has prayer times to
+                return to — otherwise there's nothing to cancel back to. */}
+            {prayerTimes && (
+              <button onClick={() => setEditingCity(false)} style={{ fontSize: 15 }}>
+                Cancel
+              </button>
+            )}
           </div>
           {prayerError && (
             <div style={{ fontSize: 14, color: "var(--color-text-danger)", marginTop: 8 }}>{prayerError}</div>
@@ -81,14 +102,14 @@ export default function Prayer({
         </div>
       )}
 
-      {prayerTimes && (
+      {prayerTimes && !editingCity && (
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
             <div>
               <div style={{ fontSize: 15, fontWeight: 500 }}>{prayerCity}</div>
               <div style={{ fontSize: 13, color: "var(--color-text-secondary)" }}>Today's prayer times</div>
             </div>
-            <button onClick={() => setPrayerTimes(null)} style={{ fontSize: 14, color: "var(--color-text-secondary)" }}>
+            <button onClick={() => setEditingCity(true)} style={{ fontSize: 14, color: "var(--color-text-secondary)" }}>
               Change city
             </button>
           </div>

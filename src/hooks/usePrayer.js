@@ -44,7 +44,8 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings }) {
   }, []);
 
   // User-initiated city fetch. Persists the choice on success so it
-  // restores next session.
+  // restores next session. Clears any stored lat/lng so the next restore
+  // uses the city/country path rather than stale coordinates.
   const fetchPrayers = useCallback(async (city, country) => {
     const safeCity = city.trim();
     const safeCountry = country.trim();
@@ -59,7 +60,13 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings }) {
         setPrayerCity(`${safeCity}, ${safeCountry}`);
         const h = data.data.date.hijri;
         setHijriDate(`${h.day} ${h.month.en} ${h.year} AH`);
-        updateSettings({ ...userSettings, prayerCity: safeCity, prayerCountry: safeCountry });
+        updateSettings({
+          ...userSettings,
+          prayerCity: safeCity,
+          prayerCountry: safeCountry,
+          prayerLat: null,
+          prayerLng: null,
+        });
       } else {
         setPrayerError("City not found. Try again.");
       }
@@ -69,44 +76,74 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings }) {
     setPrayerLoading(false);
   }, [userSettings, updateSettings]);
 
-  // Geolocation path — doesn't persist a city (we don't have a name for
-  // lat/lng without reverse geocoding). City label shows "Your location".
+  // Coordinate-based fetch. Two callers:
+  //   • fetchByGeo (user-initiated) — persists lat/lng so reload restores.
+  //   • restore effect (silent) — uses stored lat/lng, doesn't re-persist.
+  // The city label comes from Aladhan's response timezone field (e.g.
+  // "Asia/Karachi" → "Karachi") so the user sees a real place name
+  // instead of the generic "Your location".
+  const fetchByCoords = useCallback(async (lat, lng, { silent = false, persist = true } = {}) => {
+    if (!silent) { setPrayerLoading(true); setPrayerError(""); }
+    try {
+      const ts = Math.floor(Date.now() / 1000);
+      const res = await fetch(`${ALADHAN_BASE}/timings/${ts}?latitude=${lat}&longitude=${lng}&${METHOD_SCHOOL}`);
+      const data = await res.json();
+      if (data.code === 200) {
+        setPrayerTimes(data.data.timings);
+        const tz = data.data.meta?.timezone || "";
+        // "Asia/Karachi" → "Karachi"; underscores ("New_York") become spaces.
+        const tzCity = tz.split("/").pop().replace(/_/g, " ").trim();
+        const label = tzCity ? `${tzCity} · your location` : "Your location";
+        setPrayerCity(label);
+        const h = data.data.date.hijri;
+        setHijriDate(`${h.day} ${h.month.en} ${h.year} AH`);
+        if (persist) {
+          updateSettings({
+            ...userSettings,
+            prayerLat: lat,
+            prayerLng: lng,
+            // Clear city-based fields so restore picks the lat/lng path.
+            prayerCity: null,
+            prayerCountry: null,
+          });
+        }
+      } else if (!silent) {
+        setPrayerError("Could not get times for your location.");
+      }
+    } catch {
+      if (!silent) setPrayerError("Failed to fetch.");
+    }
+    if (!silent) setPrayerLoading(false);
+  }, [userSettings, updateSettings]);
+
+  // Geolocation prompt + fetch. Thin wrapper around fetchByCoords that
+  // gathers the position from the browser.
   const fetchByGeo = useCallback(() => {
     if (!navigator.geolocation) { setPrayerError("Geolocation not supported."); return; }
     setPrayerLoading(true); setPrayerError("");
-    navigator.geolocation.getCurrentPosition(async (pos) => {
-      try {
-        const { latitude: lat, longitude: lng } = pos.coords;
-        const ts = Math.floor(Date.now() / 1000);
-        const res = await fetch(`${ALADHAN_BASE}/timings/${ts}?latitude=${lat}&longitude=${lng}&${METHOD_SCHOOL}`);
-        const data = await res.json();
-        if (data.code === 200) {
-          setPrayerTimes(data.data.timings);
-          setPrayerCity("Your location");
-          const h = data.data.date.hijri;
-          setHijriDate(`${h.day} ${h.month.en} ${h.year} AH`);
-        } else {
-          setPrayerError("Could not get times for your location.");
-        }
-      } catch {
-        setPrayerError("Failed to fetch.");
-      }
-      setPrayerLoading(false);
-    }, () => { setPrayerError("Location permission denied."); setPrayerLoading(false); });
-  }, []);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => fetchByCoords(pos.coords.latitude, pos.coords.longitude),
+      () => { setPrayerError("Location permission denied."); setPrayerLoading(false); }
+    );
+  }, [fetchByCoords]);
 
   // One-shot restore from persisted settings. `settingsFromDb` is the raw
   // object from useUserData (may be null on first render). The ref makes
   // sure we only run once even if Firestore re-emits the same snapshot.
+  // Prefers lat/lng over city/country when both are present — the geo
+  // path is more recent because fetchByCoords clears prayerCity on save.
   useEffect(() => {
     if (settingsAppliedRef.current || !settingsFromDb) return;
-    if (settingsFromDb.prayerCity && settingsFromDb.prayerCountry) {
+    if (settingsFromDb.prayerLat != null && settingsFromDb.prayerLng != null) {
+      settingsAppliedRef.current = true;
+      fetchByCoords(settingsFromDb.prayerLat, settingsFromDb.prayerLng, { silent: true, persist: false });
+    } else if (settingsFromDb.prayerCity && settingsFromDb.prayerCountry) {
       settingsAppliedRef.current = true;
       setCityInput(settingsFromDb.prayerCity);
       setCountryInput(settingsFromDb.prayerCountry);
       fetchPrayersFromSettings(settingsFromDb.prayerCity, settingsFromDb.prayerCountry);
     }
-  }, [settingsFromDb, fetchPrayersFromSettings]);
+  }, [settingsFromDb, fetchPrayersFromSettings, fetchByCoords]);
 
   return {
     prayerTimes,

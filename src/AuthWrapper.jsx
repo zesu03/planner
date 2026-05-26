@@ -12,10 +12,14 @@ export default function AuthWrapper({ children }) {
 
   // Theme toggle lives in this top bar (next to Sign out) because the bar
   // is the only piece of UI present at every viewport size and view. The
-  // source of truth is <html data-theme="…"> — Planner owns persistence
-  // to Firestore via userSettings and applies the attribute on hydrate;
-  // AuthWrapper just observes the attribute for its own button state and
-  // dispatches an event when the user taps the toggle so Planner can save.
+  // source of truth is <html data-theme="…">. Persistence is layered:
+  //   • localStorage — synchronous, survives reload immediately. Read by
+  //     the inline pre-mount script in index.html so there's no FOUC.
+  //   • Firestore   — debounced async (1.2s in useFirestore). Survives
+  //     across devices but can be missed if the user reloads quickly.
+  // Planner handles the Firestore side; this component handles the
+  // localStorage + DOM side and dispatches an event for Planner to pick
+  // up.
   const [theme, setTheme] = useState(
     () => (typeof document !== "undefined" && document.documentElement.getAttribute("data-theme")) || "dark"
   );
@@ -31,7 +35,9 @@ export default function AuthWrapper({ children }) {
     const next = theme === "dark" ? "light" : "dark";
     document.documentElement.setAttribute("data-theme", next);
     setTheme(next);
-    // Planner listens for this and persists to Firestore.
+    // Synchronous write so even an immediate reload sees the new value.
+    try { localStorage.setItem("aakhirah_theme", next); } catch { /* private mode */ }
+    // Planner listens for this and persists to Firestore (cross-device sync).
     window.dispatchEvent(new CustomEvent("aakhirah:theme-toggle", { detail: { theme: next } }));
   };
 

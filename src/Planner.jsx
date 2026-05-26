@@ -84,9 +84,20 @@ export default function Planner({ user }) {
   // when their system theme differs. The static media-targeted metas in
   // index.html handle the system-default; this JS override wins for the
   // user's manual selection.
-  const theme = userSettings.theme === "light" ? "light" : "dark";
+  // Theme source-of-truth pyramid:
+  //   1. settings.theme (Firestore-persisted, cross-device)
+  //   2. localStorage   (synchronous, same-device fallback for write-then-reload)
+  //   3. "dark"         (hard default)
+  // Pre-mount script in index.html reads (2) so first paint is correct
+  // even before Firestore returns. Once Firestore loads, this effect
+  // applies (1) and mirrors back to localStorage so the next pre-mount
+  // read stays in sync.
+  const theme = userSettings.theme === "light" ? "light"
+    : userSettings.theme === "dark" ? "dark"
+    : (typeof localStorage !== "undefined" && localStorage.getItem("aakhirah_theme") === "light" ? "light" : "dark");
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
+    try { localStorage.setItem("aakhirah_theme", theme); } catch { /* private mode */ }
     const color = theme === "light" ? "#ede2c5" : "#0f120f";
     // Find any existing theme-color meta (with or without media) and
     // either update it, or insert a fresh one if there's none plain.

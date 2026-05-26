@@ -29,6 +29,21 @@
 		<meta name="mobile-web-app-capable" content="yes" />
 
 		<link rel="manifest" href="/manifest.webmanifest" />
+
+		<!-- Pre-mount theme application. Reads the user's last-chosen theme
+		     from localStorage and stamps data-theme on <html> before React
+		     boots. Without this, the page paints with the default theme
+		     for one frame then re-paints when Planner's effect fires,
+		     causing a visible flash on every reload. -->
+		<script>
+			(function () {
+				try {
+					var saved = localStorage.getItem("aakhirah_theme");
+					if (saved !== "dark" && saved !== "light") saved = "dark";
+					document.documentElement.setAttribute("data-theme", saved);
+				} catch (e) { /* localStorage blocked — fall back to default */ }
+			})();
+		</script>
 	</head>
 	<body>
 		<div id="root"></div>
