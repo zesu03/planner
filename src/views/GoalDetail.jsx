@@ -723,7 +723,9 @@ export default function GoalDetail({ selected, goBack }) {
                   return (
                     <SortableRow key={t.id} id={t.id} disabled={isEditing}>
                       {({ setNodeRef, style: sortableStyle, listeners, attributes, isDragging }) => (
-                        <div ref={setNodeRef} {...attributes} style={{
+                        <div ref={setNodeRef} {...attributes}
+                          className="task-row"
+                          style={{
                           display: "flex",
                           alignItems: "center",
                           gap: 12,

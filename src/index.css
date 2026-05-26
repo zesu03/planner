@@ -284,7 +284,10 @@ select:focus-visible {
 @media (max-width: 640px) {
   .theme-toggle {
     position: fixed;
-    top: calc(10px + env(safe-area-inset-top));
+    /* The AuthWrapper "Signed in as / Sign out" bar lives at the very top
+       (~38px tall + safe-area-inset-top). Position the toggle below it so
+       it doesn't overlap the Sign out button. */
+    top: calc(48px + env(safe-area-inset-top));
     right: calc(10px + env(safe-area-inset-right));
     z-index: 60;
     width: 40px;
@@ -300,7 +303,8 @@ select:focus-visible {
     box-shadow: var(--shadow-button);
   }
   /* Reserve right-side header padding so a long greeting + Hijri date
-     don't slide under the floating theme toggle. */
+     don't slide under the floating theme toggle when it overlaps the
+     greeting row vertically (between auth bar and tab bar). */
   .app-header-text { padding-right: 48px; }
 }
 
@@ -563,13 +567,25 @@ select:focus-visible {
     min-height: 48px;
   }
 
-  /* Task-row actions get their own row on narrow screens. Without this,
-     the action buttons + priority pill + timer indicator overflow off the
-     right edge of the task tile and the user can't see what's there. */
+  /* Task row layout on mobile — without flex-wrap the previous
+     `flex-basis: 100%` on .task-actions just squeezed the text + pill
+     into nothing. flex-wrap lets the action cluster wrap to its own
+     line below, restoring readable text. */
+  .task-row {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  /* Text area can take the full row width minus drag handle + checkbox. */
+  .task-row > div[style*="flex: 1"],
+  .task-row > div[style*="flex:1"] {
+    flex-basis: 0;
+    min-width: 0;
+  }
   .task-actions {
     flex-basis: 100%;
     justify-content: flex-end;
-    margin-top: 4px;
+    margin-top: 2px;
+    gap: 8px;
   }
 
   .task-toolbar button,

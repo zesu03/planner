@@ -107,7 +107,10 @@ export default function AuthWrapper({ children }) {
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          padding: "10px 16px",
+          /* Top padding includes the iPhone notch safe area so the bar
+             clears the dynamic island / status bar; sides honour the
+             landscape-mode notch insets. */
+          padding: "calc(10px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left))",
           borderBottom: "0.5px solid var(--border)",
           background: "var(--bg-primary)",
         }}
