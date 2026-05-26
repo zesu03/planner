@@ -102,9 +102,21 @@ export default function Planner({ user }) {
     }
     plain.setAttribute("content", color);
   }, [theme]);
-  function toggleTheme() {
-    updateSettings({ ...userSettings, theme: theme === "dark" ? "light" : "dark" });
-  }
+  // Persist the user's theme choice when AuthWrapper's bar toggles it.
+  // AuthWrapper owns the UI + the data-theme attribute mutation; this
+  // listener forwards the change into Firestore so the choice survives
+  // reloads. Guarded by an equality check so we don't re-write the same
+  // value (avoids a needless Firestore round-trip on every render).
+  useEffect(() => {
+    const onThemeToggle = (e) => {
+      const next = e.detail?.theme === "light" ? "light" : "dark";
+      if (next !== theme) {
+        updateSettings({ ...userSettings, theme: next });
+      }
+    };
+    window.addEventListener("aakhirah:theme-toggle", onThemeToggle);
+    return () => window.removeEventListener("aakhirah:theme-toggle", onThemeToggle);
+  }, [theme, userSettings, updateSettings]);
 
   // Daily focus goal (minutes). Drives the Daily progress ring on the Focus
   // tab and the streak count. Persisted in settings; defaults to 60.
@@ -1043,17 +1055,11 @@ export default function Planner({ user }) {
         </div>
         <div className="app-header-actions">
           {pomRunning && <span style={{fontSize:14,padding:"3px 10px",borderRadius:99,background:goldA(15),color:"var(--gold)",fontWeight:500}}>● Focus {fmtTime(pomSeconds)}</span>}
-          {/* Theme toggle — flows inline with the header actions on desktop
-              and breaks out to a fixed-position icon in the top-right corner
-              on mobile (see .theme-toggle media query in index.css). Keeps
-              the mobile header from inflating to 44px tall just for a single
-              toggle. */}
-          <button onClick={toggleTheme}
-            className="theme-toggle"
-            title={`Switch to ${theme==="dark"?"light":"dark"} mode`}
-            aria-label={`Switch to ${theme==="dark"?"light":"dark"} mode`}>
-            {theme==="dark" ? "☀" : "☾"}
-          </button>
+          {/* Theme toggle lives in the auth bar at the very top now (see
+              AuthWrapper). It's adjacent to Sign out so it's a stable
+              header utility instead of floating in dead space. Planner
+              still owns persistence via the aakhirah:theme-toggle listener
+              below. */}
           {/* "New goal" is a Goals-tab action; surfacing it on other tabs
               implied it was a global. The Goals list also has a sticky FAB
               for the same purpose, so this header button is the desktop

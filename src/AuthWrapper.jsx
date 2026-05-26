@@ -10,6 +10,31 @@ export default function AuthWrapper({ children }) {
     return unsub;
   }, []);
 
+  // Theme toggle lives in this top bar (next to Sign out) because the bar
+  // is the only piece of UI present at every viewport size and view. The
+  // source of truth is <html data-theme="…"> — Planner owns persistence
+  // to Firestore via userSettings and applies the attribute on hydrate;
+  // AuthWrapper just observes the attribute for its own button state and
+  // dispatches an event when the user taps the toggle so Planner can save.
+  const [theme, setTheme] = useState(
+    () => (typeof document !== "undefined" && document.documentElement.getAttribute("data-theme")) || "dark"
+  );
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const sync = () => setTheme(document.documentElement.getAttribute("data-theme") || "dark");
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => observer.disconnect();
+  }, []);
+  const onToggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    setTheme(next);
+    // Planner listens for this and persists to Firestore.
+    window.dispatchEvent(new CustomEvent("aakhirah:theme-toggle", { detail: { theme: next } }));
+  };
+
   async function handleGoogle() {
     try {
       await signInWithPopup(auth, provider);
@@ -115,23 +140,44 @@ export default function AuthWrapper({ children }) {
           background: "var(--bg-primary)",
         }}
       >
-        <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+        <div style={{ fontSize: 12, color: "var(--text-secondary)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           Signed in as{" "}
           <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>
             {user.displayName || user.email}
           </span>
         </div>
-        <button
-          onClick={() => {
-            // Small confirm so a stray tap doesn't drop the user out — the
-            // sign-out itself is harmless (data is on Firestore, nothing
-            // is lost) but the friction is high enough to be annoying.
-            if (window.confirm("Sign out of Aakhirah Planner?")) signOut(auth);
-          }}
-          style={{ fontSize: 12, padding: "4px 12px" }}
-        >
-          Sign out
-        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          <button
+            onClick={onToggleTheme}
+            title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+            style={{
+              fontSize: 14,
+              padding: 0,
+              width: 30,
+              height: 30,
+              minHeight: 30,
+              lineHeight: 1,
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "50%",
+            }}
+          >
+            {theme === "dark" ? "☀" : "☾"}
+          </button>
+          <button
+            onClick={() => {
+              // Small confirm so a stray tap doesn't drop the user out — the
+              // sign-out itself is harmless (data is on Firestore, nothing
+              // is lost) but the friction is high enough to be annoying.
+              if (window.confirm("Sign out of Aakhirah Planner?")) signOut(auth);
+            }}
+            style={{ fontSize: 12, padding: "4px 12px" }}
+          >
+            Sign out
+          </button>
+        </div>
       </div>
       {children(user)}
     </div>
