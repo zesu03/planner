@@ -81,7 +81,12 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings }) {
   //   • restore effect (silent) — uses stored lat/lng, doesn't re-persist.
   // The city label comes from Aladhan's response timezone field (e.g.
   // "Asia/Karachi" → "Karachi") so the user sees a real place name
-  // instead of the generic "Your location".
+  // instead of the generic "Your location". Saving the geo coords does
+  // NOT clear prayerCity/prayerCountry — those hold the user's last
+  // typed values so the "Change city" form pre-populates correctly even
+  // after a geo + reload. Source-of-truth for active location:
+  //   prayerLat/Lng present → geo path
+  //   else                 → city/country path
   const fetchByCoords = useCallback(async (lat, lng, { silent = false, persist = true } = {}) => {
     if (!silent) { setPrayerLoading(true); setPrayerError(""); }
     try {
@@ -102,9 +107,6 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings }) {
             ...userSettings,
             prayerLat: lat,
             prayerLng: lng,
-            // Clear city-based fields so restore picks the lat/lng path.
-            prayerCity: null,
-            prayerCountry: null,
           });
         }
       } else if (!silent) {
@@ -128,22 +130,31 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings }) {
   }, [fetchByCoords]);
 
   // One-shot restore from persisted settings. `settingsFromDb` is the raw
-  // object from useUserData (may be null on first render). The ref makes
-  // sure we only run once even if Firestore re-emits the same snapshot.
-  // Prefers lat/lng over city/country when both are present — the geo
-  // path is more recent because fetchByCoords clears prayerCity on save.
+  // object from useUserData (may be null on first render). Three guards:
+  //   • settingsAppliedRef — protects against re-fire while the first
+  //     restore fetch is still in flight (settingsFromDb can re-emit).
+  //   • prayerTimes — if a location is already loaded (user just
+  //     interactively set it), the restore would be a redundant network
+  //     call. fetchByCoords's useCallback rebuilds on every userSettings
+  //     change, which puts this effect in a re-run loop without this guard.
+  //   • settingsFromDb null — initial render before Firestore returned.
+  //
+  // Geo path wins if both lat/lng AND city/country are present, but the
+  // city/country values still pre-populate the form inputs so a later
+  // "Change city" tap shows the user's last typed values rather than
+  // empty fields.
   useEffect(() => {
-    if (settingsAppliedRef.current || !settingsFromDb) return;
+    if (settingsAppliedRef.current || prayerTimes || !settingsFromDb) return;
+    if (settingsFromDb.prayerCity) setCityInput(settingsFromDb.prayerCity);
+    if (settingsFromDb.prayerCountry) setCountryInput(settingsFromDb.prayerCountry);
     if (settingsFromDb.prayerLat != null && settingsFromDb.prayerLng != null) {
       settingsAppliedRef.current = true;
       fetchByCoords(settingsFromDb.prayerLat, settingsFromDb.prayerLng, { silent: true, persist: false });
     } else if (settingsFromDb.prayerCity && settingsFromDb.prayerCountry) {
       settingsAppliedRef.current = true;
-      setCityInput(settingsFromDb.prayerCity);
-      setCountryInput(settingsFromDb.prayerCountry);
       fetchPrayersFromSettings(settingsFromDb.prayerCity, settingsFromDb.prayerCountry);
     }
-  }, [settingsFromDb, fetchPrayersFromSettings, fetchByCoords]);
+  }, [settingsFromDb, fetchPrayersFromSettings, fetchByCoords, prayerTimes]);
 
   return {
     prayerTimes,

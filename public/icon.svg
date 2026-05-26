@@ -1,11 +1,41 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Aakhirah Planner icon">
-  <!-- Dark olive square with rounded corners — matches the dark theme's bg-card -->
-  <rect width="64" height="64" rx="14" fill="#121412"/>
-  <!-- Gold crescent — two overlapping circles, subtract the smaller. Slight
-       counter-clockwise rotation so the opening points up-and-right, which
-       reads more decorative than astronomically literal. -->
-  <path d="M 40 14
-           A 18 18 0 1 0 40 50
-           A 14 14 0 1 1 40 14 Z"
-        fill="#c9a84c"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Aakhirah Planner — crescent and checkmark mark">
+  <!-- The icon reads as two complementary glyphs sharing a single colour:
+       a crescent (spirituality) in the upper-left, a checkmark (the
+       productivity / accomplishment axis) in the lower-right. Both float
+       inside a softly lit dark-olive rounded square that matches the
+       app's bg-card token. All content sits within the 80% safe zone so
+       the SVG also renders cleanly under Android's maskable crop. -->
+
+  <defs>
+    <!-- Subtle radial in the upper-left so the ground reads as lit by an
+         off-canvas light, rather than a flat block. Soft, no banding. -->
+    <radialGradient id="aakhirah-bg" cx="32%" cy="28%" r="85%">
+      <stop offset="0%" stop-color="#1c1e1a"/>
+      <stop offset="100%" stop-color="#0e100e"/>
+    </radialGradient>
+
+    <!-- Crescent = outer disk minus an offset inner disk. The offset is
+         down-and-right so the opening faces the checkmark; the two
+         glyphs visually relate to each other instead of sitting back to
+         back. -->
+    <mask id="aakhirah-crescent">
+      <rect width="64" height="64" fill="white"/>
+      <circle cx="28" cy="25" r="12" fill="black"/>
+    </mask>
+  </defs>
+
+  <rect width="64" height="64" rx="14" fill="url(#aakhirah-bg)"/>
+
+  <!-- Crescent — gold, masked to leave the offset shape. -->
+  <circle cx="22" cy="22" r="14" fill="#c9a84c" mask="url(#aakhirah-crescent)"/>
+
+  <!-- Checkmark — single polyline path with round caps + joins so it
+       feels drawn, not constructed. Stroke width 5 reads at 16×16; the
+       sharper inflection point at the lower vertex anchors the gesture. -->
+  <path d="M 32 43 L 39 50 L 53 35"
+        stroke="#c9a84c"
+        stroke-width="5"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        fill="none"/>
 </svg>
