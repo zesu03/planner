@@ -24,30 +24,40 @@ export default function GoalAdd({ form, setForm, addGoal }) {
   const tooSoon = previewDl !== null && previewDl >= 0 && previewDl < 7;
   const inPast = previewDl !== null && previewDl < 0;
 
+  // Live preview is meaningful only once the user has typed enough of a
+  // title to make the rendered card non-placeholder. Showing the empty
+  // preview from the start eats ~160px of vertical space on mobile before
+  // the form is reachable — keep it hidden until the title has 3+ chars.
+  const hasMeaningfulTitle = form.title.trim().length >= 3;
+
   return (
     <div className="view-content" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {/* live preview */}
-      <div style={{ ...S.goldCard, padding: "14px 16px" }}>
-        <div style={{ fontSize: 12, color: "var(--gold)", fontWeight: 600, marginBottom: 8, letterSpacing: "0.4px", textTransform: "uppercase" }}>
-          Live preview
-        </div>
-        <div style={{ ...S.card, padding: "14px 16px", background: "var(--color-background-primary)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <div style={{ width: 9, height: 9, borderRadius: "50%", background: CAT_COLORS[previewGoal.category], flexShrink: 0 }} />
-            <span style={{ flex: 1, fontWeight: 500, fontSize: 16, color: form.title.trim() ? "var(--color-text-primary)" : "var(--color-text-tertiary)" }}>
-              {previewGoal.title}
-            </span>
-            <span style={S.pill(CAT_COLORS[previewGoal.category] + "22", CAT_COLORS[previewGoal.category])}>
-              {previewGoal.category}
-            </span>
+      {/* live preview — appears once the title has substance so it doesn't
+          dominate the top of the page during early typing. Fades in via
+          the global fadeUp animation. */}
+      {hasMeaningfulTitle && (
+        <div className="view-content" style={{ ...S.goldCard, padding: "14px 16px" }}>
+          <div style={{ fontSize: 12, color: "var(--gold)", fontWeight: 600, marginBottom: 8, letterSpacing: "0.4px", textTransform: "uppercase" }}>
+            Live preview
           </div>
-          <ProgressBar val={0} color={CAT_COLORS[previewGoal.category]} />
-          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 7, fontSize: 14, color: "var(--color-text-secondary)" }}>
-            <span>0/0 tasks · {previewGoal.type === "short" ? "Short" : "Long"}-term</span>
-            <span>{form.due ? `Due ${fmt(form.due)}` : "Pick a due date"}</span>
+          <div style={{ ...S.card, padding: "14px 16px", background: "var(--color-background-primary)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <div style={{ width: 9, height: 9, borderRadius: "50%", background: CAT_COLORS[previewGoal.category], flexShrink: 0 }} />
+              <span style={{ flex: 1, fontWeight: 500, fontSize: 16, color: "var(--color-text-primary)" }}>
+                {previewGoal.title}
+              </span>
+              <span style={S.pill(CAT_COLORS[previewGoal.category] + "22", CAT_COLORS[previewGoal.category])}>
+                {previewGoal.category}
+              </span>
+            </div>
+            <ProgressBar val={0} color={CAT_COLORS[previewGoal.category]} />
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 7, fontSize: 14, color: "var(--color-text-secondary)" }}>
+              <span>0/0 tasks · {previewGoal.type === "short" ? "Short" : "Long"}-term</span>
+              <span>{form.due ? `Due ${fmt(form.due)}` : "Pick a due date"}</span>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div style={S.card}>
         <h3 style={{ margin: "0 0 16px", fontSize: 18, fontWeight: 500 }}>New goal</h3>

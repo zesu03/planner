@@ -128,6 +128,7 @@ export default function AuthWrapper({ children }) {
   return (
     <div>
       <div
+        className="auth-bar"
         style={{
           display: "flex",
           alignItems: "center",
@@ -137,7 +138,6 @@ export default function AuthWrapper({ children }) {
              landscape-mode notch insets. */
           padding: "calc(10px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left))",
           borderBottom: "0.5px solid var(--border)",
-          background: "var(--bg-primary)",
         }}
       >
         <div style={{ fontSize: 12, color: "var(--text-secondary)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

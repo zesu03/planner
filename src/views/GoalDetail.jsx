@@ -418,8 +418,11 @@ export default function GoalDetail({ selected, goBack }) {
           </div>
         )}
 
-        {/* metrics */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,minmax(0,1fr))", gap: 10, marginBottom: 14 }}>
+        {/* metrics — 3 tiles wide on desktop, drops to 1-column on very
+            narrow phones (<400px) where the 22px value "1h 45m" wraps
+            awkwardly inside an ~80px tile. The .goal-metrics class
+            handles the responsive collapse in index.css. */}
+        <div className="goal-metrics">
           {[
             ["Progress", `${p}%`, CAT_COLORS[selected.category]],
             ["ETA", fmtMins(totalEta), "#378ADD"],

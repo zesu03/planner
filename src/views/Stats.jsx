@@ -578,12 +578,12 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
               ratePct >= 50 ? "var(--color-text-warning)" :
                               "var(--color-text-danger)";
             return (
-              <div key={p.name} style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                <div style={{ width: 76, display: "flex", alignItems: "center", gap: 6, fontSize: 13, fontWeight: 500, color, flexShrink: 0 }}>
+              <div key={p.name} className="prayer-health-row">
+                <div className="prayer-health-row__label" style={{ color }}>
                   <span style={{ fontSize: 14 }}>{PRAYER_ICONS[p.name]}</span>
                   {p.name}
                 </div>
-                <div style={{ flex: 1, display: "flex", gap: 2, minWidth: 0, alignItems: "center" }}>
+                <div className="prayer-health-row__strip">
                   {p.series.map((done, i) => (
                     <div key={i} title={`${i === p.series.length - 1 ? "today" : `${p.series.length - 1 - i}d ago`} · ${done ? "prayed" : "missed"}`}
                       style={{
@@ -596,7 +596,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
                       }} />
                   ))}
                 </div>
-                <div style={{ width: 60, textAlign: "right", fontSize: 13, color: rateColor, fontWeight: 600, flexShrink: 0 }}>
+                <div className="prayer-health-row__rate" style={{ color: rateColor }}>
                   {ratePct}%
                 </div>
               </div>
