@@ -43,17 +43,18 @@ export const S = {
   },
   pill: (bg, color) => ({
     display: "inline-block",
-    fontSize: 13,
+    fontSize: "var(--font-size-sm)",
     padding: "3px 10px",
     borderRadius: 99,
     background: bg,
     color,
-    fontWeight: 500,
+    fontWeight: "var(--fw-medium)",
     whiteSpace: "nowrap",
+    letterSpacing: "var(--tracking-normal)",
   }),
   tab: (active) => ({
-    fontSize: 15,
-    fontWeight: active ? 600 : 400,
+    fontSize: "var(--font-size-md)",
+    fontWeight: active ? "var(--fw-semibold)" : "var(--fw-regular)",
     color: active ? "var(--color-text-primary)" : "var(--color-text-secondary)",
     borderBottom: active ? "2.5px solid var(--gold)" : "2.5px solid transparent",
     borderRadius: 0,
@@ -64,15 +65,17 @@ export const S = {
     borderLeft: "none",
     borderRight: "none",
     cursor: "pointer",
-    letterSpacing: "0.2px",
+    letterSpacing: "var(--tracking-wide)",
+    boxShadow: "none", // override the global button shadow inside the tab strip
   }),
   filterBtn: (active) => ({
-    fontSize: 14,
+    fontSize: "var(--font-size-base)",
     padding: "5px 16px",
     borderRadius: 99,
     background: active ? "var(--color-text-primary)" : "transparent",
     color: active ? "var(--color-background-primary)" : "var(--color-text-secondary)",
     border: "0.5px solid var(--color-border-secondary)",
     cursor: "pointer",
+    boxShadow: "none", // small toggle chips don't need elevation
   }),
 };

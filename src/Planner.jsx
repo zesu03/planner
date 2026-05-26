@@ -13,7 +13,7 @@ import {
   QUOTES, INTENTIONS,
 } from "./lib/constants";
 import { newId } from "./lib/ids";
-import { todayStr, localDateStr } from "./lib/dates";
+import { todayStr, localDateStr, daysLeft } from "./lib/dates";
 import { isGoalDone, pct, isRecurring, isScheduledOn, isDoneOn, recurringStreak, recurringCompletionRate } from "./lib/goals";
 import { emptyMuhasabaEntry, isMuhasabaFilled, muhasabaStreak } from "./lib/muhasaba";
 import { emptyQaza, computeQazaOwed, QAZA_PRAYERS } from "./lib/qaza";
@@ -22,6 +22,7 @@ import { dayPhase, prayersToday, focusToday, muhasabaState, yesterdayDua, firstO
 import { fmtTime, focusStreakDays, STREAK_MILESTONES } from "./lib/focus";
 import { goldA, S } from "./lib/styles";
 import CelebrationToast from "./components/CelebrationToast";
+import ConfirmDialog from "./components/ConfirmDialog";
 import { GoalDetailProvider } from "./contexts/GoalDetailContext";
 
 // View components (one per tab).
@@ -51,9 +52,9 @@ export default function Planner({ user }) {
   const [form,setForm]         = useState({title:"",type:"short",category:"Health",due:"",notes:"",intention:""});
   const [editingGoal,setEditingGoal] = useState(false);
   const [goalDraft,setGoalDraft] = useState(null);
-  const [newTask,setNewTask]   = useState({text:"",priority:"Medium",eta:30,recurring:null});
+  const [newTask,setNewTask]   = useState({text:"",priority:"Medium",eta:30,due:"",recurring:null});
   const [editingTaskId,setEditingTaskId] = useState(null);
-  const [taskDraft,setTaskDraft] = useState({text:"",priority:"Medium",eta:30});
+  const [taskDraft,setTaskDraft] = useState({text:"",priority:"Medium",eta:30,due:""});
   const [editingNotes,setEditingNotes] = useState(false);
   const [notesVal,setNotesVal] = useState("");
   const [taskStatusFilter,setTaskStatusFilter] = useState("all");
@@ -77,10 +78,29 @@ export default function Planner({ user }) {
   const [aiLoadingDay,setAiLoadingDay] = useState(null); // day being generated, or null
   const [aiError,setAiError] = useState("");
 
-  // theme: apply data-theme to <html> based on settings (default dark)
+  // theme: apply data-theme to <html> based on settings (default dark).
+  // Also update <meta name="theme-color"> dynamically so the mobile
+  // browser/PWA status bar matches the user's in-app theme choice even
+  // when their system theme differs. The static media-targeted metas in
+  // index.html handle the system-default; this JS override wins for the
+  // user's manual selection.
   const theme = userSettings.theme === "light" ? "light" : "dark";
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
+    const color = theme === "light" ? "#ede2c5" : "#0f120f";
+    // Find any existing theme-color meta (with or without media) and
+    // either update it, or insert a fresh one if there's none plain.
+    const metas = document.head.querySelectorAll('meta[name="theme-color"]');
+    let plain = null;
+    for (const m of metas) {
+      if (!m.getAttribute("media")) { plain = m; break; }
+    }
+    if (!plain) {
+      plain = document.createElement("meta");
+      plain.setAttribute("name", "theme-color");
+      document.head.appendChild(plain);
+    }
+    plain.setAttribute("content", color);
   }, [theme]);
   function toggleTheme() {
     updateSettings({ ...userSettings, theme: theme === "dark" ? "light" : "dark" });
@@ -105,6 +125,12 @@ export default function Planner({ user }) {
   // celebrate the moment of the transition, not on every render — and not
   // on first load when Firestore data hydrates into already-celebrated state.
   const [celebration, setCelebration] = useState(null);
+
+  // Styled confirm dialog. Replaces window.confirm() for destructive actions —
+  // delete goal, remove task. Set with { title, message, confirmLabel, tone,
+  // onConfirm }; cleared back to null on confirm / cancel / Esc.
+  const [confirmState, setConfirmState] = useState(null);
+  const requestConfirm = (opts) => setConfirmState({ ...opts });
 
   const prevGoalsRef = useRef(null);
   useEffect(() => {
@@ -815,7 +841,7 @@ export default function Planner({ user }) {
 
   function addTask(gId) {
     if (!goalsHook.addTask(gId, newTask)) return;
-    setNewTask({ text: "", priority: "Medium", eta: 30, recurring: null });
+    setNewTask({ text: "", priority: "Medium", eta: 30, due: "", recurring: null });
   }
 
   function startTaskEdit(t) {
@@ -824,6 +850,7 @@ export default function Planner({ user }) {
       text: t.text,
       priority: t.priority,
       eta: t.eta,
+      due: t.due || "",
       recurring: t.recurring ? { ...t.recurring, days: t.recurring.days ? [...t.recurring.days] : undefined } : null,
     });
   }
@@ -835,14 +862,31 @@ export default function Planner({ user }) {
   }
 
   function removeTask(gId, tId) {
-    if (!window.confirm("Remove this task?")) return;
-    goalsHook.removeTask(gId, tId);
+    const g = goals.find((g) => g.id === gId);
+    const t = g?.tasks?.find((x) => x.id === tId);
+    requestConfirm({
+      title: "Remove task?",
+      message: t?.text ? `"${t.text}" will be removed from this goal. Logged focus time stays in your history.` : "This task will be removed.",
+      confirmLabel: "Remove",
+      tone: "danger",
+      onConfirm: () => goalsHook.removeTask(gId, tId),
+    });
   }
 
   function deleteGoal(id) {
-    if (!window.confirm("Delete this goal and all its tasks? This cannot be undone.")) return;
-    goalsHook.deleteGoal(id);
-    setView("list");
+    const g = goals.find((g) => g.id === id);
+    requestConfirm({
+      title: "Delete goal?",
+      message: g?.title
+        ? `"${g.title}" and all its tasks will be deleted. This cannot be undone.`
+        : "This goal and all its tasks will be deleted. This cannot be undone.",
+      confirmLabel: "Delete",
+      tone: "danger",
+      onConfirm: () => {
+        goalsHook.deleteGoal(id);
+        setView("list");
+      },
+    });
   }
 
   function saveNotes(gId) {
@@ -859,6 +903,15 @@ export default function Planner({ user }) {
   const visibleGoals = goals.filter(g=>{
     if (filter==="completed") { if (!isGoalDone(g)) return false; }
     else if (filter==="active") { if (isGoalDone(g)) return false; }
+    else if (filter==="overdue") {
+      if (isGoalDone(g)) return false;
+      if (daysLeft(g.due) >= 0) return false;
+    }
+    else if (filter==="week") {
+      if (isGoalDone(g)) return false;
+      const dl = daysLeft(g.due);
+      if (dl < 0 || dl > 7) return false;
+    }
     else if (filter==="short" || filter==="long") {
       if (g.type!==filter) return false;
     }
@@ -877,6 +930,28 @@ export default function Planner({ user }) {
     return 0;
   });
   const dashboardGoals = normalizedSearch ? goals.filter(matchesSearch) : goals;
+
+  // Counts per filter bucket — passed to GoalsList for the portfolio header
+  // and the chip badges. Computed once from the unfiltered goals list so the
+  // numbers reflect the actual portfolio, not the current view. "Due today"
+  // breaks out from "Due this week" for the prominent header strip.
+  const goalCounts = (() => {
+    let active=0, overdue=0, dueToday=0, week=0, completed=0, shortG=0, longG=0;
+    for (const g of goals) {
+      // Type counts ignore completion so chip badges line up with the
+      // filter (Short-term / Long-term filters include completed goals).
+      if (g.type === "short") shortG++;
+      else if (g.type === "long") longG++;
+      const done = isGoalDone(g);
+      if (done) { completed++; continue; }
+      active++;
+      const dl = daysLeft(g.due);
+      if (dl < 0) overdue++;
+      else if (dl === 0) { dueToday++; week++; }
+      else if (dl <= 7) week++;
+    }
+    return { total: goals.length, active, overdue, dueToday, week, completed, short: shortG, long: longG };
+  })();
 
   // last activity day per goal, derived from focusLog (most recent entry's day)
   const lastActivityByGoal = focusLog.reduce((acc, l) => {
@@ -955,41 +1030,49 @@ export default function Planner({ user }) {
         onOpen={onCelebrationOpen}
       />
 
-      {/* header */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:6,flexWrap:"wrap",gap:12}}>
-        <div>
-          <div style={{fontSize:14,color:"var(--gold)",fontWeight:600,letterSpacing:"0.6px",textTransform:"uppercase",marginBottom:3}}>Aakhirah Planner</div>
-          <h2 style={{margin:0,fontSize:22,fontWeight:600,color:"var(--color-text-primary)",lineHeight:1.25}}>
-            Salam, {greetingName} <span style={{color:"var(--gold)",fontWeight:500}}>·</span> <span style={{fontFamily:'"Fraunces",serif',fontStyle:"italic",fontWeight:500}}>Bismillah</span>
+      {/* header — styled via .app-header-* in index.css so the mobile
+          media query can compact it (drop the overline, shrink the
+          greeting) without fighting inline styles. */}
+      <header className="app-header">
+        <div className="app-header-text">
+          <div className="app-header-overline">Aakhirah Planner</div>
+          <h2 className="app-header-greeting">
+            Salam, {greetingName} <span className="accent">·</span> <span className="bismillah">Bismillah</span>
           </h2>
-          <div style={{fontSize:13,color:"var(--color-text-secondary)",marginTop:5}}>
-            {dateLine}
-          </div>
+          <div className="app-header-date">{dateLine}</div>
         </div>
-        <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+        <div className="app-header-actions">
           {pomRunning && <span style={{fontSize:14,padding:"3px 10px",borderRadius:99,background:goldA(15),color:"var(--gold)",fontWeight:500}}>● Focus {fmtTime(pomSeconds)}</span>}
           <button onClick={toggleTheme} title={`Switch to ${theme==="dark"?"light":"dark"} mode`}
+            aria-label={`Switch to ${theme==="dark"?"light":"dark"} mode`}
             style={{fontSize:15,padding:"6px 11px",lineHeight:1,minWidth:38,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>
             {theme==="dark" ? "☀" : "☾"}
           </button>
           {view!=="add" && <button onClick={()=>setView("add")} style={{fontSize:15,borderColor:"var(--gold)",color:"var(--gold)"}}>+ New goal</button>}
           {view==="add" && <button onClick={()=>setView("dashboard")} style={{fontSize:15}}>Cancel</button>}
         </div>
-      </div>
+      </header>
 
-      {/* nav */}
-      <div className="tabbar" style={{borderBottom:`0.5px solid ${goldA(27)}`,marginBottom:22,display:"flex",marginTop:14,overflowX:"auto",gap:4}}>
+      {/* nav — top-mounted on desktop, repositioned to fixed-bottom on
+          mobile via the .tabbar media query in index.css. Same markup,
+          different layout per breakpoint. */}
+      <nav className="tabbar" aria-label="Primary">
         {["dashboard","list","prayer","pomodoro","muhasaba","stats"].map((v)=>{
           const labels = { dashboard:"Dashboard", list:"Goals", prayer:"Prayer", pomodoro:"Focus", muhasaba:"Muhasaba", stats:"Stats" };
           const icons = { dashboard:"☀️", list:"🎯", prayer:"🕌", pomodoro:"⏱", muhasaba:"🌙", stats:"📊" };
+          const active = view === v;
           return (
-            <button key={v} style={{...S.tab(view===v),display:"inline-flex",alignItems:"center",gap:7,whiteSpace:"nowrap"}} onClick={()=>setView(v)}>
-              <span style={{fontSize:15,opacity:view===v?1:0.7}}>{icons[v]}</span>
-              {labels[v]}
+            <button key={v}
+              type="button"
+              className={`tab-btn${active ? " tab-btn--active" : ""}`}
+              aria-current={active ? "page" : undefined}
+              onClick={()=>setView(v)}>
+              <span className="tab-btn-icon" aria-hidden="true">{icons[v]}</span>
+              <span className="tab-btn-label">{labels[v]}</span>
             </button>
           );
         })}
-      </div>
+      </nav>
 
       {/* ── DASHBOARD ── */}
       {view==="dashboard" && (
@@ -1031,6 +1114,7 @@ export default function Planner({ user }) {
         <GoalsList
           goals={goals}
           visibleGoals={visibleGoals}
+          goalCounts={goalCounts}
           lastActivityByGoal={lastActivityByGoal}
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
@@ -1039,6 +1123,7 @@ export default function Planner({ user }) {
           goalSort={goalSort}
           setGoalSort={setGoalSort}
           onSelectGoal={openGoal}
+          onAddGoal={() => setView("add")}
         />
       )}
 
@@ -1051,6 +1136,7 @@ export default function Planner({ user }) {
       {view==="detail" && selected && (
         <GoalDetailProvider value={{
           focusLog,
+          muhasaba,
           // goal-level
           toggleGoalCompleted, deleteGoal,
           editingGoal, goalDraft, setGoalDraft,
@@ -1072,6 +1158,7 @@ export default function Planner({ user }) {
           pomGoalId, pomTaskId, pomRunning, pomSeconds,
         }}>
           <GoalDetail
+            key={selected.id}
             selected={selected}
             goBack={() => setView("list")}
           />
@@ -1164,6 +1251,15 @@ export default function Planner({ user }) {
         />
       )}
 
+      <ConfirmDialog
+        open={!!confirmState}
+        title={confirmState?.title}
+        message={confirmState?.message}
+        confirmLabel={confirmState?.confirmLabel}
+        tone={confirmState?.tone}
+        onConfirm={confirmState?.onConfirm}
+        onClose={() => setConfirmState(null)}
+      />
     </div>
   );
 }

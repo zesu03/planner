@@ -1,6 +1,8 @@
 // Empty-state primitive used wherever a list or card is empty.
 // `padY` controls top/bottom padding so it can be tucked into smaller cards.
-export default function EmptyState({ icon, title, hint, padY = 28 }) {
+// Optional `children` slot below the hint is for inline call-to-action
+// buttons (e.g. "+ Add your first goal").
+export default function EmptyState({ icon, title, hint, padY = 28, children }) {
   return (
     <div style={{ textAlign: "center", padding: `${padY}px 12px`, color: "var(--color-text-tertiary)" }}>
       <div style={{ fontSize: 30, marginBottom: 8, opacity: 0.75 }}>{icon}</div>
@@ -8,6 +10,7 @@ export default function EmptyState({ icon, title, hint, padY = 28 }) {
         {title}
       </div>
       {hint && <div style={{ fontSize: 13, maxWidth: 340, margin: "0 auto", lineHeight: 1.5 }}>{hint}</div>}
+      {children}
     </div>
   );
 }

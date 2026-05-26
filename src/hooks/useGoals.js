@@ -86,6 +86,7 @@ export function useGoals({ applyGoalsUpdate }) {
         sessions: 0,
         totalTime: 0,
       };
+      if (taskDraft.due) newTask.due = taskDraft.due;
       // If the draft specifies a recurring shape, mark this task as a
       // habit. `completions` starts empty; the user ticks today via the
       // checkbox once a habit run is done for the day.
@@ -111,6 +112,9 @@ export function useGoals({ applyGoalsUpdate }) {
         tasks: g.tasks.map((t) => {
           if (t.id !== tId) return t;
           const next = { ...t, text: draft.text.trim(), priority: draft.priority, eta: Number(draft.eta) || 30 };
+          // Per-task due date — store when set, drop when cleared.
+          if (draft.due) next.due = draft.due;
+          else if ("due" in draft) delete next.due;
           // Recurring shape edits — including changing a one-shot to
           // habit or vice versa.
           if (draft.recurring && draft.recurring.type) {

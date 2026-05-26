@@ -2,6 +2,8 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+html { scroll-behavior: smooth; }
+
 body {
   font-family: "Space Grotesk", sans-serif;
   font-size: 17px;
@@ -10,14 +12,34 @@ body {
     radial-gradient(900px 500px at 90% 20%, var(--body-glow-2), transparent 60%),
     var(--body-bg-base);
   color: var(--text-primary);
+  /* 100dvh = dynamic viewport height. On iOS Safari the URL bar collapses
+     when the user scrolls; 100vh ignores that and overshoots, causing a
+     ~80px jump. 100dvh follows the actual visible area. Fallback to 100vh
+     for old browsers (Safari 15.3 and earlier). */
   min-height: 100vh;
+  min-height: 100dvh;
   transition: background 0.3s ease, color 0.2s ease;
+  /* Smooth web fonts so Fraunces and Amiri render with subpixel grace
+     instead of crunchy aliased edges on Windows + macOS. */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 #root {
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
+/* ── Design tokens ──────────────────────────────────────────────────────
+   Theme-agnostic primitives (type / spacing / radii) live with the dark
+   theme block because :root is its own selector — they apply to both
+   themes unless overridden below. Theme-specific values (colours, glow)
+   live in each [data-theme=*] block.
+
+   Type scale uses px (not rem) so inline-style call sites that already
+   mix `fontSize: 14` etc. compose cleanly with token-using callers.
+   Step ratio ≈ 1.18 — quiet, editorial, not a chunky display scale. */
 :root, [data-theme="dark"] {
   --gold: #c9a84c;
   --gold-light: rgba(201,168,76,0.12);
@@ -27,33 +49,82 @@ body {
   --border: rgba(201,168,76,0.18);
   --text-primary: #f3f0e8;
   --text-secondary: #a59f90;
-  --text-muted: #6c6559;
+  --text-muted: #8a8270; /* bumped from #6c6559 — was 3.6:1 on bg-card; now ~5.4:1 (WCAG AA pass) */
   --radius: 14px;
   --radius-sm: 10px;
   --card-padding: 20px 22px;
   --page-padding: 1.5rem 1.25rem;
+
+  /* Type scale — pixel-based to align with existing inline styles. */
+  --font-size-xs:   11px;
+  --font-size-sm:   12px;
+  --font-size-base: 14px;
+  --font-size-md:   15px;
+  --font-size-lg:   17px;
+  --font-size-xl:   20px;
+  --font-size-2xl:  24px;
+  --font-size-3xl:  30px;
+  --line-height-tight:  1.25;
+  --line-height-base:   1.5;
+  --line-height-loose:  1.7;
+  --line-height-arabic: 2.1;
+  --tracking-tight:  -0.1px;
+  --tracking-normal: 0;
+  --tracking-wide:   0.2px;
+  --tracking-caps:   0.4px; /* used for uppercase labels */
+  --fw-regular:  400;
+  --fw-medium:   500;
+  --fw-semibold: 600;
+  --fw-bold:     700;
+
+  /* Spacing scale — 4px base. Use for gaps + padding + margins. */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Focus ring — used by .focus-ring + the global :focus-visible rule. */
+  --focus-ring-color: color-mix(in srgb, var(--gold) 55%, transparent);
+  --focus-ring-halo:  color-mix(in srgb, var(--gold) 18%, transparent);
+  --focus-ring-width: 2px;
 
   --color-background-primary: var(--bg-card);
   --color-background-secondary: var(--bg-secondary);
   --color-border-tertiary: rgba(201,168,76,0.2);
   --color-border-secondary: rgba(201,168,76,0.28);
   --color-border-danger: rgba(214,95,82,0.4);
+  --color-border-warning: rgba(214,168,95,0.45);
+  --color-border-success: rgba(127,190,143,0.45);
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-tertiary: var(--text-muted);
   --color-text-danger: #e88b7c;
   --color-text-warning: #d6a85f;
   --color-text-success: #7fbe8f;
-  --color-background-danger: rgba(214,95,82,0.15);
+  --color-background-danger:  rgba(214,95,82,0.15);
   --color-background-warning: rgba(214,168,95,0.2);
+  --color-background-success: rgba(127,190,143,0.18);
   --border-radius-lg: 16px;
   --border-radius-md: 12px;
+  --border-radius-sm: 8px;
 
   --body-bg-base: #0b0c0a;
   --body-glow-1: rgba(201,168,76,0.18);
   --body-glow-2: rgba(63,140,160,0.18);
   --input-bg: rgba(23, 26, 22, 0.9);
   --btn-default-bg: rgba(17, 18, 16, 0.7);
+
+  /* Elevation tokens — theme-aware so light mode doesn't get the same
+     heavy dark-on-dark shadow that dark mode needs to read. */
+  --shadow-button: 0 4px 14px rgba(0,0,0,0.22);
+  --shadow-card:   0 8px 24px rgba(0,0,0,0.32);
+  --shadow-modal:  0 20px 60px rgba(0,0,0,0.5);
+  --shadow-pop:    0 12px 28px rgba(0,0,0,0.32);
 }
 
 /* Light theme — warm parchment palette. Deep ochre + olive on cream. */
@@ -66,27 +137,42 @@ body {
   --border: rgba(96,70,18,0.22);
   --text-primary: #20180c;
   --text-secondary: #5a4818;
-  --text-muted: #8a7848;
+  --text-muted: #6b5a2a; /* bumped from #8a7848 — was 3.7:1 on bg-card; now ~6.1:1 (WCAG AA) */
 
   --color-background-primary: var(--bg-card);
   --color-background-secondary: #ece1c4;
   --color-border-tertiary: rgba(96,70,18,0.22);
   --color-border-secondary: rgba(96,70,18,0.34);
   --color-border-danger: rgba(154,52,40,0.4);
+  --color-border-warning: rgba(192,140,40,0.5);
+  --color-border-success: rgba(58,107,52,0.45);
   --color-text-primary: var(--text-primary);
   --color-text-secondary: var(--text-secondary);
   --color-text-tertiary: var(--text-muted);
   --color-text-danger: #9a3428;
   --color-text-warning: #7a5614;
   --color-text-success: #3a6b34;
-  --color-background-danger: rgba(154,52,40,0.13);
+  --color-background-danger:  rgba(154,52,40,0.13);
   --color-background-warning: rgba(192,140,40,0.18);
+  --color-background-success: rgba(58,107,52,0.16);
+
+  /* Focus ring tuned per-theme — gold is much darker in light mode, so the
+     halo needs a slightly higher mix to read on cream backgrounds. */
+  --focus-ring-color: color-mix(in srgb, var(--gold) 60%, transparent);
+  --focus-ring-halo:  color-mix(in srgb, var(--gold) 22%, transparent);
 
   --body-bg-base: #ede2c5;
   --body-glow-1: rgba(122,88,16,0.18);
   --body-glow-2: rgba(63,140,160,0.10);
   --input-bg: rgba(255,251,238,0.92);
   --btn-default-bg: rgba(255,249,231,0.85);
+
+  /* Light-mode shadows: lighter + smaller spread, since dark shadows on
+     cream backgrounds quickly read as muddy stains. */
+  --shadow-button: 0 2px 8px rgba(60,40,8,0.08);
+  --shadow-card:   0 4px 16px rgba(60,40,8,0.10);
+  --shadow-modal:  0 16px 48px rgba(60,40,8,0.22);
+  --shadow-pop:    0 8px 22px rgba(60,40,8,0.14);
 }
 
 h1, h2, h3 {
@@ -100,6 +186,9 @@ input, textarea, select {
   border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-family: inherit;
+  /* 16px is the iOS Safari threshold for "don't auto-zoom on focus".
+     Anything smaller triggers the viewport zoom-in. Keep this at >=16px
+     on all viewports, including the mobile media query below. */
   font-size: 16px;
   padding: 10px 14px;
   width: 100%;
@@ -120,13 +209,30 @@ button {
   color: var(--text-secondary);
   cursor: pointer;
   font-family: inherit;
-  font-size: 15px;
+  font-size: var(--font-size-md);
   padding: 8px 18px;
-  transition: all 0.15s;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+  box-shadow: var(--shadow-button);
 }
 button:hover { border-color: var(--gold); color: var(--gold); }
 button:disabled { opacity: 0.4; cursor: not-allowed; }
+/* Keyboard-only focus ring. Mouse clicks don't fire :focus-visible, so the
+   ring only shows up for tab/arrow navigation — invisible to mouse users
+   but a clear lifeline for keyboard. Modern browsers route the outline
+   around the element's existing border-radius automatically, so the ring
+   follows circular FABs, rounded pills, and rectangular cards correctly. */
+:focus-visible {
+  outline: var(--focus-ring-width) solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+/* Inputs already paint their own border-color + box-shadow glow on focus
+   (see the input:focus rule below). The outline ring is redundant and
+   visually busy on top of that, so suppress it on form fields. */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: none;
+}
 
 .btn-gold {
   background: var(--gold);
@@ -162,11 +268,146 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   direction: rtl;
 }
 
-/* Tab bar — soft fade on the right edge to hint at scrollability. */
+/* Floating action button used on GoalsList. Positioned via CSS so the
+   mobile media query can lift it above the bottom-mounted tab bar
+   without recomputing inline calc strings. */
+.fab {
+  position: fixed;
+  right: max(22px, env(safe-area-inset-right));
+  bottom: calc(22px + env(safe-area-inset-bottom));
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--gold);
+  color: #fff;
+  border: none;
+  font-size: 26px;
+  line-height: 1;
+  font-weight: 300;
+  cursor: pointer;
+  box-shadow: var(--shadow-card);
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.12s ease, box-shadow 0.18s ease;
+}
+.fab:hover { transform: translateY(-1px); box-shadow: var(--shadow-pop); }
+@media (max-width: 640px) {
+  /* Sit above the bottom-mounted tabbar (~64px total including its safe
+     area). Without this, the FAB is hidden behind the nav. */
+  .fab {
+    bottom: calc(86px + env(safe-area-inset-bottom));
+  }
+}
+
+/* Two-column form grid that collapses to a single column on narrow
+   screens. Used for Priority + ETA in the task forms — at 360px the
+   side-by-side dropdowns become unreadably tight. */
+.grid-2-stack {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+@media (max-width: 480px) {
+  .grid-2-stack { grid-template-columns: 1fr; }
+}
+
+/* ── App header ────────────────────────────────────────────────────────
+   The brand overline + greeting + date + action buttons row that sits at
+   the top of every view. Extracted to CSS classes so the mobile media
+   query can tighten it without fighting inline styles. */
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.app-header-text { min-width: 0; }
+.app-header-overline {
+  font-size: var(--font-size-base);
+  color: var(--gold);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  margin-bottom: 3px;
+}
+.app-header-greeting {
+  margin: 0;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-tight);
+}
+.app-header-greeting .accent { color: var(--gold); font-weight: var(--fw-medium); }
+.app-header-greeting .bismillah {
+  font-family: "Fraunces", serif;
+  font-style: italic;
+  font-weight: var(--fw-medium);
+}
+.app-header-date {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-top: 5px;
+}
+.app-header-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Tab bar — top-mounted on desktop, fixed-bottom on mobile (see media
+   query below). Soft fade on the right edge of the desktop layout hints
+   at horizontal scrollability when tabs overflow. */
 .tabbar {
   position: relative;
+  display: flex;
+  gap: 4px;
+  margin: 14px 0 22px;
+  border-bottom: 0.5px solid color-mix(in srgb, var(--gold) 27%, transparent);
+  overflow-x: auto;
   -webkit-mask-image: linear-gradient(to right, #000 0, #000 92%, transparent 100%);
           mask-image: linear-gradient(to right, #000 0, #000 92%, transparent 100%);
+}
+.tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  white-space: nowrap;
+  font-size: var(--font-size-md);
+  font-weight: var(--fw-regular);
+  color: var(--color-text-secondary);
+  border-bottom: 2.5px solid transparent;
+  border-radius: 0;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  padding: 9px 0;
+  margin-right: 22px;
+  background: none;
+  cursor: pointer;
+  letter-spacing: var(--tracking-wide);
+  box-shadow: none;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.tab-btn:hover {
+  color: var(--color-text-primary);
+  border-color: transparent; /* don't pop the underline on hover — only on active */
+}
+.tab-btn--active {
+  color: var(--color-text-primary);
+  font-weight: var(--fw-semibold);
+  border-bottom-color: var(--gold);
+}
+.tab-btn-icon {
+  font-size: 15px;
+  opacity: 0.7;
+}
+.tab-btn--active .tab-btn-icon {
+  opacity: 1;
 }
 
 @keyframes fadeUp {
@@ -234,13 +475,30 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 .tile-hover:hover {
   transform: translateY(-1px);
-  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+  box-shadow: var(--shadow-card);
+}
+
+/* Touch-only press feedback. Hover handlers (onMouseEnter / onMouseLeave)
+   don't fire on touch devices, so cards that rely on them give zero
+   visual feedback when tapped. `@media (hover: none)` scopes the press
+   shrink to touch-only devices so mouse users keep their hover treatment
+   intact. */
+@media (hover: none) {
+  .tile-hover:active,
+  .tap-card:active {
+    transform: scale(0.985);
+    transition: transform 0.08s ease;
+  }
 }
 
 @media (max-width: 640px) {
   :root {
     --card-padding: 14px 16px;
-    --page-padding: 1.1rem 0.85rem;
+    /* Use safe-area-inset on the sides + bottom so notches and the iPhone
+       home indicator don't crop content. The bottom inset is also
+       handled separately by the body padding-bottom for the bottom-nav. */
+    --page-padding: 1.1rem max(0.85rem, env(safe-area-inset-right))
+                    1.1rem max(0.85rem, env(safe-area-inset-left));
   }
 
   body {
@@ -251,22 +509,22 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     font-size: 21px;
   }
 
-  /* Bump touch targets — Apple HIG recommends 44pt minimum, Material 48dp.
-     The previous 7×14 padding produced ~32px-tall buttons which were
-     finicky to tap reliably on a phone. */
+  /* Touch targets meet Apple HIG (44pt) / Material (48dp). Width is still
+     driven by content + padding; min-height ensures even small chips like
+     "Cancel" remain reliably tappable. */
   button {
-    padding: 9px 16px;
-    min-height: 38px;
+    padding: 10px 16px;
+    min-height: 44px;
   }
 
-  input, textarea, select {
-    font-size: 15px;
-  }
+  /* IMPORTANT: do NOT drop input/textarea/select font-size below 16px here
+     — iOS Safari auto-zooms the viewport on focus otherwise. The base
+     rule above sets 16px; we intentionally don't override it on mobile. */
 
   .btn-primary {
-    padding: 11px 18px;
-    font-size: 14px;
-    min-height: 44px;
+    padding: 12px 18px;
+    font-size: 15px;
+    min-height: 48px;
   }
 
   /* Task-row actions get their own row on narrow screens. Without this,
@@ -281,8 +539,83 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   .task-toolbar button,
   .task-actions button {
     font-size: 13px;
-    padding: 7px 12px;
-    min-height: 34px;
+    padding: 8px 12px;
+    min-height: 40px;
+  }
+
+  /* Mobile compaction of the app header — drop the gold "AAKHIRAH PLANNER"
+     overline (the user already knows what app this is), shrink the
+     greeting from 2xl to ~19px, tighten the date margin. Saves ~24px of
+     vertical real estate on every page. */
+  .app-header { margin-bottom: 2px; }
+  .app-header-overline { display: none; }
+  .app-header-greeting { font-size: 19px; }
+  .app-header-date { margin-top: 2px; font-size: 12px; }
+
+  /* ── Mobile bottom-mounted navigation ─────────────────────────────────
+     Top-of-page horizontal scroll on phones is wrong shape: thumb sits at
+     the bottom, the active tab can scroll off-screen, and a long Goals
+     list scrolls the tab bar away entirely. We flip the same `.tabbar` to
+     a fixed bottom row with stacked icon + label, sized for thumb reach. */
+  .tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    margin: 0;
+    /* Respect the iPhone home indicator below and notch insets on the
+       sides. Top padding stays a flat 6px — this nav lives at the
+       bottom, so top safe-area is irrelevant. */
+    padding: 6px env(safe-area-inset-right) calc(6px + env(safe-area-inset-bottom)) env(safe-area-inset-left);
+    gap: 0;
+    overflow: visible;
+    background: color-mix(in srgb, var(--color-background-primary) 95%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-top: 0.5px solid var(--color-border-tertiary);
+    border-bottom: none;
+    box-shadow: 0 -4px 16px rgba(0,0,0,0.12);
+    z-index: 50;
+    -webkit-mask-image: none;
+            mask-image: none;
+    justify-content: space-around;
+  }
+  .tab-btn {
+    flex: 1;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    margin: 0;
+    padding: 4px 2px;
+    min-height: 56px;
+    font-size: var(--font-size-xs);
+    letter-spacing: 0.1px;
+    border-bottom: none;
+    border-radius: var(--radius-sm);
+  }
+  .tab-btn--active {
+    color: var(--gold);
+    border-bottom: none;
+    background: color-mix(in srgb, var(--gold) 12%, transparent);
+  }
+  .tab-btn-icon { font-size: 18px; }
+  /* Label wraps in a span so we can clip rather than line-break "Dashboard"
+     / "Muhasaba" on narrow viewports. At 360px viewport / 6 tabs, each
+     button is ~55px wide; ellipsis keeps the layout from buckling. */
+  .tab-btn-label {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Reserve space below the page content equal to the fixed nav so the
+     last item in any view isn't trapped under it. The 64px matches the
+     tabbar min height (56px) + its top padding (6px) + visual buffer. */
+  body {
+    padding-bottom: calc(64px + env(safe-area-inset-bottom));
   }
 }
 

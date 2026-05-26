@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { CAT_COLORS, PRIORITIES } from "../lib/constants";
-import { daysLeft, fmt, todayStr, localDateStr } from "../lib/dates";
+import { daysLeft, fmt, todayStr, localDateStr, addDays } from "../lib/dates";
 import { isGoalDone, pct, isRecurring, isScheduledOn, isDoneOn, recurringStreak, scheduleLabel, DOW_LABELS, DOW_LONG } from "../lib/goals";
 import { fmtMins, fmtTime } from "../lib/focus";
 import { goldA, goldLight, S } from "../lib/styles";
@@ -118,6 +119,7 @@ function SortableRow({ id, disabled, children }) {
 export default function GoalDetail({ selected, goBack }) {
   const {
     focusLog,
+    muhasaba,
     // goal-level
     toggleGoalCompleted,
     startGoalEdit,
@@ -240,6 +242,38 @@ export default function GoalDetail({ selected, goBack }) {
     return { last7Mins: last7, last30Mins: last30, lastActivityDay: lastDay, series };
   })();
 
+  // 7-day Muhasaba verdict strip for this goal. During nightly muhasaba the
+  // user answers "did you make progress on this goal today?" — yes / partial
+  // / no. Those answers are stored on the day's entry; surfacing them here
+  // closes the loop so the nightly verdict feeds back into the goal it's
+  // about. The strip walks back 7 days from today; empty cells mean no
+  // muhasaba on that day (not a "no").
+  const goalChecksWindow = (() => {
+    if (!muhasaba) return null;
+    const today = todayStr();
+    const days = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(`${today}T12:00:00Z`);
+      d.setUTCDate(d.getUTCDate() - i);
+      const k = localDateStr(d);
+      const verdict = muhasaba?.[k]?.goalChecks?.[selected.id] || null;
+      days.push({ day: k, verdict });
+    }
+    const counts = days.reduce((acc, d) => {
+      if (d.verdict) acc[d.verdict] = (acc[d.verdict] || 0) + 1;
+      return acc;
+    }, {});
+    const total = (counts.yes || 0) + (counts.partial || 0) + (counts.no || 0);
+    return { days, counts, total };
+  })();
+
+  // Add-task panel sits at the TOP of the task list (was previously at the
+  // bottom, requiring scroll past every task on long lists). Default to
+  // collapsed once there are tasks so the panel doesn't dominate the view
+  // for users in "review" rather than "add" mode. Empty-goal first-open
+  // expands automatically — the user is here to set up the goal.
+  const [addExpanded, setAddExpanded] = useState(selected.tasks.length === 0);
+
   const lastActivityLabel = (() => {
     if (!focusRhythm.lastActivityDay) return null;
     if (focusRhythm.lastActivityDay === todayStr()) return "today";
@@ -297,7 +331,7 @@ export default function GoalDetail({ selected, goBack }) {
                   <span key={selected.completedAt || "done"} className="pop-in"
                     style={{
                       ...S.pill(
-                        onTime ? "rgba(127,190,143,0.18)" : "var(--color-background-warning)",
+                        onTime ? "var(--color-background-success)" : "var(--color-background-warning)",
                         onTime ? "var(--color-text-success)" : "var(--color-text-warning)"
                       ),
                       display: "inline-block",
@@ -480,6 +514,68 @@ export default function GoalDetail({ selected, goBack }) {
           );
         })()}
 
+        {/* Muhasaba verdict strip — last 7 nights of self-assessed progress
+            on this goal. Connects the nightly reflection loop to the goal it
+            was about. Hidden until the user has answered at least once. */}
+        {goalChecksWindow && goalChecksWindow.total > 0 && (() => {
+          const todayKey = todayStr();
+          // Three coordinated shades — text + fill + border — so the cell
+          // reads at a glance and matches the rest of the app's status pills.
+          const styleFor = (v) => {
+            if (v === "yes")     return { fg: "var(--color-text-success)", bg: "var(--color-background-success)", bd: "var(--color-border-success)" };
+            if (v === "partial") return { fg: "var(--color-text-warning)", bg: "var(--color-background-warning)", bd: "var(--color-border-warning)" };
+            if (v === "no")      return { fg: "var(--color-text-danger)",  bg: "var(--color-background-danger)",  bd: "var(--color-border-danger)" };
+            return null;
+          };
+          const dotFor = (v) => v === "yes" ? "✓" : v === "partial" ? "~" : v === "no" ? "✕" : "·";
+          const labelFor = (v) => v === "yes" ? "yes" : v === "partial" ? "partial" : v === "no" ? "no" : "no entry";
+          return (
+            <div style={{
+              background: "var(--color-background-secondary)",
+              borderRadius: "var(--border-radius-md)",
+              padding: "12px 14px",
+              marginBottom: 16,
+              border: "0.5px solid var(--color-border-tertiary)",
+            }}>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10, gap: 10, flexWrap: "wrap" }}>
+                <div style={{ fontSize: 13, color: "var(--color-text-secondary)", fontWeight: 500 }}>
+                  Muhasaba · last 7 nights
+                </div>
+                <div style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>
+                  {(goalChecksWindow.counts.yes || 0)} yes · {(goalChecksWindow.counts.partial || 0)} partial · {(goalChecksWindow.counts.no || 0)} no
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 4 }}>
+                {goalChecksWindow.days.map((d) => {
+                  const sty = styleFor(d.verdict);
+                  const isToday = d.day === todayKey;
+                  return (
+                    <div key={d.day}
+                      title={`${d.day} · ${labelFor(d.verdict)}`}
+                      aria-label={`${d.day}: ${labelFor(d.verdict)}`}
+                      style={{
+                        flex: 1,
+                        height: 28,
+                        borderRadius: 4,
+                        background: sty ? sty.bg : "var(--color-background-primary)",
+                        border: `0.5px solid ${sty ? sty.bd : (isToday ? "var(--color-border-secondary)" : "var(--color-border-tertiary)")}`,
+                        color: sty ? sty.fg : "var(--color-text-tertiary)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        opacity: d.verdict ? 1 : 0.55,
+                      }}>
+                      {dotFor(d.verdict)}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })()}
+
         {/* tasks */}
         <div style={{ borderTop: "0.5px solid var(--color-border-tertiary)", paddingTop: 14, marginBottom: 14 }}>
           <div className="task-toolbar" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, marginBottom: 10 }}>
@@ -498,6 +594,117 @@ export default function GoalDetail({ selected, goBack }) {
                 {PRIORITIES.map((pr) => <option key={pr} value={pr}>{pr}</option>)}
               </select>
             </div>
+          </div>
+
+          {/* Add-task panel — moved to the top of the task list so users
+              don't have to scroll past everything to add one more. Collapsed
+              by default once tasks exist, so the list remains the visual
+              focus; clicking the input or the chevron expands the advanced
+              fields (priority, ETA, repeats, due). */}
+          <div style={{ background: "var(--color-background-secondary)", borderRadius: "var(--border-radius-md)", padding: addExpanded ? 12 : "8px 10px", marginBottom: 12 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input value={newTask.text}
+                onChange={(e) => setNewTask((n) => ({ ...n, text: e.target.value }))}
+                onFocus={() => setAddExpanded(true)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") addTask(selected.id);
+                  if (e.key === "Escape" && selected.tasks.length > 0) setAddExpanded(false);
+                }}
+                placeholder="+ Add a task..."
+                aria-label="New task description"
+                style={{ flex: 1, fontSize: 15, boxSizing: "border-box" }} />
+              <button onClick={() => addTask(selected.id)}
+                disabled={!newTask.text.trim()}
+                style={{ fontSize: 14, padding: "6px 14px", opacity: newTask.text.trim() ? 1 : 0.5 }}>
+                Add
+              </button>
+              <button onClick={() => setAddExpanded((v) => !v)}
+                aria-label={addExpanded ? "Hide advanced task options" : "Show advanced task options"}
+                aria-expanded={addExpanded}
+                title={addExpanded ? "Hide options" : "Show options (priority, ETA, repeats, due)"}
+                style={{
+                  fontSize: 13, padding: "5px 8px",
+                  background: "transparent",
+                  border: "0.5px solid var(--color-border-tertiary)",
+                  borderRadius: "var(--border-radius-md)",
+                  cursor: "pointer",
+                  color: "var(--color-text-secondary)",
+                  lineHeight: 1,
+                }}>
+                {addExpanded ? "▴" : "▾"}
+              </button>
+            </div>
+            {addExpanded && (
+              <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
+                <div className="grid-2-stack">
+                  <div>
+                    <label style={{ fontSize: 13, color: "var(--color-text-secondary)", display: "block", marginBottom: 4 }}>Priority</label>
+                    <select value={newTask.priority}
+                      onChange={(e) => setNewTask((n) => ({ ...n, priority: e.target.value }))}
+                      style={{ width: "100%", fontSize: 15 }}>
+                      {PRIORITIES.map((pr) => <option key={pr}>{pr}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 13, color: "var(--color-text-secondary)", display: "block", marginBottom: 4 }}>ETA (mins)</label>
+                    <input type="number" min="1" value={newTask.eta}
+                      onChange={(e) => setNewTask((n) => ({ ...n, eta: e.target.value }))}
+                      style={{ width: "100%", fontSize: 15, boxSizing: "border-box" }} />
+                  </div>
+                </div>
+                {/* Recurring picker — defaults to "Once" so this stays out
+                    of the way for normal one-shot tasks. Toggle Daily /
+                    Weekly to turn this into a habit instead. */}
+                <div>
+                  <label style={{ fontSize: 13, color: "var(--color-text-secondary)", display: "block", marginBottom: 4 }}>Repeats</label>
+                  <RecurringPicker
+                    value={newTask.recurring}
+                    onChange={(v) => setNewTask((n) => ({ ...n, recurring: v }))} />
+                </div>
+                {/* Optional per-task due date. Only meaningful for one-shot
+                    tasks (habits recur on their own schedule), so hide when
+                    the user picks Daily / Weekly. Capped at the goal's due. */}
+                {!newTask.recurring && (
+                  <div>
+                    <label style={{ fontSize: 13, color: "var(--color-text-secondary)", display: "block", marginBottom: 4 }}>
+                      Due date <span style={{ color: "var(--color-text-tertiary)" }}>· optional</span>
+                    </label>
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                      {[
+                        { label: "Today", v: todayStr() },
+                        { label: "Tomorrow", v: addDays(1) },
+                        { label: "This week", v: addDays(7) },
+                      ].map((p) => {
+                        const active = newTask.due === p.v;
+                        return (
+                          <button key={p.label} type="button"
+                            onClick={() => setNewTask((n) => ({ ...n, due: active ? "" : p.v }))}
+                            style={{
+                              fontSize: 13, padding: "4px 10px", borderRadius: 99,
+                              background: active ? "var(--color-background-primary)" : "transparent",
+                              border: `0.5px solid ${active ? "var(--gold)" : "var(--color-border-tertiary)"}`,
+                              color: active ? "var(--gold)" : "var(--color-text-secondary)",
+                              fontWeight: active ? 600 : 400,
+                              cursor: "pointer",
+                            }}>
+                            {p.label}
+                          </button>
+                        );
+                      })}
+                      <input type="date" value={newTask.due || ""}
+                        min={todayStr()}
+                        max={selected.due}
+                        onChange={(e) => setNewTask((n) => ({ ...n, due: e.target.value }))}
+                        style={{ fontSize: 14, padding: "5px 8px", flex: "1 1 140px", minWidth: 130 }} />
+                      {newTask.due && (
+                        <button type="button" onClick={() => setNewTask((n) => ({ ...n, due: "" }))}
+                          style={{ fontSize: 12, padding: "4px 8px" }}>Clear</button>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <DndContext sensors={dndSensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -519,7 +726,7 @@ export default function GoalDetail({ selected, goBack }) {
                           borderRadius: "var(--border-radius-md)",
                           background: isActive ? goldLight : "var(--color-background-secondary)",
                           border: isActive ? `0.5px solid ${goldA(40)}` : "0.5px solid transparent",
-                          boxShadow: isDragging ? "0 12px 28px rgba(0,0,0,0.32)" : "none",
+                          boxShadow: isDragging ? "var(--shadow-pop)" : "none",
                           ...sortableStyle,
                         }}>
                           {/* Drag handle — replaces the previous ↑↓ buttons. Disabled
@@ -563,7 +770,7 @@ export default function GoalDetail({ selected, goBack }) {
                                 <input value={taskDraft.text}
                                   onChange={(e) => setTaskDraft((d) => ({ ...d, text: e.target.value }))}
                                   onClick={(e) => e.stopPropagation()} />
-                                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                                <div className="grid-2-stack">
                                   <select value={taskDraft.priority}
                                     onChange={(e) => setTaskDraft((d) => ({ ...d, priority: e.target.value }))}
                                     onClick={(e) => e.stopPropagation()}>
@@ -573,6 +780,24 @@ export default function GoalDetail({ selected, goBack }) {
                                     onChange={(e) => setTaskDraft((d) => ({ ...d, eta: e.target.value }))}
                                     onClick={(e) => e.stopPropagation()} />
                                 </div>
+                                {!isRecurring(t) && (
+                                  <div onClick={(e) => e.stopPropagation()}>
+                                    <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginBottom: 4, letterSpacing: "0.3px", textTransform: "uppercase", fontWeight: 600 }}>
+                                      Due date <span style={{ textTransform: "none", fontWeight: 400, color: "var(--color-text-tertiary)" }}>· optional</span>
+                                    </div>
+                                    <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                                      <input type="date" value={taskDraft.due || ""}
+                                        min={todayStr()}
+                                        max={selected.due}
+                                        onChange={(e) => setTaskDraft((d) => ({ ...d, due: e.target.value }))}
+                                        style={{ fontSize: 14, padding: "5px 8px", flex: "1 1 140px", minWidth: 130 }} />
+                                      {taskDraft.due && (
+                                        <button type="button" onClick={() => setTaskDraft((d) => ({ ...d, due: "" }))}
+                                          style={{ fontSize: 12, padding: "4px 8px" }}>Clear</button>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
                                 <div onClick={(e) => e.stopPropagation()}>
                                   <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginBottom: 4, letterSpacing: "0.3px", textTransform: "uppercase", fontWeight: 600 }}>
                                     Repeats
@@ -615,6 +840,23 @@ export default function GoalDetail({ selected, goBack }) {
                                   ) : (
                                     <>
                                       <span>ETA {fmtMins(t.eta)}</span>
+                                      {t.due && (() => {
+                                        const dl = daysLeft(t.due);
+                                        const taskDone = !!t.done;
+                                        const overdueT = !taskDone && dl < 0;
+                                        const urgentT = !taskDone && dl >= 0 && dl <= 3;
+                                        const color = overdueT
+                                          ? "var(--color-text-danger)"
+                                          : urgentT
+                                            ? "var(--color-text-warning)"
+                                            : "var(--color-text-secondary)";
+                                        const label = overdueT
+                                          ? `${Math.abs(dl)}d overdue`
+                                          : dl === 0
+                                            ? "Due today"
+                                            : `Due ${fmt(t.due)}`;
+                                        return <span style={{ color, fontWeight: overdueT || urgentT ? 500 : 400 }}>· {label}</span>;
+                                      })()}
                                       {t.totalTime > 0 && <span>· Logged {fmtMins(t.totalTime)}</span>}
                                       {t.sessions > 0 && <span>· {t.sessions} session{t.sessions > 1 ? "s" : ""}</span>}
                                     </>
@@ -670,42 +912,6 @@ export default function GoalDetail({ selected, goBack }) {
             </SortableContext>
           </DndContext>
 
-          {/* add-task row */}
-          <div style={{ background: "var(--color-background-secondary)", borderRadius: "var(--border-radius-md)", padding: 12 }}>
-            <div style={{ fontSize: 14, color: "var(--color-text-secondary)", marginBottom: 8, fontWeight: 500 }}>Add task</div>
-            <input value={newTask.text}
-              onChange={(e) => setNewTask((n) => ({ ...n, text: e.target.value }))}
-              onKeyDown={(e) => e.key === "Enter" && addTask(selected.id)}
-              placeholder="Task description..."
-              style={{ width: "100%", fontSize: 15, marginBottom: 8, boxSizing: "border-box" }} />
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr auto", gap: 8, marginBottom: 10 }}>
-              <div>
-                <label style={{ fontSize: 13, color: "var(--color-text-secondary)", display: "block", marginBottom: 4 }}>Priority</label>
-                <select value={newTask.priority}
-                  onChange={(e) => setNewTask((n) => ({ ...n, priority: e.target.value }))}
-                  style={{ width: "100%", fontSize: 15 }}>
-                  {PRIORITIES.map((pr) => <option key={pr}>{pr}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: 13, color: "var(--color-text-secondary)", display: "block", marginBottom: 4 }}>ETA (mins)</label>
-                <input type="number" min="1" value={newTask.eta}
-                  onChange={(e) => setNewTask((n) => ({ ...n, eta: e.target.value }))}
-                  style={{ width: "100%", fontSize: 15, boxSizing: "border-box" }} />
-              </div>
-              <button onClick={() => addTask(selected.id)} style={{ fontSize: 15, padding: "7px 14px", marginTop: 16 }}>Add</button>
-            </div>
-            {/* Recurring picker — defaults to "Once" so this stays out of
-                the way for normal one-shot tasks. Toggle Daily / Weekly to
-                turn this into a habit instead. ETA still applies (a focus
-                session targets the configured minutes per occurrence). */}
-            <div>
-              <label style={{ fontSize: 13, color: "var(--color-text-secondary)", display: "block", marginBottom: 4 }}>Repeats</label>
-              <RecurringPicker
-                value={newTask.recurring}
-                onChange={(v) => setNewTask((n) => ({ ...n, recurring: v }))} />
-            </div>
-          </div>
         </div>
 
         {/* notes */}

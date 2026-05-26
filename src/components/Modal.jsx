@@ -47,7 +47,7 @@ export default function Modal({ open, onClose, title, children, maxWidth = 560 }
           width: "100%",
           maxHeight: "85vh",
           overflowY: "auto",
-          boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+          boxShadow: "var(--shadow-modal)",
         }}>
         <div style={{
           display: "flex",

@@ -2,8 +2,33 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 		<title>Aakhirah Planner</title>
+
+		<!-- Status-bar / browser-chrome tint. Two media-targeted variants so
+		     iOS and Android paint the bar correctly per OS theme. The active
+		     in-app theme toggle also updates this dynamically via JS in
+		     Planner so user-overridden themes still match. -->
+		<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f120f" />
+		<meta name="theme-color" media="(prefers-color-scheme: light)" content="#ede2c5" />
+
+		<!-- Icons. SVG works in modern Chrome/Firefox/Safari favicons + PWA
+		     manifest. Older browsers (and iOS apple-touch) fall back to the
+		     legacy favicon.ico. PNG sizes can be added later for AA-tier
+		     PWA quality; SVG-only is sufficient for install prompts. -->
+		<link rel="icon" type="image/svg+xml" href="/icon.svg" />
+		<link rel="icon" href="/favicon.ico" sizes="any" />
+		<link rel="apple-touch-icon" href="/icon.svg" />
+
+		<!-- iOS standalone-mode behaviour. With these, "Add to Home Screen"
+		     produces an app without Safari chrome; the status bar uses the
+		     dark style (white glyphs) against the gold/cream backgrounds. -->
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+		<meta name="apple-mobile-web-app-title" content="Aakhirah" />
+		<meta name="mobile-web-app-capable" content="yes" />
+
+		<link rel="manifest" href="/manifest.webmanifest" />
 	</head>
 	<body>
 		<div id="root"></div>

@@ -280,6 +280,7 @@ export default function Dashboard({
           tabIndex={0}
           aria-label="Open today's reflection in Muhasaba"
           onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setMuhasabaDay(today); setView("muhasaba"); } }}
+          className="tap-card"
           style={{
             ...S.card, marginBottom: 18, cursor: "pointer",
             borderColor: "var(--color-border-secondary)",
@@ -288,7 +289,7 @@ export default function Dashboard({
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = "translateY(-1px)";
             e.currentTarget.style.borderColor = "var(--gold)";
-            e.currentTarget.style.boxShadow = "0 8px 22px rgba(0,0,0,0.18)";
+            e.currentTarget.style.boxShadow = "var(--shadow-card)";
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = "translateY(0)";

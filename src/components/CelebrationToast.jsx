@@ -65,7 +65,7 @@ export default function CelebrationToast({ celebration, onDismiss, onOpen }) {
       className="pop-in"
       style={{
         position: "fixed",
-        top: 14,
+        top: "calc(14px + env(safe-area-inset-top))",
         left: "50%",
         transform: "translateX(-50%)",
         zIndex: 100,
@@ -75,7 +75,7 @@ export default function CelebrationToast({ celebration, onDismiss, onOpen }) {
         borderRadius: "var(--border-radius-lg)",
         background: `linear-gradient(135deg, ${tint(13)} 0%, ${tint(4)} 100%), var(--color-background-primary)`,
         border: `0.5px solid ${tint(53)}`,
-        boxShadow: "0 18px 44px rgba(0,0,0,0.32)",
+        boxShadow: "var(--shadow-modal)",
         overflow: "hidden",
       }}
     >

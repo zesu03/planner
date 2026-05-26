@@ -65,6 +65,7 @@ export default function GoalCard({ g, lastActivityDay, onSelect }) {
       tabIndex={0}
       aria-label={`Goal: ${g.title}, ${p}% complete, ${statusText}`}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect?.(); } }}
+      className="tap-card"
       style={{
         ...S.card,
         position: "relative",

@@ -363,7 +363,7 @@ export default function Muhasaba({
       {yesterdayDua && (() => {
         const dc = entry.duaCheck || { status: null, note: "" };
         const STATUSES = [
-          { value: "honoured", label: "Honoured", color: "var(--color-text-success)", bg: "rgba(127,190,143,0.18)" },
+          { value: "honoured", label: "Honoured", color: "var(--color-text-success)", bg: "var(--color-background-success)" },
           { value: "partial",  label: "Partial",  color: "var(--color-text-warning)", bg: "var(--color-background-warning)" },
           { value: "missed",   label: "Missed",   color: "var(--color-text-danger)",  bg: "var(--color-background-danger)" },
         ];
@@ -434,7 +434,7 @@ export default function Muhasaba({
               {activeGoals.map((g) => {
                 const value = checks[g.id]; // "yes" | "partial" | "no" | undefined
                 const STATUSES = [
-                  { v: "yes",     label: "Yes",     color: "var(--color-text-success)", bg: "rgba(127,190,143,0.18)" },
+                  { v: "yes",     label: "Yes",     color: "var(--color-text-success)", bg: "var(--color-background-success)" },
                   { v: "partial", label: "Partial", color: "var(--color-text-warning)", bg: "var(--color-background-warning)" },
                   { v: "no",      label: "No",      color: "var(--color-text-danger)",  bg: "var(--color-background-danger)" },
                 ];

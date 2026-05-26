@@ -1,0 +1,25 @@
+{
+  "name": "Aakhirah Planner",
+  "short_name": "Aakhirah",
+  "description": "A Muslim productivity and spiritual reflection planner — prayer, focus, muhasaba, goals.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f120f",
+  "theme_color": "#0f120f",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

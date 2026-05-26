@@ -1,13 +1,16 @@
-import { S } from "../lib/styles";
+import { goldA, S } from "../lib/styles";
 import GoalCard from "../components/GoalCard";
 import EmptyState from "../components/EmptyState";
 
 // Goals tab. Receives an already-filtered/sorted `visibleGoals` from Planner
 // (the filter+sort logic lives there because it's coupled to multiple state
-// pieces — searchTerm, filter, goalSort).
+// pieces — searchTerm, filter, goalSort). `goalCounts` mirrors the same
+// buckets so the portfolio header and chip badges can show numbers without
+// re-walking the goals array here.
 export default function GoalsList({
   goals,
   visibleGoals,
+  goalCounts,
   lastActivityByGoal,
   searchTerm,
   setSearchTerm,
@@ -16,17 +19,69 @@ export default function GoalsList({
   goalSort,
   setGoalSort,
   onSelectGoal,
+  onAddGoal,
 }) {
   const FILTERS = [
-    { v: "all", label: "All" },
-    { v: "active", label: "Active" },
-    { v: "short", label: "Short-term" },
-    { v: "long", label: "Long-term" },
-    { v: "completed", label: "Completed" },
+    { v: "all",       label: "All",         countKey: "total" },
+    { v: "active",    label: "Active",      countKey: "active" },
+    { v: "overdue",   label: "Overdue",     countKey: "overdue", tone: "danger" },
+    { v: "week",      label: "Due ≤7d",     countKey: "week",    tone: "warning" },
+    { v: "short",     label: "Short-term",  countKey: "short" },
+    { v: "long",      label: "Long-term",   countKey: "long" },
+    { v: "completed", label: "Completed",   countKey: "completed" },
   ];
 
+  // Portfolio header — quick-triage metrics, each also acting as a one-click
+  // filter shortcut. The numbers come from goalCounts (computed in Planner
+  // off the unfiltered goals array) so the header doesn't shift around as
+  // the user narrows the view.
+  const headerStats = [
+    { key: "active",  label: "active",       value: goalCounts?.active   ?? 0, color: "var(--color-text-primary)",   filter: "active" },
+    { key: "overdue", label: "overdue",      value: goalCounts?.overdue  ?? 0, color: "var(--color-text-danger)",    filter: "overdue" },
+    { key: "week",    label: "due this week",value: goalCounts?.week     ?? 0, color: "var(--color-text-warning)",   filter: "week" },
+  ];
+  const showHeader = (goalCounts?.total ?? 0) > 0;
+
   return (
-    <div className="view-content">
+    <div className="view-content" style={{ position: "relative" }}>
+      {showHeader && (
+        <div role="group" aria-label="Goal portfolio summary"
+          style={{
+            display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14,
+          }}>
+          {headerStats.map((s) => {
+            const active = filter === s.filter;
+            const dim = s.value === 0;
+            return (
+              <button key={s.key}
+                onClick={() => setFilter(active ? "all" : s.filter)}
+                aria-pressed={active}
+                aria-label={`${s.value} goals ${s.label}${active ? ", currently filtered" : ""}`}
+                disabled={dim}
+                style={{
+                  flex: "1 1 110px",
+                  minWidth: 100,
+                  textAlign: "left",
+                  padding: "10px 12px",
+                  borderRadius: "var(--border-radius-md)",
+                  background: active ? goldA(15) : "var(--color-background-secondary)",
+                  border: `0.5px solid ${active ? "var(--gold)" : "var(--color-border-tertiary)"}`,
+                  cursor: dim ? "default" : "pointer",
+                  opacity: dim ? 0.55 : 1,
+                  transition: "border-color 0.15s, background 0.15s",
+                }}>
+                <div style={{ fontSize: 22, fontWeight: 600, color: s.value > 0 ? s.color : "var(--color-text-tertiary)", lineHeight: 1 }}>
+                  {s.value}
+                </div>
+                <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 4, textTransform: "lowercase", letterSpacing: "0.2px" }}>
+                  {s.label}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
         <input
           value={searchTerm}
@@ -40,14 +95,52 @@ export default function GoalsList({
       </div>
       {/* Filters scroll horizontally inside their own group so the sort
           widget never gets dragged off-screen with them. On narrow viewports
-          the outer container wraps and sort drops to its own row. */}
+          the outer container wraps and sort drops to its own row. Filter
+          chips show count badges so the user knows how many goals match
+          before clicking. */}
       <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
         <div style={{ display: "flex", gap: 8, flex: "1 1 240px", overflowX: "auto", alignItems: "center", minWidth: 0 }}>
-          {FILTERS.map((f) => (
-            <button key={f.v} style={S.filterBtn(filter === f.v)} onClick={() => setFilter(f.v)}>
-              {f.label}
-            </button>
-          ))}
+          {FILTERS.map((f) => {
+            const count = goalCounts ? goalCounts[f.countKey] : null;
+            const active = filter === f.v;
+            return (
+              <button key={f.v} style={{
+                ...S.filterBtn(active),
+                whiteSpace: "nowrap",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }} onClick={() => setFilter(f.v)}>
+                <span>{f.label}</span>
+                {count !== null && count !== undefined && (
+                  <span style={{
+                    fontSize: 11,
+                    padding: "1px 6px",
+                    borderRadius: 99,
+                    background: active
+                      ? "rgba(255,255,255,0.18)"
+                      : count === 0
+                        ? "transparent"
+                        : "var(--color-background-secondary)",
+                    color: active
+                      ? "inherit"
+                      : count === 0
+                        ? "var(--color-text-tertiary)"
+                        : f.tone === "danger" && count > 0
+                          ? "var(--color-text-danger)"
+                          : f.tone === "warning" && count > 0
+                            ? "var(--color-text-warning)"
+                            : "var(--color-text-secondary)",
+                    fontWeight: 500,
+                    minWidth: 16,
+                    textAlign: "center",
+                  }}>
+                    {count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
           <span style={{ fontSize: 13, color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>Sort:</span>
@@ -59,16 +152,40 @@ export default function GoalsList({
           </select>
         </div>
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: 80 }}>
         {visibleGoals.map((g) => (
           <GoalCard key={g.id} g={g} lastActivityDay={lastActivityByGoal[g.id]} onSelect={() => onSelectGoal(g.id)} />
         ))}
         {visibleGoals.length === 0 && (goals.length === 0 ? (
-          <EmptyState icon="🎯" title="No goals yet" hint="Tap '+ New goal' above to add your first." />
+          <EmptyState icon="🎯" title="No goals yet" hint="Start with something concrete — a memorisation target, a habit, a project.">
+            {onAddGoal && (
+              <button onClick={onAddGoal} className="btn-primary" style={{ marginTop: 14, padding: "8px 18px" }}>
+                + Add your first goal
+              </button>
+            )}
+          </EmptyState>
         ) : (
-          <EmptyState icon="🔍" title="Nothing matches" hint="Try clearing the filter or search to see all your goals." />
+          <EmptyState icon="🔍" title="Nothing matches" hint="Try clearing the filter or search to see all your goals.">
+            <button onClick={() => { setFilter("all"); setSearchTerm(""); }} style={{ marginTop: 12, fontSize: 14 }}>
+              Reset filters
+            </button>
+          </EmptyState>
         ))}
       </div>
+
+      {/* Sticky FAB — saves the user a scroll-to-top when they're deep in
+          the list and want to add another goal. Hidden when there are no
+          goals (the empty state has its own button) so it doesn't compete.
+          Position + sizing live in the .fab CSS class so the mobile media
+          query can lift it above the bottom-mounted tab bar. */}
+      {goals.length > 0 && onAddGoal && (
+        <button onClick={onAddGoal}
+          aria-label="Add a new goal"
+          title="Add a new goal"
+          className="fab">
+          +
+        </button>
+      )}
     </div>
   );
 }
