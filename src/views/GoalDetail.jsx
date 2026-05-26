@@ -273,6 +273,11 @@ export default function GoalDetail({ selected, goBack }) {
   // for users in "review" rather than "add" mode. Empty-goal first-open
   // expands automatically — the user is here to set up the goal.
   const [addExpanded, setAddExpanded] = useState(selected.tasks.length === 0);
+  // Per-task action overflow menu. Task rows show [Start] + [⋯] by default;
+  // tapping ⋯ swaps those for [Edit] + [Remove] + [✕ close]. Keeps the row
+  // calm at rest — six visible buttons per row was too crowded, especially
+  // on mobile where the row already wraps.
+  const [menuOpenTaskId, setMenuOpenTaskId] = useState(null);
 
   const lastActivityLabel = (() => {
     if (!focusRhythm.lastActivityDay) return null;
@@ -877,6 +882,18 @@ export default function GoalDetail({ selected, goBack }) {
                                 <button onClick={(e) => { e.stopPropagation(); saveTaskEdit(selected.id, t.id); }} style={{ fontSize: 13 }}>Save</button>
                                 <button onClick={(e) => { e.stopPropagation(); cancelTaskEdit(); }} style={{ fontSize: 13 }}>Cancel</button>
                               </>
+                            ) : menuOpenTaskId === t.id ? (
+                              <>
+                                <button onClick={(e) => { e.stopPropagation(); setMenuOpenTaskId(null); startTaskEdit(t); }}
+                                  style={{ fontSize: 13 }}
+                                  aria-label={`Edit task: ${t.text}`}>Edit</button>
+                                <button onClick={(e) => { e.stopPropagation(); setMenuOpenTaskId(null); removeTask(selected.id, t.id); }}
+                                  style={{ fontSize: 13, color: "var(--color-text-danger)", borderColor: "var(--color-border-danger)" }}
+                                  aria-label={`Remove task: ${t.text}`}>Remove</button>
+                                <button onClick={(e) => { e.stopPropagation(); setMenuOpenTaskId(null); }}
+                                  aria-label="Close menu" title="Close menu"
+                                  style={{ fontSize: 13, color: "var(--color-text-tertiary)", background: "none", border: "none", cursor: "pointer", padding: "4px 8px" }}>✕</button>
+                              </>
                             ) : (
                               <>
                                 <button onClick={(e) => { e.stopPropagation(); startTaskTimer(selected.id, t.id); }}
@@ -884,14 +901,10 @@ export default function GoalDetail({ selected, goBack }) {
                                   aria-label={isActive ? `Open focus timer for ${t.text}` : `Start focus on ${t.text}`}>
                                   {isActive ? "Focus" : "Start"}
                                 </button>
-                                <button onClick={(e) => { e.stopPropagation(); startTaskEdit(t); }}
-                                  style={{ fontSize: 13 }}
-                                  aria-label={`Edit task: ${t.text}`}>Edit</button>
-                                <button onClick={(e) => { e.stopPropagation(); removeTask(selected.id, t.id); }}
-                                  style={{ fontSize: 13, color: "var(--color-text-tertiary)", background: "none", border: "none", cursor: "pointer" }}
-                                  aria-label={`Remove task: ${t.text}`} title="Remove task">
-                                  ✕
-                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); setMenuOpenTaskId(t.id); }}
+                                  aria-label={`More actions for ${t.text}`} aria-haspopup="true" aria-expanded={false}
+                                  title="More actions"
+                                  style={{ fontSize: 16, padding: "4px 10px", lineHeight: 1, color: "var(--color-text-secondary)" }}>⋯</button>
                               </>
                             )}
                           </div>

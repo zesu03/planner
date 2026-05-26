@@ -268,6 +268,42 @@ select:focus-visible {
   direction: rtl;
 }
 
+/* Theme toggle — inline icon button in the app header. Desktop just gets
+   subtle sizing tweaks; mobile pulls it out of flow and pins it to the
+   top-right corner so it stops bumping the header row height up to 44px
+   for a single button. */
+.theme-toggle {
+  font-size: 15px;
+  padding: 6px 11px;
+  line-height: 1;
+  min-width: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+@media (max-width: 640px) {
+  .theme-toggle {
+    position: fixed;
+    top: calc(10px + env(safe-area-inset-top));
+    right: calc(10px + env(safe-area-inset-right));
+    z-index: 60;
+    width: 40px;
+    height: 40px;
+    min-height: 40px; /* override the global mobile 44px so the icon stays compact */
+    padding: 0;
+    border-radius: 50%;
+    font-size: 18px;
+    background: color-mix(in srgb, var(--color-background-primary) 88%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 0.5px solid color-mix(in srgb, var(--gold) 35%, transparent);
+    box-shadow: var(--shadow-button);
+  }
+  /* Reserve right-side header padding so a long greeting + Hijri date
+     don't slide under the floating theme toggle. */
+  .app-header-text { padding-right: 48px; }
+}
+
 /* Floating action button used on GoalsList. Positioned via CSS so the
    mobile media query can lift it above the bottom-mounted tab bar
    without recomputing inline calc strings. */

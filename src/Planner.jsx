@@ -1043,13 +1043,23 @@ export default function Planner({ user }) {
         </div>
         <div className="app-header-actions">
           {pomRunning && <span style={{fontSize:14,padding:"3px 10px",borderRadius:99,background:goldA(15),color:"var(--gold)",fontWeight:500}}>● Focus {fmtTime(pomSeconds)}</span>}
-          <button onClick={toggleTheme} title={`Switch to ${theme==="dark"?"light":"dark"} mode`}
-            aria-label={`Switch to ${theme==="dark"?"light":"dark"} mode`}
-            style={{fontSize:15,padding:"6px 11px",lineHeight:1,minWidth:38,display:"inline-flex",alignItems:"center",justifyContent:"center"}}>
+          {/* Theme toggle — flows inline with the header actions on desktop
+              and breaks out to a fixed-position icon in the top-right corner
+              on mobile (see .theme-toggle media query in index.css). Keeps
+              the mobile header from inflating to 44px tall just for a single
+              toggle. */}
+          <button onClick={toggleTheme}
+            className="theme-toggle"
+            title={`Switch to ${theme==="dark"?"light":"dark"} mode`}
+            aria-label={`Switch to ${theme==="dark"?"light":"dark"} mode`}>
             {theme==="dark" ? "☀" : "☾"}
           </button>
-          {view!=="add" && <button onClick={()=>setView("add")} style={{fontSize:15,borderColor:"var(--gold)",color:"var(--gold)"}}>+ New goal</button>}
-          {view==="add" && <button onClick={()=>setView("dashboard")} style={{fontSize:15}}>Cancel</button>}
+          {/* "New goal" is a Goals-tab action; surfacing it on other tabs
+              implied it was a global. The Goals list also has a sticky FAB
+              for the same purpose, so this header button is the desktop
+              equivalent — both live on the same page now. */}
+          {view==="list" && <button onClick={()=>setView("add")} style={{fontSize:15,borderColor:"var(--gold)",color:"var(--gold)"}}>+ New goal</button>}
+          {view==="add" && <button onClick={()=>setView("list")} style={{fontSize:15}}>Cancel</button>}
         </div>
       </header>
 
