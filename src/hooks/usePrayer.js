@@ -17,6 +17,36 @@ import { useCallback, useEffect, useRef, useState } from "react";
 const ALADHAN_BASE = "https://api.aladhan.com/v1";
 const METHOD_SCHOOL = "method=2&school=1";
 
+// OpenStreetMap Nominatim reverse-geocoding endpoint. Free, no API key,
+// rate-limited to ~1 req/sec per their usage policy — fine for our scale
+// (one call per "Use my location" tap). Browser fetch can't set a custom
+// User-Agent, so attribution goes via the Referer header that the browser
+// attaches automatically. See https://operations.osmfoundation.org/policies/nominatim/
+const NOMINATIM_BASE = "https://nominatim.openstreetmap.org/reverse";
+
+// Resolve lat/lng → { city, country } via Nominatim. Returns null on any
+// failure (network, timeout, no city in the response) so the caller can
+// fall back to its existing timezone-derived label. Picks the first
+// available admin level from city → town → village → suburb, since
+// Nominatim only fills the one that matches the coordinate's specificity.
+async function reverseGeocode(lat, lng) {
+  try {
+    // zoom=10 trims response to roughly "city" level; jsonv2 returns a
+    // structured `address` object instead of a flat string.
+    const url = `${NOMINATIM_BASE}?format=jsonv2&lat=${lat}&lon=${lng}&zoom=10&accept-language=en`;
+    const res = await fetch(url, { headers: { "Accept": "application/json" } });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const a = data.address || {};
+    const city = a.city || a.town || a.village || a.municipality || a.suburb || a.county || null;
+    const country = a.country || null;
+    if (!city) return null;
+    return { city, country };
+  } catch {
+    return null;
+  }
+}
+
 export function usePrayer({ settingsFromDb, userSettings, updateSettings }) {
   const [prayerTimes, setPrayerTimes] = useState(null);
   const [prayerCity, setPrayerCity] = useState("");
@@ -79,26 +109,38 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings }) {
   // Coordinate-based fetch. Two callers:
   //   • fetchByGeo (user-initiated) — persists lat/lng so reload restores.
   //   • restore effect (silent) — uses stored lat/lng, doesn't re-persist.
-  // The city label comes from Aladhan's response timezone field (e.g.
-  // "Asia/Karachi" → "Karachi") so the user sees a real place name
-  // instead of the generic "Your location". Saving the geo coords does
-  // NOT clear prayerCity/prayerCountry — those hold the user's last
-  // typed values so the "Change city" form pre-populates correctly even
-  // after a geo + reload. Source-of-truth for active location:
-  //   prayerLat/Lng present → geo path
-  //   else                 → city/country path
+  //
+  // Two HTTP calls run in parallel:
+  //   • Aladhan /timings — prayer times for the coordinate.
+  //   • Nominatim /reverse — real city name (Pune, not "Kolkata").
+  //
+  // If Nominatim succeeds, the label is e.g. "Pune, India". If it fails
+  // or returns no city, we fall back to the Aladhan timezone-derived
+  // label ("Kolkata · your location") so the user still sees something
+  // meaningful. prayerCity/prayerCountry in settings are NOT touched on
+  // the geo path — they hold the user's last *typed* values for form
+  // restore. The active-location signal remains the presence of
+  // prayerLat/prayerLng.
   const fetchByCoords = useCallback(async (lat, lng, { silent = false, persist = true } = {}) => {
     if (!silent) { setPrayerLoading(true); setPrayerError(""); }
     try {
       const ts = Math.floor(Date.now() / 1000);
-      const res = await fetch(`${ALADHAN_BASE}/timings/${ts}?latitude=${lat}&longitude=${lng}&${METHOD_SCHOOL}`);
-      const data = await res.json();
+      const [prayerRes, geo] = await Promise.all([
+        fetch(`${ALADHAN_BASE}/timings/${ts}?latitude=${lat}&longitude=${lng}&${METHOD_SCHOOL}`),
+        reverseGeocode(lat, lng),
+      ]);
+      const data = await prayerRes.json();
       if (data.code === 200) {
         setPrayerTimes(data.data.timings);
-        const tz = data.data.meta?.timezone || "";
-        // "Asia/Karachi" → "Karachi"; underscores ("New_York") become spaces.
-        const tzCity = tz.split("/").pop().replace(/_/g, " ").trim();
-        const label = tzCity ? `${tzCity} · your location` : "Your location";
+        let label;
+        if (geo?.city) {
+          label = geo.country ? `${geo.city}, ${geo.country}` : geo.city;
+        } else {
+          const tz = data.data.meta?.timezone || "";
+          // "Asia/Karachi" → "Karachi"; underscores ("New_York") become spaces.
+          const tzCity = tz.split("/").pop().replace(/_/g, " ").trim();
+          label = tzCity ? `${tzCity} · your location` : "Your location";
+        }
         setPrayerCity(label);
         const h = data.data.date.hijri;
         setHijriDate(`${h.day} ${h.month.en} ${h.year} AH`);
