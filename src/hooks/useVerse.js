@@ -20,6 +20,19 @@ export function useVerse() {
   const [verseOfDay, setVerseOfDay] = useState(null);
   const [verseError, setVerseError] = useState("");
 
+  // Tiny localStorage wrappers so quota / private-mode throws don't bubble
+  // up and replace verseOfDay with undefined mid-set. Safari private mode
+  // throws on setItem; Firefox sometimes throws on read after disk pressure.
+  function lsRead(key) {
+    try { return localStorage.getItem(key); } catch { return null; }
+  }
+  function lsWrite(key, value) {
+    try { localStorage.setItem(key, value); } catch { /* quota / private mode — silent */ }
+  }
+  function lsRemove(key) {
+    try { localStorage.removeItem(key); } catch { /* ignore */ }
+  }
+
   const fetchVerse = useCallback(async () => {
     const today = todayStr();
     setVerseError("");
@@ -37,16 +50,19 @@ export function useVerse() {
       const arabic = v?.text_uthmani || "";
       const translation = (v?.translations?.[0]?.text || "").replace(/<[^>]*>/g, "");
       if (!arabic || !translation) {
-        const fallback = { ...FALLBACK_VERSE, day: today };
-        setVerseOfDay(fallback);
+        // Show fallback but DO NOT cache it. Caching the fallback pins
+        // it for the rest of the user's day — a single API blip then
+        // means 24 hours of the same fallback verse with no auto-recovery.
+        // Leaving the cache untouched lets the next mount retry the fetch.
+        setVerseOfDay({ ...FALLBACK_VERSE, day: today });
         setVerseError("Using a fallback verse. Please refresh to try again.");
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(fallback));
         return;
       }
       const payload = { day: today, verseKey, arabic, translation, url: `https://quran.com/${verseKey}` };
       setVerseOfDay(payload);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+      lsWrite(STORAGE_KEY, JSON.stringify(payload));
     } catch {
+      // Same "show but don't cache" rule for network failures.
       setVerseOfDay({ ...FALLBACK_VERSE, day: today });
       setVerseError("Using a fallback verse. Please refresh to try again.");
     } finally {
@@ -55,14 +71,14 @@ export function useVerse() {
   }, []);
 
   const refresh = useCallback(() => {
-    try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+    lsRemove(STORAGE_KEY);
     fetchVerse();
   }, [fetchVerse]);
 
   // Initial load: try cache first, fetch only if today's verse isn't there.
   useEffect(() => {
     const today = todayStr();
-    const cached = localStorage.getItem(STORAGE_KEY);
+    const cached = lsRead(STORAGE_KEY);
     if (cached) {
       try {
         const parsed = JSON.parse(cached);

@@ -807,7 +807,7 @@ export default function Muhasaba({
             </div>
           )}
           {!generating && aiError && aiLoadingDay === null && (
-            <div style={{
+            <div role="alert" aria-live="polite" style={{
               fontSize: 13, color: "var(--color-text-danger)",
               padding: "6px 10px", background: "var(--color-background-danger)",
               borderRadius: "var(--border-radius-md)",

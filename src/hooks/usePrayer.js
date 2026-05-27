@@ -225,6 +225,15 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings, notifi
     }
   }, [settingsFromDb, fetchPrayersFromSettings, fetchByCoords, prayerTimes]);
 
+  // Auto-clear prayer-fetch errors so a stale "City not found" doesn't
+  // sit on the screen indefinitely after the user has moved on. 8s gives
+  // enough time to read.
+  useEffect(() => {
+    if (!prayerError) return;
+    const t = setTimeout(() => setPrayerError(""), 8000);
+    return () => clearTimeout(t);
+  }, [prayerError]);
+
   // Mirror today's prayer times to the notifications field so the server
   // cron (which can't call Aladhan per-tick) has authoritative times to
   // match against. Cheap guard: skip writes when the cached payload is

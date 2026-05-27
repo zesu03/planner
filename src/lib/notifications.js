@@ -103,6 +103,12 @@ export async function requestPermissionAndToken() {
 // the SDK delivers to onMessage instead, and the browser does NOT show a
 // system notification automatically. We forward to the SW's
 // showNotification so the user sees the same chrome either way.
+//
+// Security: title/body are taken ONLY from the `notification` block, never
+// from `data` fallbacks. The notification block is what FCM authenticates
+// at the protocol level; data is opaque key-value the SW echoes. Allowing
+// data fallbacks would let an attacker who only got hold of data-message
+// permissions craft display text.
 export async function attachForegroundHandler() {
   const messaging = await getMessagingIfSupported();
   if (!messaging) return () => {};
@@ -110,8 +116,8 @@ export async function attachForegroundHandler() {
     try {
       const reg = await navigator.serviceWorker.getRegistration(SW_URL);
       if (!reg) return;
-      const title = payload.notification?.title || payload.data?.title || "Reminder";
-      const body = payload.notification?.body || payload.data?.body || "";
+      const title = payload.notification?.title || "Reminder";
+      const body = payload.notification?.body || "";
       await reg.showNotification(title, {
         body,
         icon: "/icon.svg",

@@ -10,6 +10,22 @@
 // The hook is deliberately UI-agnostic. The consumer passes an optional
 // onSessionStart callback for things like "switch to the focus tab" when
 // a session starts — that lives outside the timer's concern.
+//
+// ── Wall-clock timing ──────────────────────────────────────────────────
+// Time is tracked from the system clock, NOT by decrementing a counter
+// in setInterval. Browsers throttle background-tab intervals (mobile
+// Safari freezes them entirely when the screen locks), so the old
+// "subtract 1 per tick" approach silently undercounted long sessions
+// and credited the *target* minutes to focusLog regardless of actual
+// elapsed time. With wall-clock math:
+//   - startedAtRef     timestamp of the current run (null when paused)
+//   - accumulatedSecRef seconds already banked from prior runs of THIS session
+//   - targetSecRef     total target seconds for the session
+//   - elapsed = accumulated + (running ? Date.now() - startedAt : 0)
+// The tick interval is now purely a re-render trigger; the math is what
+// matters. visibilitychange also forces an immediate sync so a session
+// that completed while backgrounded fires its completion the moment the
+// user returns.
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DEFAULT_DURATIONS } from "../lib/constants";
@@ -31,7 +47,7 @@ export function useFocusTimer({
 }) {
   const [pomDurations, setPomDurations] = useState(DEFAULT_DURATIONS);
   const [pomSeconds, setPomSeconds] = useState(() => getFocusSeconds(null, DEFAULT_DURATIONS));
-  const [pomRunning, setPomRunning] = useState(false);
+  const [pomRunning, setPomRunningInternal] = useState(false);
   const [pomTaskId, setPomTaskId] = useState(null);
   const [pomGoalId, setPomGoalId] = useState(null);
   const [pomFocusTargetMins, setPomFocusTargetMins] = useState(DEFAULT_DURATIONS.defaultFocus);
@@ -42,7 +58,9 @@ export function useFocusTimer({
   // field from the post-session "What moved forward?" prompt.
   const [lastSession, setLastSession] = useState(null);
   const intervalRef = useRef(null);
-  const elapsedRef = useRef(0);
+  const startedAtRef = useRef(null);
+  const accumulatedSecRef = useRef(0);
+  const targetSecRef = useRef(getFocusSeconds(null, DEFAULT_DURATIONS));
   const settingsAppliedRef = useRef(false);
 
   // Restore pom durations + dial defaults from settings on first load.
@@ -50,61 +68,127 @@ export function useFocusTimer({
     if (settingsAppliedRef.current || !settingsFromDb?.pomDurations) return;
     settingsAppliedRef.current = true;
     setPomDurations(settingsFromDb.pomDurations);
-    setPomSeconds(getFocusSeconds(null, settingsFromDb.pomDurations));
+    const startSecs = getFocusSeconds(null, settingsFromDb.pomDurations);
+    setPomSeconds(startSecs);
+    targetSecRef.current = startSecs;
     setPomFocusTargetMins(settingsFromDb.pomDurations.defaultFocus || DEFAULT_DURATIONS.defaultFocus);
   }, [settingsFromDb]);
+
+  // Current elapsed seconds for the active session, summed across runs.
+  // Safe to call when paused (returns just the banked accumulation) or
+  // idle (returns 0). Reads from refs so it doesn't pin a stale value.
+  function currentElapsedSec() {
+    const fromActive = startedAtRef.current != null ? (Date.now() - startedAtRef.current) / 1000 : 0;
+    return accumulatedSecRef.current + fromActive;
+  }
+
+  // Setter wrapper so refs stay in sync with the running flag. Every
+  // running→paused transition banks the active run into accumulated; every
+  // paused→running transition snapshots the resume timestamp. Without
+  // this, a pause would lose all elapsed time and a resume would treat
+  // every session as fresh. Returned as `setPomRunning` so consumers
+  // call it transparently.
+  const setPomRunning = useCallback((next) => {
+    setPomRunningInternal((prev) => {
+      if (next === prev) return prev;
+      if (next) {
+        startedAtRef.current = Date.now();
+      } else if (startedAtRef.current != null) {
+        accumulatedSecRef.current += (Date.now() - startedAtRef.current) / 1000;
+        startedAtRef.current = null;
+      }
+      return next;
+    });
+  }, []);
 
   const stopTimer = useCallback(() => {
     clearInterval(intervalRef.current);
     setPomRunning(false);
-  }, []);
+  }, [setPomRunning]);
 
-  // The tick. On completion, log the session, bump the task counters,
-  // chime, and reset the dial to the next session length (linked task's
-  // ETA, else defaultFocus).
-  useEffect(() => {
-    if (!pomRunning) return () => clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(() => {
-      setPomSeconds((s) => {
-        if (s <= 1) {
-          const mins = Math.max(1, Math.round(pomFocusTargetMins));
-          const at = new Date();
-          const entry = {
-            id: newId(),
-            taskId: pomTaskId,
-            goalId: pomGoalId,
-            mins,
-            at: at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-            day: localDateStr(at),
-          };
-          applyFocusLogUpdate((l) => [entry, ...l].slice(0, FOCUS_LOG_CAP));
-          if (pomGoalId && pomTaskId) {
-            applyGoalsUpdate((gs) => gs.map((g) =>
-              g.id !== pomGoalId ? g : {
-                ...g,
-                tasks: g.tasks.map((t) =>
-                  t.id !== pomTaskId ? t : { ...t, sessions: (t.sessions || 0) + 1, totalTime: (t.totalTime || 0) + mins }
-                ),
-              }
-            ));
-          }
-          setLastSession({ id: entry.id, taskId: pomTaskId, goalId: pomGoalId, mins, completedAt: at.toISOString(), kind: "complete" });
-          playTimerSound("focusEnd");
-          elapsedRef.current = 0;
-          const task = pomGoalId && pomTaskId
-            ? goals.find((g) => g.id === pomGoalId)?.tasks.find((t) => t.id === pomTaskId)
-            : null;
-          const nextMins = task?.eta || pomDurations.defaultFocus;
-          setPomFocusTargetMins(nextMins);
-          setPomRunning(false);
-          return getFocusSeconds(nextMins, pomDurations);
+  // Session-complete bookkeeping. Pulled into its own callback because
+  // both the tick AND the visibility-resync path can trigger completion
+  // — if the user backgrounded a 25-min session and returns 30 min
+  // later, completion fires on visibility, not on a tick that never ran.
+  const completeSession = useCallback(() => {
+    const target = targetSecRef.current;
+    if (target <= 0) return;
+    // Credit at most the target — backgrounded sessions can run past
+    // target by minutes, but the user reserved exactly `target` for this
+    // task. Don't inflate focusLog totals.
+    const mins = Math.max(1, Math.round(target / 60));
+    const at = new Date();
+    const entry = {
+      id: newId(),
+      taskId: pomTaskId,
+      goalId: pomGoalId,
+      mins,
+      at: at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      day: localDateStr(at),
+    };
+    applyFocusLogUpdate((l) => [entry, ...l].slice(0, FOCUS_LOG_CAP));
+    if (pomGoalId && pomTaskId) {
+      applyGoalsUpdate((gs) => gs.map((g) =>
+        g.id !== pomGoalId ? g : {
+          ...g,
+          tasks: g.tasks.map((t) =>
+            t.id !== pomTaskId ? t : { ...t, sessions: (t.sessions || 0) + 1, totalTime: (t.totalTime || 0) + mins }
+          ),
         }
-        elapsedRef.current += 1;
-        return s - 1;
-      });
-    }, 1000);
+      ));
+    }
+    setLastSession({ id: entry.id, taskId: pomTaskId, goalId: pomGoalId, mins, completedAt: at.toISOString(), kind: "complete" });
+    playTimerSound("focusEnd");
+    accumulatedSecRef.current = 0;
+    startedAtRef.current = null;
+    const task = pomGoalId && pomTaskId
+      ? goals.find((g) => g.id === pomGoalId)?.tasks.find((t) => t.id === pomTaskId)
+      : null;
+    const nextMins = task?.eta || pomDurations.defaultFocus;
+    setPomFocusTargetMins(nextMins);
+    const nextSecs = getFocusSeconds(nextMins, pomDurations);
+    targetSecRef.current = nextSecs;
+    setPomSeconds(nextSecs);
+    setPomRunningInternal(false);
+  }, [pomGoalId, pomTaskId, goals, pomDurations, applyFocusLogUpdate, applyGoalsUpdate]);
+
+  // Sync the displayed pomSeconds from wall-clock. If we've crossed the
+  // target, complete. Cheap; safe to call from the tick AND from a
+  // visibility-change event.
+  const syncFromClock = useCallback(() => {
+    const target = targetSecRef.current;
+    const elapsed = currentElapsedSec();
+    const remainingSec = target - elapsed;
+    if (remainingSec <= 0) {
+      completeSession();
+      return;
+    }
+    setPomSeconds(Math.ceil(remainingSec));
+  }, [completeSession]);
+
+  // Tick — fires every 1s while running. The math lives in syncFromClock;
+  // the interval just keeps the display fresh while the tab is foreground.
+  // When backgrounded, the interval may pause; visibility-change handler
+  // below catches up on return.
+  useEffect(() => {
+    if (!pomRunning) {
+      clearInterval(intervalRef.current);
+      return;
+    }
+    syncFromClock();
+    intervalRef.current = setInterval(syncFromClock, 1000);
     return () => clearInterval(intervalRef.current);
-  }, [pomRunning, pomGoalId, pomTaskId, pomFocusTargetMins, pomDurations, goals, applyGoalsUpdate, applyFocusLogUpdate]);
+  }, [pomRunning, syncFromClock]);
+
+  // Re-sync the instant the tab becomes visible again — for the case
+  // where the timer should have ended while backgrounded.
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState === "visible" && pomRunning) syncFromClock();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [pomRunning, syncFromClock]);
 
   // Link a task and start. If the same task is already running, this acts
   // as a toggle (stop). Pre-warms the AudioContext under the click so the
@@ -118,12 +202,15 @@ export function useFocusTimer({
     setPomGoalId(goalId);
     setPomTaskId(taskId);
     setPomFocusTargetMins(focusMins);
-    setPomSeconds(getFocusSeconds(focusMins, pomDurations));
-    elapsedRef.current = 0;
+    const startSecs = getFocusSeconds(focusMins, pomDurations);
+    setPomSeconds(startSecs);
+    targetSecRef.current = startSecs;
+    accumulatedSecRef.current = 0;
+    startedAtRef.current = null;     // setPomRunning below will set it
     setLastSession(null); // a new session begins — close the previous celebration
     setPomRunning(true);
     if (onSessionStart) onSessionStart();
-  }, [pomRunning, pomTaskId, goals, pomDurations, stopTimer, onSessionStart]);
+  }, [pomRunning, pomTaskId, goals, pomDurations, stopTimer, setPomRunning, onSessionStart]);
 
   const dismissLastSession = useCallback(() => setLastSession(null), []);
 
@@ -150,24 +237,33 @@ export function useFocusTimer({
   const resetTimer = useCallback(() => {
     stopTimer();
     if (pomTaskId) {
-      const remainingMins = Math.max(1, Math.ceil(pomSeconds / 60));
+      const remainingMins = Math.max(1, Math.ceil((targetSecRef.current - currentElapsedSec()) / 60));
       setPomGoalId(null);
       setPomTaskId(null);
       setPomFocusTargetMins(remainingMins);
-      setPomSeconds(remainingMins * 60);
-      elapsedRef.current = 0;
+      const newTarget = remainingMins * 60;
+      targetSecRef.current = newTarget;
+      setPomSeconds(newTarget);
+      accumulatedSecRef.current = 0;
+      startedAtRef.current = null;
       return;
     }
-    setPomSeconds(getFocusSeconds(pomFocusTargetMins, pomDurations));
-    elapsedRef.current = 0;
-  }, [pomTaskId, pomSeconds, pomFocusTargetMins, pomDurations, stopTimer]);
+    const startSecs = getFocusSeconds(pomFocusTargetMins, pomDurations);
+    setPomSeconds(startSecs);
+    targetSecRef.current = startSecs;
+    accumulatedSecRef.current = 0;
+    startedAtRef.current = null;
+  }, [pomTaskId, pomFocusTargetMins, pomDurations, stopTimer]);
 
   const endFocusEarly = useCallback(() => {
     // Allow ending from either running OR paused state — both have real
     // elapsed time worth crediting. Bail only when nothing has actually
-    // elapsed yet (idle dial / fresh reset).
-    if (elapsedRef.current <= 0) return;
-    const mins = Math.max(1, Math.round(elapsedRef.current / 60));
+    // elapsed yet (idle dial / fresh reset). stopTimer() first so the
+    // active-run delta is banked into accumulated before we read it.
+    stopTimer();
+    const elapsedSec = accumulatedSecRef.current;
+    if (elapsedSec <= 0) return;
+    const mins = Math.max(1, Math.round(elapsedSec / 60));
     const at = new Date();
     const entry = {
       id: newId(),
@@ -189,15 +285,17 @@ export function useFocusTimer({
       ));
     }
     setLastSession({ id: entry.id, taskId: pomTaskId, goalId: pomGoalId, mins, completedAt: at.toISOString(), kind: "early" });
-    stopTimer();
-    elapsedRef.current = 0;
+    accumulatedSecRef.current = 0;
+    startedAtRef.current = null;
     const task = pomGoalId && pomTaskId
       ? goals.find((g) => g.id === pomGoalId)?.tasks.find((t) => t.id === pomTaskId)
       : null;
     const focusMins = task?.eta || pomDurations.defaultFocus;
     setPomFocusTargetMins(focusMins);
-    setPomSeconds(getFocusSeconds(focusMins, pomDurations));
-  }, [pomRunning, pomTaskId, pomGoalId, goals, pomDurations, stopTimer, applyFocusLogUpdate, applyGoalsUpdate]);
+    const nextSecs = getFocusSeconds(focusMins, pomDurations);
+    targetSecRef.current = nextSecs;
+    setPomSeconds(nextSecs);
+  }, [pomTaskId, pomGoalId, goals, pomDurations, stopTimer, applyFocusLogUpdate, applyGoalsUpdate]);
 
   // Update a duration field (defaultFocus / break) and persist. When the
   // user is sitting idle with no task linked, reflect the new defaultFocus
@@ -210,8 +308,11 @@ export function useFocusTimer({
     updateSettings({ ...userSettings, pomDurations: nextDurations });
     if (!pomRunning && !pomTaskId && field === "defaultFocus") {
       setPomFocusTargetMins(nextVal);
-      setPomSeconds(getFocusSeconds(nextVal, nextDurations));
-      elapsedRef.current = 0;
+      const nextSecs = getFocusSeconds(nextVal, nextDurations);
+      setPomSeconds(nextSecs);
+      targetSecRef.current = nextSecs;
+      accumulatedSecRef.current = 0;
+      startedAtRef.current = null;
     }
   }, [pomDurations, pomRunning, pomTaskId, userSettings, updateSettings]);
 

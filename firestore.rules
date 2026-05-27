@@ -1,0 +1,36 @@
+rules_version = '2';
+
+// Firestore security rules.
+//
+// Single principle: every user owns exactly one document at users/{uid}
+// (plus any future subcollections under that path), and nobody else can
+// see or touch it. The app's entire data model — goals, prayer log,
+// muhasaba, qaza, focus log, saved verses, notification tokens — lives
+// inside that document, so this single rule covers the whole surface.
+//
+// Without these rules, the default mode is "test" (open until a deadline)
+// or "locked" (all denied). Both fail differently:
+//   - test mode means any authenticated user can read every other user's
+//     muhasaba entries, hijack FCM tokens to receive their prayer pushes,
+//     wipe their goals. P0 leak.
+//   - locked mode breaks the app entirely.
+//
+// Deploy with: firebase deploy --only firestore:rules
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Owner-only access to the user doc and any subcollections under it.
+    // The {document=**} wildcard future-proofs the migration to a
+    // muhasaba subcollection (noted in CLAUDE.md as the long-term fix
+    // for the 1 MB doc size limit).
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Default deny. Anything not matched above is forbidden, including
+    // accidental top-level collections introduced later without rules.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

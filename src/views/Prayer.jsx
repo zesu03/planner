@@ -105,7 +105,7 @@ export default function Prayer({
             )}
           </div>
           {prayerError && (
-            <div style={{ fontSize: 14, color: "var(--color-text-danger)", marginTop: 8 }}>{prayerError}</div>
+            <div role="alert" aria-live="polite" style={{ fontSize: 14, color: "var(--color-text-danger)", marginTop: 8 }}>{prayerError}</div>
           )}
         </div>
       )}
@@ -629,7 +629,7 @@ function RemindersPanel({ notifications, updateNotifications }) {
         </div>
       )}
       {error && (
-        <div style={{ fontSize: 13, color: "var(--color-text-danger)", marginTop: 10 }}>{error}</div>
+        <div role="alert" aria-live="polite" style={{ fontSize: 13, color: "var(--color-text-danger)", marginTop: 10 }}>{error}</div>
       )}
     </div>
   );

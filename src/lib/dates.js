@@ -74,3 +74,30 @@ export const eachDayBetween = (startStr, endStr) => {
 };
 
 export const endOfYear = () => `${todayStr().slice(0, 4)}-12-31`;
+
+// Add (or subtract, with negative n) calendar days to a YYYY-MM-DD string.
+// Pure string arithmetic via the noon-UTC anchor + getUTC fields pattern
+// already used by eachDayBetween — completely timezone-independent, no
+// DST drift. The OTHER common pattern in the codebase before this helper
+// was `new Date(dayStr)` (UTC midnight parse) + `setDate` (local mutation)
+// + `localDateStr` (local format), which silently produces off-by-one
+// results in any timezone west of UTC (the parsed UTC midnight is already
+// "yesterday" in local time, so stepping back one local day lands two
+// calendar days before the intent).
+export const addDaysToStr = (dayStr, n) => {
+  const d = new Date(`${dayStr}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(d.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+
+// Long-form weekday name for a YYYY-MM-DD string. Formatted in UTC so a
+// pure calendar date always yields the same weekday regardless of where
+// the viewer is — "2026-05-27 is a Wednesday" is true in every timezone,
+// and we don't want that flipping for users near the dateline.
+export const weekdayOf = (dayStr, locale = "en") => {
+  const d = new Date(`${dayStr}T12:00:00Z`);
+  return d.toLocaleDateString(locale, { weekday: "long", timeZone: "UTC" });
+};

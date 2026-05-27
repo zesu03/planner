@@ -9,6 +9,19 @@
 //
 // Between Sunrise and Dhuhr there is no active window — Fajr is over,
 // Dhuhr hasn't begun. `currentPrayerWindow` returns null in that gap.
+//
+// ── Day-attribution rule ───────────────────────────────────────────────
+// Isha and Tahajjud windows cross midnight. If the user marks them
+// between local midnight and today's Fajr, the act belongs to YESTERDAY's
+// prayer window — the user prayed "last night's" Isha, not "tomorrow
+// night's." `prayerDayFor` encodes that rule and is the single source of
+// truth for "which day does this prayer-mark belong to."
+//
+// Aggregations that bucket days (Stats heatmaps, weekly digests, the
+// 7-day grid in Prayer view) all use the wall-clock day — they read
+// what's actually stored. If Isha for Sunday was marked at 2am Monday,
+// prayerDayFor attributed it to Sunday, and the Sunday cell shows the
+// tick. No double-bucketing.
 
 const parseHHMM = (s) => {
   if (!s) return null;
@@ -45,6 +58,34 @@ export function currentPrayerWindow(prayerTimes, now = new Date()) {
     if (nowMins >= w.start && nowMins < w.end) return w.name;
   }
   return null;
+}
+
+// Which calendar day does a "Mark prayed" tap for `prayer` belong to?
+// For day-prayers (Fajr/Dhuhr/Asr/Maghrib) the answer is always today —
+// their windows fit inside one solar day. For night-crossing prayers
+// (Isha, Tahajjud), a tap between local midnight and today's Fajr is
+// attributed to YESTERDAY's window.
+//
+// Inputs are simple values so this stays pure and testable:
+//   - prayer: prayer name (string)
+//   - prayerTimes: Aladhan timings object (or null/undefined — falls back
+//     to a safe 4:30 AM Fajr estimate)
+//   - todayStrFn: callable that returns today's YYYY-MM-DD (the lib/dates
+//     export; passed in to avoid lib/prayer depending on lib/dates)
+//   - addDaysToStrFn: callable to step a date string by N days (also from
+//     lib/dates, passed in for the same reason)
+//   - now: optional Date for tests (defaults to now)
+export function prayerDayFor(prayer, prayerTimes, todayStrFn, addDaysToStrFn, now = new Date()) {
+  if (prayer !== "Isha" && prayer !== "Tahajjud") return todayStrFn();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const fajrMins = (() => {
+    const s = prayerTimes?.Fajr;
+    if (!s) return 4 * 60 + 30;
+    const [h, m] = s.split(":").map(Number);
+    return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : 4 * 60 + 30;
+  })();
+  if (nowMins >= fajrMins) return todayStrFn();
+  return addDaysToStrFn(todayStrFn(), -1);
 }
 
 // Today's prayers whose window has already closed and haven't been logged.

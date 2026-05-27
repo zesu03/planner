@@ -49,14 +49,27 @@ messaging.onBackgroundMessage((payload) => {
 });
 
 // Notification click → focus or open the app. If a tab is already open at
-// the origin, focus it; otherwise open a new tab at /.
+// the origin, focus it; otherwise open a new tab at the data.url path.
+//
+// Security: data.url comes from the FCM payload, which is trusted to the
+// extent the sender's tokens are. We harden anyway — accept only relative
+// paths starting with "/" and not "//" (protocol-relative URLs are a
+// known phishing vector). Any other shape falls back to "/". Without
+// this, a compromised token + crafted payload could openWindow to an
+// attacker-controlled origin straight from a system notification.
+function safeRelativePath(raw) {
+  if (typeof raw !== "string") return "/";
+  if (!raw.startsWith("/") || raw.startsWith("//")) return "/";
+  return raw;
+}
+
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const target = event.notification.data?.url || "/";
+  const target = safeRelativePath(event.notification.data?.url);
   event.waitUntil((async () => {
     const all = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
     for (const c of all) {
-      if (c.url.includes(self.location.origin)) {
+      if (c.url.startsWith(self.location.origin)) {
         c.focus();
         return;
       }

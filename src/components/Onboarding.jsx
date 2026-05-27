@@ -151,7 +151,7 @@ function SetupRow({
           </button>
         )}
         {error && (
-          <div style={{ fontSize: 12, color: "var(--color-text-danger)", marginTop: 8 }}>
+          <div role="alert" aria-live="polite" style={{ fontSize: 12, color: "var(--color-text-danger)", marginTop: 8 }}>
             {error}
           </div>
         )}

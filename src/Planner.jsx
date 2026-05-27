@@ -9,19 +9,19 @@ import { auth } from "./firebase";
 // Pure helpers and data — no React, no state. See src/lib/.
 import {
   PRAYERS,
-  VOLUNTARY_PRAYERS,
   QUOTES, INTENTIONS,
 } from "./lib/constants";
 import { newId } from "./lib/ids";
-import { todayStr, localDateStr, daysLeft } from "./lib/dates";
-import { isGoalDone, pct, isRecurring, isScheduledOn, isDoneOn, recurringStreak, recurringCompletionRate } from "./lib/goals";
+import { todayStr, localDateStr, daysLeft, addDaysToStr } from "./lib/dates";
+import { isGoalDone, pct } from "./lib/goals";
 import { emptyMuhasabaEntry, isMuhasabaFilled, muhasabaStreak } from "./lib/muhasaba";
 import { emptyQaza, computeQazaOwed, QAZA_PRAYERS } from "./lib/qaza";
-import { nextPrayer as computeNextPrayer } from "./lib/prayer";
+import { nextPrayer as computeNextPrayer, prayerDayFor as computePrayerDayFor } from "./lib/prayer";
 import { dayPhase, prayersToday, focusToday, muhasabaState, yesterdayDua, firstOpenTask } from "./lib/daily";
 import { fmtTime, focusStreakDays, STREAK_MILESTONES } from "./lib/focus";
 import { goldA, S } from "./lib/styles";
 import { attachForegroundHandler } from "./lib/notifications";
+import { buildReportPayload as buildReportPayloadLib } from "./lib/reportPayload";
 import CelebrationToast from "./components/CelebrationToast";
 import ConfirmDialog from "./components/ConfirmDialog";
 import Onboarding from "./components/Onboarding";
@@ -206,6 +206,16 @@ export default function Planner({ user }) {
     return () => clearTimeout(t);
   }, [celebration]);
 
+  // Auto-clear AI-generation errors so a stale message from a navigation
+  // ago doesn't linger forever. 10s is enough for the user to read the
+  // message; if they're still on the cooldown timer when it clears, the
+  // next click will surface a fresh remaining-seconds message anyway.
+  useEffect(() => {
+    if (!aiError) return;
+    const t = setTimeout(() => setAiError(""), 10000);
+    return () => clearTimeout(t);
+  }, [aiError]);
+
   // Foreground FCM handler. When the app is open, FCM delivers via onMessage
   // and the browser does NOT show a system notification automatically; this
   // effect bridges to the SW's showNotification so the user sees push reminders
@@ -218,29 +228,15 @@ export default function Planner({ user }) {
     return () => { cancelled = true; if (typeof detach === "function") detach(); };
   }, []);
 
-  const applyGoalsUpdate = useCallback(
-    (updater) => {
-      const next = typeof updater === "function" ? updater(goals) : updater;
-      updateGoals(next);
-    },
-    [goals, updateGoals]
-  );
-
-  const applyPrayerLogUpdate = useCallback(
-    (updater) => {
-      const next = typeof updater === "function" ? updater(prayerLog) : updater;
-      updatePrayerLog(next);
-    },
-    [prayerLog, updatePrayerLog]
-  );
-
-  const applyFocusLogUpdate = useCallback(
-    (updater) => {
-      const next = typeof updater === "function" ? updater(focusLog) : updater;
-      updateFocusLog(next);
-    },
-    [focusLog, updateFocusLog]
-  );
+  // apply* are stable aliases to useFirestore's already-memoised update*
+  // setters, which themselves accept either a value or a (prev) => next
+  // updater. The old wrappers depended on the current state value, which
+  // gave them a fresh reference on every snapshot — defeating React.memo
+  // on every view downstream. Pure passthroughs preserve all existing
+  // call sites without the churn.
+  const applyGoalsUpdate = updateGoals;
+  const applyPrayerLogUpdate = updatePrayerLog;
+  const applyFocusLogUpdate = updateFocusLog;
 
   // Focus timer — dial state, the tick interval, session bookkeeping,
   // and pom-duration persistence. Lives in its own hook so the timer
@@ -265,21 +261,8 @@ export default function Planner({ user }) {
   // glue these to the local form state, confirms, and navigation.
   const goalsHook = useGoals({ applyGoalsUpdate });
 
-  const applyMuhasabaUpdate = useCallback(
-    (updater) => {
-      const next = typeof updater === "function" ? updater(muhasaba) : updater;
-      updateMuhasaba(next);
-    },
-    [muhasaba, updateMuhasaba]
-  );
-
-  const applyQazaUpdate = useCallback(
-    (updater) => {
-      const next = typeof updater === "function" ? updater(qaza) : updater;
-      updateQaza(next);
-    },
-    [qaza, updateQaza]
-  );
+  const applyMuhasabaUpdate = updateMuhasaba;
+  const applyQazaUpdate = updateQaza;
 
   // Seed the qaza ledger the first time the user reaches the app — startDate
   // anchors counting to "from today forward" so pre-existing prayerLog gaps
@@ -314,13 +297,7 @@ export default function Planner({ user }) {
   // Saved verses — personal collection of bookmarked ayat from the
   // verse-of-day card. De-duped by verseKey so re-saving the same verse is
   // a no-op rather than producing duplicate rows. Newest-first ordering.
-  const applySavedVersesUpdate = useCallback(
-    (updater) => {
-      const next = typeof updater === "function" ? updater(savedVerses) : updater;
-      updateSavedVerses(next);
-    },
-    [savedVerses, updateSavedVerses]
-  );
+  const applySavedVersesUpdate = updateSavedVerses;
 
   const saveVerse = useCallback((verse) => {
     if (!verse?.verseKey) return;
@@ -347,279 +324,14 @@ export default function Planner({ user }) {
     [savedVerses]
   );
 
-  // Build a rich JSON payload for Gemini. The mentor needs enough context to
-  // spot real patterns (recurring sins, stalling du'as, momentum) — not just
-  // a snapshot of today. Also includes the qaza ledger (so the mentor can
-  // hold the user to making up missed prayers) and any goals completed on
-  // this day (so the day's wins are visible alongside its gaps).
-  const buildReportPayload = useCallback((day) => {
-    const entry = muhasaba[day] || {};
-    const today = todayStr();
-    const isToday = day === today;
-    const dayOfWeek = new Date(day).toLocaleDateString("en", { weekday: "long" });
+  // Build a rich JSON payload for Gemini. The full transform lives in
+  // lib/reportPayload.js — pure function, no hooks, no closures over
+  // state. Planner just supplies the current data via a context object.
+  // Wrapped in useCallback to keep generateReport's deps stable.
+  const buildReportPayload = useCallback((day) =>
+    buildReportPayloadLib(day, { goals, prayerLog, focusLog, muhasaba, qaza, prayerTimes, hijriDate }),
+  [goals, prayerLog, focusLog, muhasaba, qaza, prayerTimes, hijriDate]);
 
-    // Prayers — today + yesterday for direct comparison
-    const dayPrayersDone = PRAYERS.filter(p => (prayerLog[p]||[]).includes(day));
-    const dayPrayersMissed = PRAYERS.filter(p => p !== "Sunrise" && !dayPrayersDone.includes(p));
-    const yKey = (() => { const d=new Date(`${day}T00:00:00Z`); d.setUTCDate(d.getUTCDate()-1); return localDateStr(d); })();
-    const yesterdayPrayers = {
-      done: PRAYERS.filter(p => (prayerLog[p]||[]).includes(yKey)),
-      missed: PRAYERS.filter(p => p !== "Sunrise" && !(prayerLog[p]||[]).includes(yKey)),
-    };
-
-    // Voluntary prayers (Tahajjud and any other nafl). Today's status +
-    // a 7-day recap per prayer so the mentor can name consistency (or its
-    // absence). Voluntary work is one of the strongest spiritual signals;
-    // omitting it would make any reflection ignore real effort.
-    const voluntary = VOLUNTARY_PRAYERS.map((p) => {
-      const log = prayerLog[p] || [];
-      const last7 = [];
-      const cursor = new Date(`${day}T12:00:00Z`);
-      let last7Count = 0;
-      let streak = 0;
-      let streakBroken = false;
-      for (let i = 0; i < 7; i++) {
-        const k = localDateStr(cursor);
-        const done = log.includes(k);
-        last7.push({ day: k, done });
-        if (done) last7Count++;
-        if (!streakBroken) {
-          if (done) streak++;
-          else if (i > 0) streakBroken = true;
-        }
-        cursor.setUTCDate(cursor.getUTCDate() - 1);
-      }
-      return {
-        name: p,
-        doneToday: log.includes(day),
-        streak,
-        last7Count,
-        last7,
-      };
-    });
-
-    // Focus — today's mins + breakdown by goal
-    const dayFocus = focusLog.filter(l => l.day === day);
-    const dayFocusMins = dayFocus.reduce((s,l) => s + (l.mins||0), 0);
-    const focusByGoal = dayFocus.reduce((acc, l) => {
-      const g = goals.find(x => x.id === l.goalId);
-      const key = g?.title || "general";
-      acc[key] = (acc[key] || 0) + (l.mins || 0);
-      return acc;
-    }, {});
-    // Honest one-line notes the user wrote at end-of-session. Real signal
-    // for the mentor — "distracted, slow" three sessions running is a
-    // pattern that raw minutes can't surface.
-    const dayFocusNotes = dayFocus
-      .filter(l => l.note && l.note.trim())
-      .map(l => {
-        const g = goals.find(x => x.id === l.goalId);
-        const t = g?.tasks.find(x => x.id === l.taskId);
-        return {
-          mins: l.mins,
-          at: l.at,
-          task: t?.text || "General focus",
-          goal: g?.title || null,
-          note: l.note.trim(),
-        };
-      });
-
-    // Goals snapshot
-    const goalsState = goals.map(g => {
-      const tasks = g.tasks || [];
-      // One-shot vs recurring split. Progress %, doneCount, tasksTotal
-      // describe one-shot tasks only (matching pct() in lib/goals.js).
-      // Recurring tasks are reported separately as `habits` so the mentor
-      // can reason about them in their own terms (daily/weekly cadence,
-      // streak, recent completion rate).
-      const oneShots = tasks.filter(t => !isRecurring(t));
-      const habits = tasks.filter(t => isRecurring(t)).map(t => ({
-        text: t.text,
-        priority: t.priority,
-        type: t.recurring.type,
-        days: t.recurring.days || null,
-        doneToday: isDoneOn(t),
-        scheduledToday: isScheduledOn(t),
-        streak: recurringStreak(t),
-        last30CompletionRate: recurringCompletionRate(t, 30),
-      }));
-      const doneCount = oneShots.filter(t => t.done).length;
-      const dl = Math.ceil((new Date(g.due) - new Date(day)) / 86400000);
-      return {
-        title: g.title,
-        category: g.category,
-        type: g.type,
-        progressPct: oneShots.length ? Math.round(doneCount/oneShots.length*100) : 0,
-        tasksDone: doneCount,
-        tasksTotal: oneShots.length,
-        habitsTotal: habits.length,
-        habits, // detailed habit data; empty array if none
-        daysUntilDue: dl,
-        completed: !!g.completedAt,
-        completedOn: g.completedAt || null,
-        intention: g.intention || null,
-      };
-    });
-
-    // Momentum — when did the user last finish a goal?
-    const lastCompletedDay = goals
-      .filter(g => g.completedAt)
-      .map(g => g.completedAt)
-      .sort()
-      .pop();
-    const daysSinceLastGoalCompletion = lastCompletedDay
-      ? Math.floor((new Date(day) - new Date(lastCompletedDay)) / 86400000)
-      : null;
-
-    // 7-day prayer streaks ending on `day`
-    const streaks = {};
-    for (const p of PRAYERS) {
-      if (p === "Sunrise") continue;
-      let count = 0;
-      const cursor = new Date(day);
-      for (let i=0; i<7; i++) {
-        const k = localDateStr(cursor);
-        if ((prayerLog[p]||[]).includes(k)) count++;
-        else if (i>0) break;
-        cursor.setDate(cursor.getDate() - 1);
-      }
-      streaks[p] = count;
-    }
-
-    // Last 5 days of muhasaba — gives the model real history to spot
-    // recurring patterns instead of having to "infer" from a hint.
-    const lastFiveDaysMuhasaba = [];
-    for (let i = 1; i <= 5; i++) {
-      const d = new Date(day);
-      d.setDate(d.getDate() - i);
-      const k = localDateStr(d);
-      const e = muhasaba[k];
-      if (e && (e.repentText || e.sinTags?.length || e.bestDeed || e.niyyahRating || e.duaTomorrow)) {
-        lastFiveDaysMuhasaba.push({
-          day: k,
-          sinTags: e.sinTags || [],
-          repentText: e.repentText || null,
-          niyyahRating: e.niyyahRating || null,
-          bestDeed: e.bestDeed || null,
-          duaTomorrow: e.duaTomorrow || null,
-          ghaflahNote: e.ghaflahNote || null,
-        });
-      }
-    }
-
-    // recentDuas — kept alongside lastFiveDaysMuhasaba as a quick-glance signal
-    const recentDuas = [];
-    for (let i = 1; i <= 3; i++) {
-      const d = new Date(day);
-      d.setDate(d.getDate() - i);
-      const k = localDateStr(d);
-      const past = muhasaba[k]?.duaTomorrow;
-      if (past && past.trim()) recentDuas.push({ daysAgo: i, dua: past });
-    }
-
-    // Niyyah trend (last 7 days incl. today)
-    const niyyahTrendArr = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(day);
-      d.setDate(d.getDate() - i);
-      const k = localDateStr(d);
-      const r = muhasaba[k]?.niyyahRating;
-      if (r) niyyahTrendArr.push({ day: k, rating: r });
-    }
-
-    // Qaza ledger — outstanding makeups per prayer + total. Tells the
-    // mentor where missed-prayer debt is accumulating, so a recurring miss
-    // can be named directly instead of as an abstract "consistency" note.
-    const qazaSummary = (() => {
-      const owed = computeQazaOwed(prayerLog, qaza, prayerTimes);
-      const total = QAZA_PRAYERS.reduce((s, p) => s + (owed[p] || 0), 0);
-      const paid = QAZA_PRAYERS.reduce((s, p) => s + (qaza?.paid?.[p] || 0), 0);
-      const worst = QAZA_PRAYERS.reduce((acc, p) => (owed[p] || 0) > (owed[acc] || 0) ? p : acc, "Fajr");
-      return {
-        owed,
-        totalOwed: total,
-        totalPaid: paid,
-        worstPrayer: total > 0 ? worst : null,
-        startDate: qaza?.startDate || null,
-      };
-    })();
-
-    // Goals the user actually finished on this day — a real win to weigh
-    // against the day's gaps so the reflection isn't lopsidedly negative.
-    const goalsCompletedOnDay = goals
-      .filter(g => g.completedAt === day)
-      .map(g => ({ title: g.title, category: g.category, intention: g.intention || null }));
-
-    return {
-      day,
-      dayOfWeek,
-      hijriHint: isToday ? (hijriDate || null) : null, // we only know today's Hijri date
-      isToday,
-      entryUpdatedAt: entry.updatedAt || null,
-      prayers: {
-        done: dayPrayersDone,
-        missed: dayPrayersMissed,
-        sevenDayStreaks: streaks,
-        yesterday: yesterdayPrayers,
-      },
-      voluntary,
-      focus: { totalMins: dayFocusMins, sessions: dayFocus.length, byGoal: focusByGoal, notes: dayFocusNotes },
-      goals: goalsState,
-      goalsCompletedOnDay,
-      daysSinceLastGoalCompletion,
-      qaza: qazaSummary,
-      muhasaba: {
-        quranPages: entry.quranPages || null,
-        dhikr: !!entry.dhikr,
-        makeupNote: entry.makeupNote || null,
-        repentText: entry.repentText || null,
-        sinTags: entry.sinTags || [],
-        ghaflahNote: entry.ghaflahNote || null,
-        niyyahRating: entry.niyyahRating || null,
-        bestDeed: entry.bestDeed || null,
-        shukr: (entry.shukr || []).filter(s => s && s.trim()),
-        duaTomorrow: entry.duaTomorrow || null,
-        // Yesterday's-du'a verdict. status ∈ {honoured, partial, missed, null}.
-        // A non-null status closes the previous day's commitment loop and
-        // is the most direct behavioural-feedback signal the mentor has.
-        duaCheck: entry.duaCheck?.status
-          ? { status: entry.duaCheck.status, note: entry.duaCheck.note || null }
-          : null,
-        // Relational audit — map of relation → free-text repair plan. Only
-        // includes relations the user actually flagged (key present in the
-        // entry's `relations` object). The mentor should treat these as
-        // priority: rights of creation are heavier than abstract self-talk.
-        relations: Object.entries(entry.relations || {})
-          .filter(([, note]) => true) // include even relations with no note — selection itself is signal
-          .map(([who, note]) => ({ who, note: (note || "").trim() || null })),
-        // Tawbah conditions — three booleans the user affirmed tonight.
-        // Only sent when at least one is true; null otherwise so the model
-        // doesn't see noise. A partial affirmation (e.g. stopped=true,
-        // resolved=false) is itself a tell about honesty/readiness.
-        tawbah: (entry.tawbah?.stopped || entry.tawbah?.resolved || entry.tawbah?.restored)
-          ? {
-              stopped: !!entry.tawbah.stopped,
-              resolved: !!entry.tawbah.resolved,
-              restored: !!entry.tawbah.restored,
-            }
-          : null,
-        // Per-active-goal self-check. Map of goalId → "yes" | "partial" |
-        // "no". Joined with goal titles below so the mentor can call them
-        // by name without needing to cross-reference.
-        goalChecks: Object.entries(entry.goalChecks || {})
-          .map(([id, value]) => {
-            const g = goals.find((x) => x.id === id);
-            if (!g) return null;
-            return { title: g.title, category: g.category, value };
-          })
-          .filter(Boolean),
-      },
-      muhasabaStreak: muhasabaStreak(muhasaba),
-      lastFiveDaysMuhasaba,
-      recentDuas,
-      niyyahTrend: niyyahTrendArr,
-    };
-  }, [goals, prayerLog, focusLog, muhasaba, hijriDate, qaza]);
 
   const generateReport = useCallback(async (day, { force=false } = {}) => {
     if (!day) return;
@@ -726,29 +438,10 @@ export default function Planner({ user }) {
     });
   }
 
-  // Isha and Tahajjud are night prayers whose windows cross midnight
-  // (Isha → next-day Fajr; Tahajjud sits inside that). If the user marks
-  // them between local midnight and today's Fajr, the act belongs to
-  // YESTERDAY's window, not the new solar day. Fallback to 4:30 AM local
-  // if prayerTimes haven't loaded — a safe upper bound for Fajr.
+  // Which day a "Mark prayed" tap is attributed to. Delegates to the lib
+  // helper (single source of truth — see lib/prayer.js for the rule).
   function prayerDayFor(prayer) {
-    if (prayer !== "Isha" && prayer !== "Tahajjud") return todayStr();
-    const now = new Date();
-    const nowMins = now.getHours() * 60 + now.getMinutes();
-    const fajrMins = (() => {
-      const s = prayerTimes?.Fajr;
-      if (!s) return 4 * 60 + 30;
-      const [h, m] = s.split(":").map(Number);
-      return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : 4 * 60 + 30;
-    })();
-    if (nowMins >= fajrMins) return todayStr();
-    // Step back one day via noon-UTC anchor (DST-safe, matches eachDayBetween).
-    const d = new Date(`${todayStr()}T12:00:00Z`);
-    d.setUTCDate(d.getUTCDate() - 1);
-    const y = d.getUTCFullYear();
-    const mo = String(d.getUTCMonth() + 1).padStart(2, "0");
-    const da = String(d.getUTCDate()).padStart(2, "0");
-    return `${y}-${mo}-${da}`;
+    return computePrayerDayFor(prayer, prayerTimes, todayStr, addDaysToStr);
   }
 
   function togglePrayerLog(prayer) {
@@ -1048,11 +741,7 @@ export default function Planner({ user }) {
     if (!yDuaInfo) {
       // Fall back to computing the previous day key directly so we still
       // surface the mentor's action even when no du'a was written.
-      const yKey = (() => {
-        const d = new Date(`${todayStr()}T12:00:00Z`);
-        d.setUTCDate(d.getUTCDate() - 1);
-        return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,"0")}-${String(d.getUTCDate()).padStart(2,"0")}`;
-      })();
+      const yKey = addDaysToStr(todayStr(), -1);
       const t = muhasaba[yKey]?.aiReport?.data?.tomorrow;
       return t && t.trim() ? { day: yKey, text: t.trim() } : null;
     }

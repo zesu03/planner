@@ -126,7 +126,13 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
   //    Compares the trailing 7 days against the 7 days before that and
   //    picks 5-6 punchy facts — spiritual signals first, then focus,
   //    then the top Mirror pattern when one exists. Cheap derivation,
-  //    no schema change. ──
+  //    no schema change.
+  //
+  //    Day buckets are wall-clock days, matching the attribution rule
+  //    in lib/prayer.js#prayerDayFor: an Isha tick logged at 2am Monday
+  //    is attributed by the marker to Sunday, lands in prayerLog under
+  //    Sunday's key, and shows here in Sunday's bucket. Aggregations
+  //    here READ stored keys; they never re-bucket. ──
   const weekDigest = (() => {
     const last7 = [];
     for (let i = 6; i >= 0; i--) {
