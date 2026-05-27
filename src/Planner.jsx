@@ -24,6 +24,7 @@ import { goldA, S } from "./lib/styles";
 import { attachForegroundHandler } from "./lib/notifications";
 import CelebrationToast from "./components/CelebrationToast";
 import ConfirmDialog from "./components/ConfirmDialog";
+import Onboarding from "./components/Onboarding";
 import { GoalDetailProvider } from "./contexts/GoalDetailContext";
 
 // View components (one per tab).
@@ -1044,6 +1045,25 @@ export default function Planner({ user }) {
     return t && t.trim() ? { day: yDuaInfo.day, text: t.trim() } : null;
   })();
 
+  // Onboarding overlay — shows once on first launch to surface the two
+  // permission asks (location + push). Dismissal is persisted in
+  // localStorage so it doesn't reappear every reload; it also auto-hides
+  // when both prerequisites are satisfied. Init from localStorage lazily
+  // so SSR/private-mode failure doesn't break the component.
+  const [onboardingDismissed, setOnboardingDismissed] = useState(() => {
+    try { return localStorage.getItem("aakhirah_onboarding_dismissed") === "1"; }
+    catch { return false; }
+  });
+  const dismissOnboarding = useCallback(() => {
+    setOnboardingDismissed(true);
+    try { localStorage.setItem("aakhirah_onboarding_dismissed", "1"); } catch { /* private mode */ }
+  }, []);
+  const hasLocation = !!(userSettings.prayerCity || userSettings.prayerLat);
+  const hasNotificationsOn = notifications?.prayer?.enabled === true;
+  // Don't show while Firestore is still loading — userSettings would be
+  // empty and the modal would flash up before the real values arrive.
+  const showOnboarding = !loading && !onboardingDismissed && (!hasLocation || !hasNotificationsOn);
+
   // Celebration toast handler — routes the "Open" action based on kind.
   const onCelebrationOpen = () => {
     if (!celebration) return;
@@ -1065,6 +1085,16 @@ export default function Planner({ user }) {
         celebration={celebration}
         onDismiss={() => setCelebration(null)}
         onOpen={onCelebrationOpen}
+      />
+
+      <Onboarding
+        open={showOnboarding}
+        hasLocation={hasLocation}
+        hasNotifications={hasNotificationsOn}
+        notifications={notifications}
+        updateNotifications={updateNotifications}
+        onUseLocation={fetchByGeo}
+        onDismiss={dismissOnboarding}
       />
 
       {/* header — styled via .app-header-* in index.css so the mobile

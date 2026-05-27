@@ -169,14 +169,33 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings, notifi
   }, [userSettings, updateSettings]);
 
   // Geolocation prompt + fetch. Thin wrapper around fetchByCoords that
-  // gathers the position from the browser.
+  // gathers the position from the browser. Returns a promise that resolves
+  // once the full chain (permission → coords → Aladhan → state set) is
+  // done, so callers can drive a "Asking…" state through the whole flow.
+  // Rejects with a user-displayable message on permission denial or
+  // missing geolocation API.
   const fetchByGeo = useCallback(() => {
-    if (!navigator.geolocation) { setPrayerError("Geolocation not supported."); return; }
-    setPrayerLoading(true); setPrayerError("");
-    navigator.geolocation.getCurrentPosition(
-      (pos) => fetchByCoords(pos.coords.latitude, pos.coords.longitude),
-      () => { setPrayerError("Location permission denied."); setPrayerLoading(false); }
-    );
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) {
+        setPrayerError("Geolocation not supported.");
+        reject(new Error("Geolocation not supported."));
+        return;
+      }
+      setPrayerLoading(true); setPrayerError("");
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          try {
+            await fetchByCoords(pos.coords.latitude, pos.coords.longitude);
+            resolve();
+          } catch (e) { reject(e); }
+        },
+        () => {
+          setPrayerError("Location permission denied.");
+          setPrayerLoading(false);
+          reject(new Error("Location permission denied."));
+        }
+      );
+    });
   }, [fetchByCoords]);
 
   // One-shot restore from persisted settings. `settingsFromDb` is the raw
