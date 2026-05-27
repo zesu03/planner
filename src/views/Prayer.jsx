@@ -512,20 +512,17 @@ export default function Prayer({
   );
 }
 
-// Reminders panel — push-notification opt-in for prayer times. Lives at
-// the bottom of the Prayer tab because the reach caveats (iOS install,
-// permission state) are easier to interpret next to the prayer times the
-// reminders will fire on. Renders one of four shapes depending on
-// platform + permission + opt-in state.
+// Reminders panel — a single toggle that turns prayer-time push
+// notifications on or off for all five fard prayers at once. Per-prayer
+// granularity stays in the data model (notifications.prayer.perPrayer
+// defaults to all true on enable) so the server logic doesn't have to
+// change if we surface finer controls later.
 function RemindersPanel({ notifications, updateNotifications }) {
   const enabled = notifications?.prayer?.enabled === true;
-  const perPrayer = notifications?.prayer?.perPrayer || {};
-  const tokenCount = Array.isArray(notifications?.fcmTokens) ? notifications.fcmTokens.length : 0;
-  const [supported, setSupported] = useState(null);     // null = checking
+  const [supported, setSupported] = useState(null);
   const [permission, setPermission] = useState("default");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [info, setInfo] = useState("");
   const needsIosInstall = isIosNeedsInstall();
 
   useEffect(() => {
@@ -533,13 +530,31 @@ function RemindersPanel({ notifications, updateNotifications }) {
     setPermission(currentPermission());
   }, []);
 
-  async function enable() {
-    setBusy(true); setError(""); setInfo("");
+  // Disabled states: platform can't deliver, user blocked permission, or
+  // we're still in flight from a prior tap.
+  const blocked = needsIosInstall || supported === false || permission === "denied";
+  const disabledHint = needsIosInstall
+    ? "On iPhone: Share → Add to Home Screen, then open from the icon."
+    : supported === false
+      ? "This browser doesn't support push notifications."
+      : permission === "denied"
+        ? "Notifications are blocked. Re-enable in your browser's site settings, then refresh."
+        : "";
+
+  async function toggle() {
+    if (blocked || busy) return;
+    setError("");
+    if (enabled) {
+      updateNotifications({
+        ...notifications,
+        prayer: { ...(notifications?.prayer || {}), enabled: false },
+      });
+      return;
+    }
+    setBusy(true);
     try {
       const { token, timezone } = await requestPermissionAndToken();
       const existingTokens = Array.isArray(notifications?.fcmTokens) ? notifications.fcmTokens : [];
-      // Default every prayer to ON for first opt-in; preserve any existing
-      // per-prayer choices on re-enable.
       const existingPerPrayer = notifications?.prayer?.perPrayer || {};
       const nextPerPrayer = { Fajr: true, Dhuhr: true, Asr: true, Maghrib: true, Isha: true, ...existingPerPrayer };
       updateNotifications({
@@ -549,123 +564,72 @@ function RemindersPanel({ notifications, updateNotifications }) {
         timezone,
       });
       setPermission("granted");
-      setInfo("Reminders enabled. You'll hear from us at the next prayer.");
     } catch (e) {
       setError(e?.message || "Couldn't enable reminders.");
     }
     setBusy(false);
   }
 
-  function disable() {
-    setError(""); setInfo("");
-    updateNotifications({
-      ...notifications,
-      prayer: { ...(notifications?.prayer || {}), enabled: false },
-    });
-  }
-
-  function togglePrayer(p) {
-    const next = { ...perPrayer, [p]: perPrayer[p] === false ? true : false };
-    updateNotifications({
-      ...notifications,
-      prayer: { ...(notifications?.prayer || {}), perPrayer: next },
-    });
-  }
-
-  async function sendTest() {
-    setError(""); setInfo("");
-    try {
-      const reg = await navigator.serviceWorker.getRegistration("/firebase-messaging-sw.js");
-      if (!reg) throw new Error("Service worker not registered. Toggle reminders off and on.");
-      await reg.showNotification("🕌 Test reminder", {
-        body: "If you see this, push notifications are working.",
-        icon: "/icon.svg",
-        badge: "/icon.svg",
-        tag: "prayer-test",
-        renotify: true,
-      });
-      setInfo("Sent. Check your notification tray.");
-    } catch (e) {
-      setError(e?.message || "Couldn't send test.");
-    }
-  }
+  // Switch visuals: a 44×24 track with a 20×20 knob that slides on toggle.
+  // Color is gold when on, neutral when off, dimmed when blocked. All
+  // inline so we don't have to add CSS rules just for one control.
+  const trackBase = {
+    position: "relative",
+    width: 44,
+    height: 24,
+    borderRadius: 99,
+    border: "0.5px solid var(--color-border-secondary)",
+    transition: "background 0.18s ease, border-color 0.18s ease",
+    flexShrink: 0,
+  };
+  const track = enabled
+    ? { ...trackBase, background: "var(--gold)", borderColor: "var(--gold)" }
+    : { ...trackBase, background: "var(--color-background-secondary)" };
+  const knob = {
+    position: "absolute",
+    top: 1,
+    left: enabled ? 22 : 1,
+    width: 20,
+    height: 20,
+    borderRadius: "50%",
+    background: "#fff",
+    transition: "left 0.18s ease",
+    boxShadow: "0 1px 2px rgba(0,0,0,0.25)",
+  };
 
   return (
     <div style={{ ...S.card, marginTop: 20 }}>
-      <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 4 }}>Prayer reminders</div>
-      <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginBottom: 12 }}>
-        A push notification at the start of each prayer, based on the times above.
-      </div>
+      <button onClick={toggle} disabled={blocked || busy}
+        aria-pressed={enabled}
+        aria-label={enabled ? "Turn off prayer reminders" : "Turn on prayer reminders"}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          width: "100%",
+          padding: 0,
+          background: "transparent",
+          border: "none",
+          textAlign: "left",
+          cursor: blocked || busy ? "not-allowed" : "pointer",
+          opacity: blocked ? 0.55 : 1,
+        }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 500 }}>Prayer reminders</div>
+          <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginTop: 2 }}>
+            {busy ? "Asking permission…" : "Push notification at the start of each prayer."}
+          </div>
+        </div>
+        <div style={track}><div style={knob} /></div>
+      </button>
 
-      {/* Platform-blocked states first — no point showing controls if the
-          browser can't deliver. */}
-      {needsIosInstall && (
-        <div style={{ fontSize: 13, color: "var(--color-text-secondary)", lineHeight: 1.5 }}>
-          On iPhone: tap <strong>Share → Add to Home Screen</strong>, then open the app from the home-screen icon. iOS only delivers push notifications to installed PWAs.
+      {blocked && disabledHint && (
+        <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginTop: 10, lineHeight: 1.5 }}>
+          {disabledHint}
         </div>
       )}
-
-      {!needsIosInstall && supported === false && (
-        <div style={{ fontSize: 13, color: "var(--color-text-secondary)" }}>
-          This browser doesn't support push notifications.
-        </div>
-      )}
-
-      {!needsIosInstall && supported && permission === "denied" && (
-        <div style={{ fontSize: 13, color: "var(--color-text-secondary)", lineHeight: 1.5 }}>
-          Notifications are blocked. Re-enable in your browser's site settings (lock icon next to the URL), then refresh.
-        </div>
-      )}
-
-      {!needsIosInstall && supported && permission !== "denied" && !enabled && (
-        <button onClick={enable} disabled={busy} className="btn-primary"
-          style={{ padding: "8px 16px", fontSize: 14 }}>
-          {busy ? "Enabling…" : "Enable prayer reminders"}
-        </button>
-      )}
-
-      {!needsIosInstall && supported && enabled && (
-        <>
-          <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginBottom: 10 }}>
-            On · {tokenCount} {tokenCount === 1 ? "device" : "devices"}
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: 6, marginBottom: 12 }}>
-            {PRAYERS.filter((p) => p !== "Sunrise").map((p) => {
-              const on = perPrayer[p] !== false;
-              const color = PRAYER_COLORS[p];
-              return (
-                <button key={p} onClick={() => togglePrayer(p)}
-                  style={{
-                    fontSize: 13,
-                    padding: "6px 10px",
-                    borderRadius: 8,
-                    background: on ? color + "22" : "var(--color-background-secondary)",
-                    color: on ? color : "var(--color-text-tertiary)",
-                    border: `0.5px solid ${on ? color + "66" : "var(--color-border-tertiary)"}`,
-                    cursor: "pointer",
-                    fontWeight: on ? 500 : 400,
-                  }}>
-                  {on ? "✓ " : ""}{p}
-                </button>
-              );
-            })}
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <button onClick={sendTest} style={{ fontSize: 13, padding: "6px 12px" }}>
-              Send test
-            </button>
-            <button onClick={disable} style={{ fontSize: 13, padding: "6px 12px", color: "var(--color-text-secondary)" }}>
-              Turn off
-            </button>
-          </div>
-        </>
-      )}
-
       {error && (
         <div style={{ fontSize: 13, color: "var(--color-text-danger)", marginTop: 10 }}>{error}</div>
-      )}
-      {info && !error && (
-        <div style={{ fontSize: 13, color: "var(--color-text-secondary)", marginTop: 10 }}>{info}</div>
       )}
     </div>
   );
