@@ -782,6 +782,21 @@ export default function Planner({ user }) {
     return streak;
   }
 
+  // Onboarding hooks — MUST live above the loading-guard early return
+  // below; React requires the same number of hooks on every render, so
+  // declaring these after the `if (loading) return` would change the
+  // hook count between loading=true and loading=false renders
+  // (React error #310). Derived values that depend on userSettings /
+  // notifications stay below the guard where those values are real.
+  const [onboardingDismissed, setOnboardingDismissed] = useState(() => {
+    try { return localStorage.getItem("aakhirah_onboarding_dismissed") === "1"; }
+    catch { return false; }
+  });
+  const dismissOnboarding = useCallback(() => {
+    setOnboardingDismissed(true);
+    try { localStorage.setItem("aakhirah_onboarding_dismissed", "1"); } catch { /* private mode */ }
+  }, []);
+
   if (loading) {
     return (
       <div role="status" aria-label="Loading your data"
@@ -1045,23 +1060,11 @@ export default function Planner({ user }) {
     return t && t.trim() ? { day: yDuaInfo.day, text: t.trim() } : null;
   })();
 
-  // Onboarding overlay — shows once on first launch to surface the two
-  // permission asks (location + push). Dismissal is persisted in
-  // localStorage so it doesn't reappear every reload; it also auto-hides
-  // when both prerequisites are satisfied. Init from localStorage lazily
-  // so SSR/private-mode failure doesn't break the component.
-  const [onboardingDismissed, setOnboardingDismissed] = useState(() => {
-    try { return localStorage.getItem("aakhirah_onboarding_dismissed") === "1"; }
-    catch { return false; }
-  });
-  const dismissOnboarding = useCallback(() => {
-    setOnboardingDismissed(true);
-    try { localStorage.setItem("aakhirah_onboarding_dismissed", "1"); } catch { /* private mode */ }
-  }, []);
+  // Onboarding render gating — pure derived values (NOT hooks). The two
+  // onboarding hooks themselves live above the `if (loading) return` guard
+  // so the render's hook count stays stable across the loading flip.
   const hasLocation = !!(userSettings.prayerCity || userSettings.prayerLat);
   const hasNotificationsOn = notifications?.prayer?.enabled === true;
-  // Don't show while Firestore is still loading — userSettings would be
-  // empty and the modal would flash up before the real values arrive.
   const showOnboarding = !loading && !onboardingDismissed && (!hasLocation || !hasNotificationsOn);
 
   // Celebration toast handler — routes the "Open" action based on kind.
