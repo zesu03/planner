@@ -1,41 +1,54 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Aakhirah Planner — crescent and checkmark mark">
-  <!-- The icon reads as two complementary glyphs sharing a single colour:
-       a crescent (spirituality) in the upper-left, a checkmark (the
-       productivity / accomplishment axis) in the lower-right. Both float
-       inside a softly lit dark-olive rounded square that matches the
-       app's bg-card token. All content sits within the 80% safe zone so
-       the SVG also renders cleanly under Android's maskable crop. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Aakhirah Planner — mihrab archway with eight-point star">
+  <!-- The icon is a stylised mihrab (prayer niche): a pointed Islamic
+       arch on a threshold line, with a rub al-hizb (8-point star)
+       suspended inside the niche. The mihrab evokes the threshold to
+       the sacred — sajdah, qibla, and by extension the threshold to
+       aakhirah. The 8-point star is the historic Qur'an section mark,
+       tying the image back to the daily scriptural anchor.
+
+       All content sits within the 80% maskable safe zone (Android
+       crops the corners on maskable PWA icons). Gold linework on the
+       same dark-olive ground used by bg-card so the icon visually
+       belongs to the app it launches. -->
 
   <defs>
-    <!-- Subtle radial in the upper-left so the ground reads as lit by an
-         off-canvas light, rather than a flat block. Soft, no banding. -->
+    <!-- Subtle radial: off-canvas light from the upper-left, no
+         banding. Gives the dark ground depth so the gold reads as
+         lit rather than printed on flat black. -->
     <radialGradient id="aakhirah-bg" cx="32%" cy="28%" r="85%">
       <stop offset="0%" stop-color="#1c1e1a"/>
       <stop offset="100%" stop-color="#0e100e"/>
     </radialGradient>
-
-    <!-- Crescent = outer disk minus an offset inner disk. The offset is
-         down-and-right so the opening faces the checkmark; the two
-         glyphs visually relate to each other instead of sitting back to
-         back. -->
-    <mask id="aakhirah-crescent">
-      <rect width="64" height="64" fill="white"/>
-      <circle cx="28" cy="25" r="12" fill="black"/>
-    </mask>
   </defs>
 
   <rect width="64" height="64" rx="14" fill="url(#aakhirah-bg)"/>
 
-  <!-- Crescent — gold, masked to leave the offset shape. -->
-  <circle cx="22" cy="22" r="14" fill="#c9a84c" mask="url(#aakhirah-crescent)"/>
-
-  <!-- Checkmark — single polyline path with round caps + joins so it
-       feels drawn, not constructed. Stroke width 5 reads at 16×16; the
-       sharper inflection point at the lower vertex anchors the gesture. -->
-  <path d="M 32 43 L 39 50 L 53 35"
+  <!-- Pointed mihrab arch. Two quadratic curves meeting at an apex
+       (32, 10) produce the lancet/Persian arch silhouette; the piers
+       run straight from springline down to the threshold. Stroke
+       2.75 with round caps/joins keeps the silhouette readable at
+       16×16 favicon size. -->
+  <path d="M 16 52 L 16 30 Q 16 14 32 10 Q 48 14 48 30 L 48 52"
         stroke="#c9a84c"
-        stroke-width="5"
+        stroke-width="2.75"
         stroke-linecap="round"
         stroke-linejoin="round"
         fill="none"/>
+
+  <!-- Threshold line under the arch — the floor of the niche /
+       musalla edge. Slightly wider than the piers so the arch feels
+       grounded rather than floating. -->
+  <line x1="12" y1="52" x2="52" y2="52"
+        stroke="#c9a84c"
+        stroke-width="2.75"
+        stroke-linecap="round"/>
+
+  <!-- Rub al-hizb: two squares overlaid at 45° form the 8-point
+       star. Sits in the upper half of the niche (where calligraphy
+       or a hanging lamp would traditionally be) so the lower niche
+       reads as open space, not a closed pattern. -->
+  <g fill="#c9a84c">
+    <rect x="26" y="26" width="12" height="12"/>
+    <rect x="26" y="26" width="12" height="12" transform="rotate(45 32 32)"/>
+  </g>
 </svg>

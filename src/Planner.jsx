@@ -21,6 +21,7 @@ import { nextPrayer as computeNextPrayer } from "./lib/prayer";
 import { dayPhase, prayersToday, focusToday, muhasabaState, yesterdayDua, firstOpenTask } from "./lib/daily";
 import { fmtTime, focusStreakDays, STREAK_MILESTONES } from "./lib/focus";
 import { goldA, S } from "./lib/styles";
+import { attachForegroundHandler } from "./lib/notifications";
 import CelebrationToast from "./components/CelebrationToast";
 import ConfirmDialog from "./components/ConfirmDialog";
 import { GoalDetailProvider } from "./contexts/GoalDetailContext";
@@ -37,7 +38,7 @@ import Muhasaba from "./views/Muhasaba";
 
 // ── main component ─────────────────────────────────────────────────────────
 export default function Planner({ user }) {
-  const { goals: goalsFromDb, prayerLog: prayerLogFromDb, focusLog: focusLogFromDb, settings: settingsFromDb, muhasaba: muhasabaFromDb, qaza: qazaFromDb, savedVerses: savedVersesFromDb, loading, updateGoals, updatePrayerLog, updateFocusLog, updateSettings, updateMuhasaba, updateQaza, updateSavedVerses } = useUserData(user.uid);
+  const { goals: goalsFromDb, prayerLog: prayerLogFromDb, focusLog: focusLogFromDb, settings: settingsFromDb, muhasaba: muhasabaFromDb, qaza: qazaFromDb, savedVerses: savedVersesFromDb, notifications: notificationsFromDb, loading, updateGoals, updatePrayerLog, updateFocusLog, updateSettings, updateMuhasaba, updateQaza, updateSavedVerses, updateNotifications } = useUserData(user.uid);
   const goals = goalsFromDb ?? [];
   const prayerLog = prayerLogFromDb ?? {};
   const focusLog = focusLogFromDb ?? [];
@@ -45,6 +46,7 @@ export default function Planner({ user }) {
   const muhasaba = muhasabaFromDb ?? {};
   const qaza = qazaFromDb ?? {};
   const savedVerses = savedVersesFromDb ?? [];
+  const notifications = notificationsFromDb ?? {};
   const [view,setView]         = useState("dashboard");
   const [filter,setFilter]     = useState("all");
   const [searchTerm,setSearchTerm] = useState("");
@@ -71,7 +73,7 @@ export default function Planner({ user }) {
     prayerLoading, prayerError, hijriDate,
     setPrayerTimes, setCityInput, setCountryInput,
     fetchPrayers, fetchByGeo,
-  } = usePrayer({ settingsFromDb, userSettings, updateSettings });
+  } = usePrayer({ settingsFromDb, userSettings, updateSettings, notifications, updateNotifications });
 
   // muhasaba
   const [muhasabaDay,setMuhasabaDay] = useState(todayStr());
@@ -202,6 +204,18 @@ export default function Planner({ user }) {
     const t = setTimeout(() => setCelebration(null), 12000);
     return () => clearTimeout(t);
   }, [celebration]);
+
+  // Foreground FCM handler. When the app is open, FCM delivers via onMessage
+  // and the browser does NOT show a system notification automatically; this
+  // effect bridges to the SW's showNotification so the user sees push reminders
+  // even with the tab focused. Detach on unmount keeps HMR from stacking
+  // duplicate handlers.
+  useEffect(() => {
+    let detach = null;
+    let cancelled = false;
+    attachForegroundHandler().then((fn) => { if (!cancelled) detach = fn; });
+    return () => { cancelled = true; if (typeof detach === "function") detach(); };
+  }, []);
 
   const applyGoalsUpdate = useCallback(
     (updater) => {
@@ -1218,6 +1232,8 @@ export default function Planner({ user }) {
           qazaOwed={computeQazaOwed(prayerLog, qaza, prayerTimes)}
           payOneQaza={payOneQaza}
           undoOneQaza={undoOneQaza}
+          notifications={notifications}
+          updateNotifications={updateNotifications}
         />
       )}
 

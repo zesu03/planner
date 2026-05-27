@@ -17,6 +17,8 @@ There is no test runner, linter, or type-checker configured. Don't add one witho
 
 For the Gemini reflection endpoint, the **server-side** vars (`GEMINI_API_KEY`, `FIREBASE_SERVICE_ACCOUNT` — base64-encoded service-account JSON, `GEMINI_MODEL` optional) live in `.env.local` (or directly in the shell when running `vercel dev`; on Windows the dotenv path can be flaky). They must NOT have a `VITE_` prefix or they leak into the client bundle.
 
+For **prayer-time push notifications** (FCM), add `VITE_FIREBASE_VAPID_KEY` (client — from Firebase Console → Cloud Messaging → Web Push certificates) and `CRON_SECRET` (server — any random string; the external cron URL passes it as `?secret=`). `FIREBASE_SERVICE_ACCOUNT` is reused by the notify-prayers endpoint, so set it on Vercel too. The actual scheduler is **cron-job.org** (free), configured to GET `/api/notify-prayers?secret=<CRON_SECRET>` every minute — Vercel Hobby crons can't do per-minute granularity.
+
 ## Architecture
 
 React 18 + Vite SPA. No TypeScript, no router, no state management library, no component library, no test framework.
@@ -37,6 +39,9 @@ src/
     useVerse.js        verse-of-day fetch + localStorage cache + refresh
     usePrayer.js       Aladhan timings (Hanafi Asr) + city persistence
                        + auto-restore from settings + geolocation path
+                       + mirrors today's bare-HH:MM times into
+                       notifications.prayerTimes when reminders are enabled
+                       (so the server cron has authoritative times to match)
     useFocusTimer.js   dial state, the 1-second tick interval, end-of-session
                        bookkeeping (focusLog entry + task counters + chime),
                        reset/end-early semantics, pom-duration persistence
@@ -65,6 +70,11 @@ src/
     focus.js           getFocusSeconds, getBreakSeconds, fmtTime, fmtMins,
                        focusStreakDays, STREAK_MILESTONES
     audio.js           getAudioCtx, playTimerSound (Web Audio chime)
+    notifications.js   FCM client: isNotificationsSupported, isIosNeedsInstall,
+                       currentPermission, requestPermissionAndToken (full
+                       opt-in flow → returns { token, timezone }),
+                       attachForegroundHandler (bridges onMessage → SW
+                       showNotification so foreground pushes still display)
     styles.js          gold (JS const), goldA(pct), tintA(color, pct),
                        goldLight, goldWashGradient,
                        S object (S.card/goldCard/pill/tab/filterBtn)
@@ -82,6 +92,17 @@ src/
 api/
   gemini-report.js     Vercel serverless function: verifies Firebase ID token,
                        proxies to Gemini, returns the candid-reflection text.
+  notify-prayers.js    Vercel serverless function: invoked every minute by
+                       cron-job.org, scans users with prayer reminders
+                       enabled and sends FCM pushes when prayer-time matches
+                       (±1 min window) in the user's local timezone. Gated
+                       by ?secret=CRON_SECRET. Prunes dead FCM tokens.
+
+public/
+  firebase-messaging-sw.js   FCM service worker. Receives background pushes
+                             and renders system notifications. Firebase config
+                             passed via registration query string (file is
+                             served from /public, not Vite-processed).
 ```
 
 **Stats is a spiritual dashboard, not just productivity.** The top two sections are **Prayer Health** (per-prayer 30-day grid + completion % + this-month total + qaza balance) and **Habit Health** (per-recurring-task streak + 30-day rate across all active goals). Productivity sections — focus heatmap, niyyah trend, mirror patterns, per-goal sparklines, top focus tasks, recent sessions — follow below. When adding new sections, default to spiritual signals before productivity ones.
@@ -99,7 +120,7 @@ api/
 
 ### Firestore data shape
 
-All user data lives in a single document at `users/{uid}`, managed by the `useUserData` hook in [src/useFirestore.jsx](src/useFirestore.jsx). Seven top-level fields:
+All user data lives in a single document at `users/{uid}`, managed by the `useUserData` hook in [src/useFirestore.jsx](src/useFirestore.jsx). Eight top-level fields:
 
 - `goals[]` — each `{ id, title, type, category, due, notes, intention, completedAt, tasks[] }`. **Two task flavours in the same `tasks[]` array** (see helpers in [src/lib/goals.js](src/lib/goals.js)):
    - **One-shot task**: `{ id, text, priority, eta, done, sessions, totalTime }`. Standard task — flips `done` once, gates goal completion via the auto-complete check ("all one-shots done → set completedAt").
@@ -114,6 +135,7 @@ All user data lives in a single document at `users/{uid}`, managed by the `useUs
    - `goalChecks` — per-active-goal nightly self-verdict, keyed by `goal.id` with values `"yes" | "partial" | "no"`. The most accurate goal-progress signal (more honest than focus minutes).
 - `qaza: { startDate, paid: { Fajr, Dhuhr, Asr, Maghrib, Isha } }` — qaza ledger. **Owed is DERIVED, not stored** (see [src/lib/qaza.js](src/lib/qaza.js)): for each day from `startDate` (inclusive) to yesterday (inclusive), any prayer not in `prayerLog[p]` is one qaza owed, minus `paid[p]`. `startDate` is seeded to today on first launch so pre-existing prayerLog gaps don't spawn a wall of qaza retroactively. Today is never counted as missed — the user may still pray it.
 - `savedVerses[]` — bookmarked ayat from the verse-of-day card; `{ id, verseKey, arabic, translation, url, savedAt }`. De-duped by `verseKey` (re-saving is a no-op). Newest-first.
+- `notifications` — prayer-reminder push config. Shape: `{ prayer: { enabled, perPrayer: { Fajr, Dhuhr, Asr, Maghrib, Isha } }, fcmTokens[], timezone, prayerTimes: { date: "YYYY-MM-DD", times: { Fajr: "05:23", ... } }, lastSentAt: { "YYYY-MM-DD_Fajr": ISO, ... } }`. `fcmTokens[]` is multi-device (each browser/PWA install gets its own); the server endpoint prunes tokens that FCM reports as unregistered. `prayerTimes` is written by `usePrayer` whenever the client fetches today's Aladhan timings AND notifications are enabled — the server cron has no Aladhan call of its own. `lastSentAt` is keyed by `${userLocalDate}_${prayer}` and is GC'd to today's keys on each successful push. **Reminders are best-effort: server skips silently if `prayerTimes.date` is stale (user hasn't opened the app today).**
 
 The hook subscribes via `onSnapshot`, exposes seven `update*` setters, and writes via a **1.2-second debounced** `setDoc(..., { merge: true })`. Because writes are debounced, the hook keeps `latest*Ref` mirrors so rapid updates don't lose data. **When adding a new top-level field, mirror the pattern: state + ref + include in the merged write payload.**
 

@@ -13,6 +13,7 @@
 // react to subsequent settings re-emits from the debounced Firestore save.
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { localDateStr } from "../lib/dates";
 
 const ALADHAN_BASE = "https://api.aladhan.com/v1";
 const METHOD_SCHOOL = "method=2&school=1";
@@ -47,7 +48,14 @@ async function reverseGeocode(lat, lng) {
   }
 }
 
-export function usePrayer({ settingsFromDb, userSettings, updateSettings }) {
+// Aladhan sometimes appends " (TZ)" to time strings (e.g. "05:23 (PKT)").
+// The cron endpoint compares against bare HH:MM, so strip the suffix on
+// the client before persisting.
+function bareTime(t) {
+  return typeof t === "string" ? t.replace(/\s*\(.+?\)\s*$/, "").trim() : t;
+}
+
+export function usePrayer({ settingsFromDb, userSettings, updateSettings, notifications, updateNotifications }) {
   const [prayerTimes, setPrayerTimes] = useState(null);
   const [prayerCity, setPrayerCity] = useState("");
   const [cityInput, setCityInput] = useState("");
@@ -197,6 +205,35 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings }) {
       fetchPrayersFromSettings(settingsFromDb.prayerCity, settingsFromDb.prayerCountry);
     }
   }, [settingsFromDb, fetchPrayersFromSettings, fetchByCoords, prayerTimes]);
+
+  // Mirror today's prayer times to the notifications field so the server
+  // cron (which can't call Aladhan per-tick) has authoritative times to
+  // match against. Cheap guard: skip writes when the cached payload is
+  // already today's and the five values match — without it, every snapshot
+  // re-emit from Firestore would re-trigger this effect and burn writes.
+  // We only mirror when the user has opted in (notifications.prayer.enabled);
+  // no point bloating the doc for users who'll never see a push.
+  useEffect(() => {
+    if (!prayerTimes || !updateNotifications) return;
+    if (!notifications?.prayer?.enabled) return;
+    const today = localDateStr();
+    const times = {
+      Fajr: bareTime(prayerTimes.Fajr),
+      Dhuhr: bareTime(prayerTimes.Dhuhr),
+      Asr: bareTime(prayerTimes.Asr),
+      Maghrib: bareTime(prayerTimes.Maghrib),
+      Isha: bareTime(prayerTimes.Isha),
+    };
+    const existing = notifications?.prayerTimes;
+    const unchanged = existing?.date === today
+      && existing?.times?.Fajr === times.Fajr
+      && existing?.times?.Dhuhr === times.Dhuhr
+      && existing?.times?.Asr === times.Asr
+      && existing?.times?.Maghrib === times.Maghrib
+      && existing?.times?.Isha === times.Isha;
+    if (unchanged) return;
+    updateNotifications({ ...notifications, prayerTimes: { date: today, times } });
+  }, [prayerTimes, notifications, updateNotifications]);
 
   return {
     prayerTimes,

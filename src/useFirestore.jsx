@@ -18,6 +18,7 @@ export function useUserData(userId) {
   const [muhasaba, setMuhasaba] = useState(null);
   const [qaza, setQaza] = useState(null);
   const [savedVerses, setSavedVerses] = useState(null);
+  const [notifications, setNotifications] = useState(null);
   const [loading, setLoading] = useState(true);
   const latestGoalsRef = useRef([]);
   const latestPrayerRef = useRef({});
@@ -26,6 +27,7 @@ export function useUserData(userId) {
   const latestMuhasabaRef = useRef({});
   const latestQazaRef = useRef({});
   const latestSavedVersesRef = useRef([]);
+  const latestNotificationsRef = useRef({});
 
   // Load once, then listen
   useEffect(() => {
@@ -41,6 +43,7 @@ export function useUserData(userId) {
         const nextMuhasaba = data.muhasaba || {};
         const nextQaza = data.qaza || {};
         const nextSavedVerses = data.savedVerses || [];
+        const nextNotifications = data.notifications || {};
         latestGoalsRef.current = nextGoals;
         latestPrayerRef.current = nextPrayerLog;
         latestFocusRef.current = nextFocusLog;
@@ -48,6 +51,7 @@ export function useUserData(userId) {
         latestMuhasabaRef.current = nextMuhasaba;
         latestQazaRef.current = nextQaza;
         latestSavedVersesRef.current = nextSavedVerses;
+        latestNotificationsRef.current = nextNotifications;
         setGoals(nextGoals);
         setPrayerLog(nextPrayerLog);
         setFocusLog(nextFocusLog);
@@ -55,6 +59,7 @@ export function useUserData(userId) {
         setMuhasaba(nextMuhasaba);
         setQaza(nextQaza);
         setSavedVerses(nextSavedVerses);
+        setNotifications(nextNotifications);
       } else {
         latestGoalsRef.current = [];
         latestPrayerRef.current = {};
@@ -63,6 +68,7 @@ export function useUserData(userId) {
         latestMuhasabaRef.current = {};
         latestQazaRef.current = {};
         latestSavedVersesRef.current = [];
+        latestNotificationsRef.current = {};
         setGoals([]);
         setPrayerLog({});
         setFocusLog([]);
@@ -70,6 +76,7 @@ export function useUserData(userId) {
         setMuhasaba({});
         setQaza({});
         setSavedVerses([]);
+        setNotifications({});
       }
       setLoading(false);
     });
@@ -90,6 +97,7 @@ export function useUserData(userId) {
           muhasaba: latestMuhasabaRef.current,
           qaza: latestQazaRef.current,
           savedVerses: latestSavedVersesRef.current,
+          notifications: latestNotificationsRef.current,
         },
         { merge: true }
       );
@@ -139,5 +147,11 @@ export function useUserData(userId) {
     save();
   }
 
-  return { goals, prayerLog, focusLog, settings, muhasaba, qaza, savedVerses, loading, updateGoals, updatePrayerLog, updateFocusLog, updateSettings, updateMuhasaba, updateQaza, updateSavedVerses };
+  function updateNotifications(newNotifications) {
+    latestNotificationsRef.current = newNotifications;
+    setNotifications(newNotifications);
+    save();
+  }
+
+  return { goals, prayerLog, focusLog, settings, muhasaba, qaza, savedVerses, notifications, loading, updateGoals, updatePrayerLog, updateFocusLog, updateSettings, updateMuhasaba, updateQaza, updateSavedVerses, updateNotifications };
 }
