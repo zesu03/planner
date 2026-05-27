@@ -8,6 +8,7 @@ import { getAudioCtx } from "../lib/audio";
 import { goldA, S } from "../lib/styles";
 import { usePictureInPicture } from "../hooks/usePictureInPicture";
 import MiniTimer from "../components/MiniTimer";
+import FullscreenDial from "../components/FullscreenDial";
 
 // Sum focusLog minutes for a YYYY-MM-DD key.
 function minsForDay(focusLog, dayKey) {
@@ -398,6 +399,32 @@ export default function Pomodoro({
   // `pip.supported` is false and the button shows a disabled tooltip.
   const pip = usePictureInPicture({ width: 240, height: 290 });
 
+  // Immersive focus mode. CSS-overlay always; also try the browser
+  // Fullscreen API for true chrome-hiding immersion when supported. iOS
+  // Safari doesn't support requestFullscreen — the overlay still works
+  // there, just without hiding the URL bar. We listen for
+  // fullscreenchange so a user pressing the OS-level F11 / Esc keeps
+  // our state in sync.
+  const [fullscreen, setFullscreen] = useState(false);
+  const enterFullscreen = async () => {
+    setFullscreen(true);
+    try { await document.documentElement.requestFullscreen?.(); } catch { /* user denied or unsupported — overlay still applies */ }
+  };
+  const exitFullscreen = async () => {
+    setFullscreen(false);
+    if (document.fullscreenElement) {
+      try { await document.exitFullscreen(); } catch { /* already exited */ }
+    }
+  };
+  useEffect(() => {
+    const onChange = () => {
+      // Browser exited fullscreen (F11, Esc) — collapse our overlay too.
+      if (!document.fullscreenElement) setFullscreen((cur) => (cur ? false : cur));
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+
   // Dial geometry.
   const DIAL = 280;
   const DIAL_R = 110;
@@ -461,8 +488,9 @@ export default function Pomodoro({
   };
 
   // Keyboard shortcuts — Space toggles run/pause, Esc ends a session in
-  // progress. Suppressed while the user is typing in any input/textarea
-  // so the session-note field doesn't fight the shortcut.
+  // progress (or, when fullscreen mode is open, exits fullscreen without
+  // ending the session). Suppressed while the user is typing in any
+  // input/textarea so the session-note field doesn't fight the shortcut.
   useEffect(() => {
     const onKey = (e) => {
       const t = e.target;
@@ -471,12 +499,13 @@ export default function Pomodoro({
         e.preventDefault();
         handleStart();
       } else if (e.key === "Escape") {
-        endFocusEarly();
+        if (fullscreen) exitFullscreen();
+        else endFocusEarly();
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [pomRunning, stopTimer, setPomRunning, endFocusEarly]);
+  }, [pomRunning, stopTimer, setPomRunning, endFocusEarly, fullscreen]);
 
   const commitFocusLength = () => {
     const v = Math.max(1, Number(focusDraft) || pomDurations.defaultFocus);
@@ -792,6 +821,12 @@ export default function Pomodoro({
           style={{ fontSize: 16, padding: "9px 18px", opacity: pip.supported ? 1 : 0.5, cursor: pip.supported ? "pointer" : "not-allowed" }}>
           {pip.pipWindow ? "Close pop-out" : "Pop out ⧉"}
         </button>
+        <button
+          onClick={enterFullscreen}
+          title="Hide everything else — just the dial, the task, and the niyyah"
+          style={{ fontSize: 16, padding: "9px 18px" }}>
+          Focus mode ⛶
+        </button>
       </div>
 
       {/* Up next */}
@@ -859,6 +894,25 @@ export default function Pomodoro({
           onToggle={handleStart}
         />,
         pip.pipWindow.document.body,
+      )}
+
+      {/* Immersive focus mode overlay. Portaled to body so other fixed
+          elements (header, tabbar) can't sit on top via z-index. */}
+      {fullscreen && createPortal(
+        <FullscreenDial
+          open
+          pomSeconds={pomSeconds}
+          pomRunning={pomRunning}
+          paused={paused}
+          total={total}
+          ringColor={ringColor}
+          activeTask={activeTask}
+          activeGoal={activeGoal}
+          onToggleRun={handleStart}
+          onEndEarly={endFocusEarly}
+          onExit={exitFullscreen}
+        />,
+        document.body,
       )}
     </div>
   );
