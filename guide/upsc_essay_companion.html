@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Writing Beautiful Essays — A UPSC Companion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;0,800;1,400;1,600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f4f1e9;--paper-2:#ece7da;--ink:#16302c;--ink-soft:#3f5b54;
+    --teal:#0c7d6f;--teal-deep:#075b51;--coral:#cc4f33;--amber:#c8881f;--green:#3f7d4e;--slate:#65786f;
+    --line:#cdc6b3;--verified-bg:#e3efe8;--note-bg:#f6e3dc;--omit-bg:#efe6cf;
+    --shadow:0 1px 0 var(--line), 0 14px 30px -22px rgba(7,55,42,.5);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",system-ui,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 22px}
+  .serif{font-family:"Spectral",Georgia,serif}
+
+  header.hero{border-bottom:2px solid var(--ink);background:repeating-linear-gradient(90deg,transparent,transparent 38px,rgba(22,48,44,.04) 38px,rgba(22,48,44,.04) 39px),var(--paper);padding:46px 0 30px}
+  .eyebrow{font-family:"IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.22em;font-size:11px;color:var(--teal-deep);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .eyebrow b{color:var(--coral)}
+  h1{font-family:"Spectral",Georgia,serif;font-weight:800;font-size:clamp(34px,6vw,60px);line-height:1.02;letter-spacing:-.015em;margin:14px 0 6px}
+  h1 em{font-style:italic;color:var(--teal-deep)}
+  .sub{font-size:17px;color:var(--ink-soft);max-width:64ch}
+  .stamp-row{display:flex;gap:14px;flex-wrap:wrap;margin-top:26px}
+  .stamp{background:var(--paper);border:1.5px solid var(--ink);padding:12px 16px;min-width:118px;box-shadow:var(--shadow)}
+  .stamp .n{font-family:"IBM Plex Mono",monospace;font-size:28px;font-weight:600;line-height:1}
+  .stamp .l{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--slate);margin-top:6px}
+  .stamp.ok .n{color:var(--teal)}
+  .stamp.hl .n{color:var(--coral)}
+
+  nav.tabs{position:sticky;top:0;z-index:30;background:var(--paper);border-bottom:1px solid var(--line);box-shadow:0 6px 14px -14px rgba(0,0,0,.4)}
+  .tabs-inner{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+  .tabs-inner::-webkit-scrollbar{display:none}
+  .tab{appearance:none;background:none;border:none;cursor:pointer;white-space:nowrap;font-family:"IBM Plex Mono",monospace;font-size:12.5px;letter-spacing:.02em;padding:15px 16px;color:var(--ink-soft);border-bottom:2.5px solid transparent;transition:color .15s,border-color .15s}
+  .tab .ix{color:var(--slate);margin-right:7px}
+  .tab:hover{color:var(--ink)}
+  .tab[aria-selected="true"]{color:var(--ink);border-color:var(--coral)}
+  .tab[aria-selected="true"] .ix{color:var(--coral)}
+
+  main{padding:38px 0 90px}
+  section[role=tabpanel]{display:none;animation:fade .4s ease}
+  section[role=tabpanel].active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .lead{font-family:"Spectral",serif;font-size:21px;line-height:1.5;color:var(--ink);max-width:64ch;margin-bottom:8px}
+  .panel-h{font-family:"Spectral",serif;font-weight:800;font-size:clamp(24px,4vw,34px);letter-spacing:-.01em;margin:6px 0 4px}
+  .kicker{font-family:"IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.18em;font-size:11px;color:var(--teal-deep)}
+  p.body{color:var(--ink-soft);max-width:72ch;margin:10px 0}
+  .divider{height:1px;background:var(--line);margin:30px 0}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:22px}
+  @media(max-width:720px){.grid2{grid-template-columns:1fr}}
+  .vcard{border:1.5px solid var(--ink);background:var(--paper);box-shadow:var(--shadow)}
+  .vcard .top{padding:13px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .vcard .top h3{font-size:15px;letter-spacing:.01em}
+  .vcard .body-c{padding:14px 16px;font-size:14.5px;color:var(--ink-soft)}
+  .chip{font-family:"IBM Plex Mono",monospace;font-size:11px;padding:3px 8px;border:1px solid;border-radius:2px;text-transform:uppercase;letter-spacing:.06em}
+  .chip.ok{color:var(--teal-deep);background:var(--verified-bg);border-color:var(--teal)}
+  .chip.hl{color:var(--coral);background:var(--note-bg);border-color:var(--coral)}
+
+  /* weighted criteria bars */
+  .crit{padding:11px 0;border-bottom:1px solid var(--line)}
+  .crit-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px}
+  .crit-head .nm{font-size:14.5px;font-weight:600}
+  .crit-head .nm span{display:block;font-weight:400;font-size:12px;color:var(--slate)}
+  .crit-head .wt{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--teal-deep);font-weight:600}
+  .track{position:relative;height:14px;background:var(--paper-2);border:1px solid var(--line);overflow:hidden}
+  .fill{position:absolute;left:0;top:0;height:100%;width:0;background:var(--teal);transition:width 1s cubic-bezier(.22,1,.36,1)}
+  .fill.w2{background:var(--green)}.fill.w3{background:var(--amber)}.fill.w4{background:var(--coral)}
+
+  /* blueprint flow */
+  .flow{display:flex;flex-direction:column;gap:0;margin-top:18px;border:1.5px solid var(--ink);box-shadow:var(--shadow)}
+  .step{display:grid;grid-template-columns:54px 1fr;border-bottom:1px solid var(--line)}
+  .step:last-child{border-bottom:none}
+  .step .sn{background:var(--ink);color:var(--paper);font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:15px;display:flex;align-items:center;justify-content:center}
+  .step .sc{padding:13px 16px}
+  .step .sc h4{font-size:15px;margin-bottom:3px}
+  .step .sc p{font-size:13.5px;color:var(--ink-soft)}
+  .step .sc .t{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--coral);text-transform:uppercase;letter-spacing:.06em;float:right}
+
+  /* dimensions mapper */
+  .mapper{display:grid;grid-template-columns:1fr 1.35fr;gap:0;border:1.5px solid var(--ink);box-shadow:var(--shadow);margin-top:18px}
+  @media(max-width:760px){.mapper{grid-template-columns:1fr}}
+  .topic-list{border-right:1px solid var(--line);background:var(--paper)}
+  @media(max-width:760px){.topic-list{border-right:none;border-bottom:1px solid var(--line)}}
+  .topic-btn{display:block;width:100%;text-align:left;cursor:pointer;background:none;border:none;border-bottom:1px solid var(--line);padding:13px 15px;font-family:inherit;font-size:14px;color:var(--ink-soft);transition:.12s;font-family:"Spectral",serif}
+  .topic-btn:last-child{border-bottom:none}
+  .topic-btn:hover{background:var(--paper-2);color:var(--ink)}
+  .topic-btn.on{background:var(--ink);color:var(--paper)}
+  .topic-btn .ty{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--slate);display:block;margin-top:3px}
+  .topic-btn.on .ty{color:rgba(255,255,255,.65)}
+  .map-detail{padding:18px;background:var(--paper)}
+  .map-detail .thesis{font-family:"Spectral",serif;font-style:italic;font-size:16px;color:var(--ink);border-left:3px solid var(--teal);padding-left:12px;margin-bottom:14px}
+  .dim{display:grid;grid-template-columns:120px 1fr;gap:6px 12px;padding:9px 0;border-bottom:1px dotted var(--line);font-size:13.5px}
+  .dim .dn{font-family:"IBM Plex Mono",monospace;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--teal-deep);padding-top:2px}
+  .dim .dx{color:var(--ink-soft)}
+
+  /* banks (expandable) */
+  .bank{border:1.5px solid var(--ink);background:var(--paper);margin:12px 0;box-shadow:var(--shadow)}
+  .bank summary{cursor:pointer;list-style:none;padding:14px 18px;display:flex;gap:14px;align-items:center;font-family:"Spectral",serif;font-size:17px;font-weight:600}
+  .bank summary::-webkit-details-marker{display:none}
+  .bank summary .tag{font-family:"IBM Plex Mono",monospace;font-size:11px;color:#fff;background:var(--teal);padding:3px 9px}
+  .bank summary .tag.c{background:var(--coral)}
+  .bank summary .plus{margin-left:auto;font-family:"IBM Plex Mono",monospace;color:var(--slate);transition:.2s}
+  .bank[open] summary .plus{transform:rotate(45deg);color:var(--coral)}
+  .bank .inner{padding:0 18px 16px}
+  .bank .when{font-size:13.5px;color:var(--ink-soft);margin-bottom:10px}
+  .model{background:var(--paper-2);border-left:3px solid var(--teal);padding:13px 15px;font-family:"Spectral",serif;font-size:14.5px;line-height:1.55;color:var(--ink)}
+  .model .ml{font-family:"IBM Plex Mono",monospace;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--teal-deep);display:block;margin-bottom:6px;font-weight:600}
+
+  /* craft before/after */
+  .craft{border:1.5px solid var(--ink);background:var(--paper);margin:14px 0;box-shadow:var(--shadow);overflow:hidden}
+  .craft .ch{padding:13px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .craft .ch h4{font-size:15px}
+  .ba{display:grid;grid-template-columns:1fr 1fr;gap:0}
+  @media(max-width:640px){.ba{grid-template-columns:1fr}}
+  .ba .col{padding:14px 16px;font-size:14px;line-height:1.5}
+  .ba .before{background:var(--note-bg);border-right:1px solid var(--line);color:var(--slate)}
+  @media(max-width:640px){.ba .before{border-right:none;border-bottom:1px solid var(--line)}}
+  .ba .after{background:var(--verified-bg);color:var(--ink)}
+  .ba .lbl{font-family:"IBM Plex Mono",monospace;font-size:10px;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:7px}
+  .ba .before .lbl{color:var(--coral)}.ba .after .lbl{color:var(--teal-deep)}
+
+  /* rubric */
+  .rubric{border:1.5px solid var(--ink);background:var(--paper);box-shadow:var(--shadow)}
+  .rgroup{border-bottom:1px solid var(--line)}
+  .rgroup:last-child{border-bottom:none}
+  .rgroup-h{padding:11px 16px;background:var(--paper-2);font-family:"IBM Plex Mono",monospace;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--teal-deep)}
+  .ritem{display:flex;gap:12px;align-items:flex-start;padding:11px 16px;border-top:1px solid var(--line);cursor:pointer;transition:background .12s}
+  .ritem:hover{background:var(--paper-2)}
+  .ritem .box{flex:0 0 auto;width:20px;height:20px;border:1.5px solid var(--ink);background:var(--paper);display:flex;align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;font-size:13px;color:#fff;margin-top:1px}
+  .ritem.on .box{background:var(--teal);border-color:var(--teal)}
+  .ritem .rt{font-size:14px;color:var(--ink)}
+  .ritem .rt span{display:block;font-size:12px;color:var(--slate);margin-top:2px}
+  .scorebar{position:sticky;bottom:0;background:var(--ink);color:var(--paper);padding:14px 18px;display:flex;justify-content:space-between;align-items:center;gap:14px;margin-top:0;border:1.5px solid var(--ink);flex-wrap:wrap}
+  .scorebar .big{font-family:"IBM Plex Mono",monospace;font-size:26px;font-weight:600}
+  .scorebar .band{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.05em}
+  .scorebar .reset{appearance:none;cursor:pointer;background:none;border:1px solid rgba(255,255,255,.4);color:var(--paper);font-family:"IBM Plex Mono",monospace;font-size:11px;padding:6px 12px}
+
+  .pitfall{border-left:3px solid var(--coral);background:var(--note-bg);padding:12px 16px;margin:10px 0;font-size:14px;color:var(--ink-soft)}
+  .pitfall b{color:var(--ink)}
+
+  footer{border-top:2px solid var(--ink);padding:26px 0;font-size:12.5px;color:var(--slate)}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.fill{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow"><span>UPSC Civil Services · Essay Paper</span> <span>•</span> <b>Beauty = architecture, not decoration</b></div>
+    <h1>Writing essays <em>that score</em><br>and read beautifully.</h1>
+    <p class="sub">The essays that earn 140+ aren't the most poetic — they're clear, balanced, multidimensional, and quietly reflective, in prose so smooth the examiner forgets they're marking. This companion shows you how to build that, piece by piece.</p>
+    <div class="stamp-row">
+      <div class="stamp hl"><div class="n">250</div><div class="l">Marks at stake</div></div>
+      <div class="stamp ok"><div class="n">2</div><div class="l">Essays · ~1100 words</div></div>
+      <div class="stamp ok"><div class="n">10 min</div><div class="l">Plan before you write</div></div>
+      <div class="stamp ok"><div class="n">1</div><div class="l">Thread holding it all</div></div>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <div class="wrap"><div class="tabs-inner" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-p="mindset"><span class="ix">01</span>The Mindset</button>
+    <button class="tab" role="tab" aria-selected="false" data-p="blueprint"><span class="ix">02</span>The Blueprint</button>
+    <button class="tab" role="tab" aria-selected="false" data-p="dims"><span class="ix">03</span>Dimensions</button>
+    <button class="tab" role="tab" aria-selected="false" data-p="bookends"><span class="ix">04</span>Intro &amp; Conclusion</button>
+    <button class="tab" role="tab" aria-selected="false" data-p="craft"><span class="ix">05</span>The Craft</button>
+    <button class="tab" role="tab" aria-selected="false" data-p="mark"><span class="ix">06</span>Self-Mark</button>
+  </div></div>
+</nav>
+
+<main><div class="wrap">
+
+<!-- 01 MINDSET -->
+<section role="tabpanel" id="mindset" class="active">
+  <div class="kicker">What the paper actually rewards</div>
+  <h2 class="panel-h">Beauty is restraint</h2>
+  <p class="lead">In the UPSC essay, "beautiful" does not mean ornate. A gorgeous sentence on a one-dimensional essay scores less than plain prose on a richly argued one. Aim for clarity, balance, many dimensions, and a reflective voice — language is the polish, not the substance.</p>
+
+  <div class="kicker" style="margin-top:20px">The examiner's priorities, by weight</div>
+  <div id="crits"></div>
+  <p class="body" style="font-size:13px;margin-top:8px">Bars show relative weight, not official marks — they're a planning heuristic. Spend your effort top-down: a coherent thread first, breadth and balance next, voice and language last.</p>
+
+  <div class="grid2">
+    <div class="vcard">
+      <div class="top"><h3>The format</h3><span class="chip ok">Know it cold</span></div>
+      <div class="body-c">Two sections, one topic chosen from each, ~1000–1200 words apiece, three hours, 250 marks. You're rewarded for a complete, coherent piece — not for cramming everything you know.</div>
+    </div>
+    <div class="vcard">
+      <div class="top"><h3>The golden thread</h3><span class="chip hl">Decide it first</span></div>
+      <div class="body-c">Every paragraph should serve one central argument you can state in a single sentence. If a paragraph doesn't advance the thread, it doesn't belong. This single discipline separates good essays from sprawling ones.</div>
+    </div>
+    <div class="vcard">
+      <div class="top"><h3>Where essays are won</h3><span class="chip ok">First 10 minutes</span></div>
+      <div class="body-c">Most weak essays fail in planning, not prose. Before writing a word: choose the topic, fix the thesis, list the dimensions you'll travel. Ten minutes of planning saves an hour of drift.</div>
+    </div>
+    <div class="vcard">
+      <div class="top"><h3>Your raw material</h3><span class="chip ok">Stock in advance</span></div>
+      <div class="body-c">Beautiful essays are pre-loaded. Keep a notebook of examples, verified quotes and data. A stunting figure or the Leave-No-One-Behind principle should arrive in seconds, so on exam day you compose rather than search your memory.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 02 BLUEPRINT -->
+<section role="tabpanel" id="blueprint">
+  <div class="kicker">From blank page to finished essay</div>
+  <h2 class="panel-h">The blueprint</h2>
+  <p class="body">A reliable sequence for the three hours. The structure beneath it never changes: an introduction that earns attention, a body of three to five distinct movements, and a forward-looking conclusion — all held by one thread.</p>
+
+  <div class="flow">
+    <div class="step"><div class="sn">1</div><div class="sc"><span class="t">~3 min</span><h4>Choose the topic you can argue, not the one that sounds nice</h4><p>Pick where you have both a clear stance and concrete examples. Abstract topics reward voice but punish drift; issue-based ones reward your factual stock.</p></div></div>
+    <div class="step"><div class="sn">2</div><div class="sc"><span class="t">~2 min</span><h4>Decode the exact words</h4><p>"Equality" is not "equity"; "development" is not "growth." The marks often live in that distinction. Underline the operative words and define your reading of them.</p></div></div>
+    <div class="step"><div class="sn">3</div><div class="sc"><span class="t">~5 min</span><h4>Fix the thesis and map the dimensions</h4><p>Write your central argument in one sentence at the top of your rough sheet. List the 3–5 lenses you'll move through (see the Dimensions tab). This map is your insurance against rambling.</p></div></div>
+    <div class="step"><div class="sn">4</div><div class="sc"><span class="t">~15 min</span><h4>Write an introduction that pulls the reader in</h4><p>Open with a hook — an anecdote, a scene, a question, a complicated definition. Narrow to your thesis. The last line should quietly name the path ahead.</p></div></div>
+    <div class="step"><div class="sn">5</div><div class="sc"><span class="t">~75 min</span><h4>Build the body — one dimension per movement</h4><p>Give each lens its own paragraph and its own example. Argue with yourself: concede the strongest opposing case before resolving. Make transitions hand off cleanly so it reads as one journey.</p></div></div>
+    <div class="step"><div class="sn">6</div><div class="sc"><span class="t">~12 min</span><h4>Close forward, never grim</h4><p>Gather the thread, return to your opening image, widen to a larger frame (constitutional values, the SDGs, Viksit Bharat), and end on earned hope — without sermonising.</p></div></div>
+    <div class="step"><div class="sn">7</div><div class="sc"><span class="t">~8 min</span><h4>Read it back</h4><p>Check the thread holds, transitions flow, no paragraph repeats another, and the conclusion isn't rushed. Fix the few sentences you stumble on — the examiner will stumble there too.</p></div></div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="grid2">
+    <div class="vcard"><div class="top"><h3>Abstract topics</h3><span class="chip ok">Voice-led</span></div><div class="body-c">e.g. "Fulfilment lies in the journey, not the destination." More room for a distinctive voice and philosophy — but they punish those who drift from the idea. Hold the abstraction to concrete human examples throughout.</div></div>
+    <div class="vcard"><div class="top"><h3>Issue-based topics</h3><span class="chip ok">Content-led</span></div><div class="body-c">e.g. "Technology and the future of work." Reward your data, schemes and frameworks. Still need a thread and balance — don't let them become an answer-writing dump of points.</div></div>
+  </div>
+</section>
+
+<!-- 03 DIMENSIONS -->
+<section role="tabpanel" id="dims">
+  <div class="kicker">Breadth without repetition</div>
+  <h2 class="panel-h">Travel through dimensions</h2>
+  <p class="body">Multidimensionality is the most common scoring gap: candidates say one thing five ways. Instead, move the reader through genuinely different lenses. Keep these three frameworks ready and pick whichever the topic opens up — then pick a sample topic below to see them applied.</p>
+
+  <div class="grid2" style="margin-bottom:6px">
+    <div class="vcard"><div class="top"><h3>The thematic sweep</h3></div><div class="body-c">Social · political · economic · cultural · technological · ethical · environmental · international. Choose the 3–4 the topic genuinely opens.</div></div>
+    <div class="vcard"><div class="top"><h3>The temporal arc</h3></div><div class="body-c">Past → present → future. How the issue looked, where it stands, where it may go. Natural narrative momentum.</div></div>
+  </div>
+  <div class="vcard" style="margin-bottom:8px"><div class="top"><h3>The widening circle</h3></div><div class="body-c">Individual → family → society → nation → world. Especially powerful for abstract and ethical topics.</div></div>
+
+  <div class="mapper">
+    <div class="topic-list" id="topicList"></div>
+    <div class="map-detail" id="mapDetail"></div>
+  </div>
+  <p class="body" style="font-size:13px;margin-top:10px">You won't use every dimension every time. Pick the ones with the richest material, give each a paragraph and a concrete example, and connect them so the essay reads as one continuous argument.</p>
+</section>
+
+<!-- 04 INTRO & CONCLUSION -->
+<section role="tabpanel" id="bookends">
+  <div class="kicker">The first and last impression</div>
+  <h2 class="panel-h">Openings &amp; closings</h2>
+  <p class="body">The introduction earns the right to be read; the conclusion is what lingers. Below are hook types and conclusion types, each with a model written for a sample topic. Open one to study how it works.</p>
+
+  <h3 class="serif" style="font-size:20px;margin:18px 0 6px">Five ways to open</h3>
+
+  <details class="bank"><summary><span class="tag">Hook</span> The anecdote / parable <span class="plus">+</span></summary>
+    <div class="inner"><div class="when">Best for abstract and ethical topics. A small human moment makes a big idea concrete from the first line.</div>
+      <div class="model"><span class="ml">Topic — "The best way to predict the future is to create it"</span>In a drought-prone village in Marathwada, a schoolteacher began collecting rainwater in a single cracked tank. Neighbours called it futile against a failing monsoon. A decade later, that one tank had become forty, the water table had risen, and the village no longer waited on the sky. The future, it turned out, was not forecast but built — one stubborn act at a time.</div>
+    </div>
+  </details>
+
+  <details class="bank"><summary><span class="tag">Hook</span> The vivid contemporary scene <span class="plus">+</span></summary>
+    <div class="inner"><div class="when">Best for issue-based topics. A sharp, current image grounds the abstraction in the real world.</div>
+      <div class="model"><span class="ml">Topic — "Technology and the future of work"</span>A farmer in Karnataka checks a weather app before sowing; a graduate in Bengaluru fears an algorithm will sign her redundancy notice. The same technology that hands one worker foresight threatens to make another obsolete. This is the paradox at the heart of work in our century.</div>
+    </div>
+  </details>
+
+  <details class="bank"><summary><span class="tag">Hook</span> The question <span class="plus">+</span></summary>
+    <div class="inner"><div class="when">A focused question signals the tension you'll explore — provided you actually answer it by the end.</div>
+      <div class="model"><span class="ml">Topic — "Can development and ecology coexist?"</span>When a nation lifts a hundred million people out of poverty while its rivers run dry, has it succeeded or failed? The question is not rhetorical. It is the defining test of how India will grow in the decades to come.</div>
+    </div>
+  </details>
+
+  <details class="bank"><summary><span class="tag">Hook</span> The definition you complicate <span class="plus">+</span></summary>
+    <div class="inner"><div class="when">Take the topic's key word, offer the easy meaning, then unsettle it — instant depth.</div>
+      <div class="model"><span class="ml">Topic — "Freedom is not the absence of constraints"</span>We are taught to picture freedom as an open road with no fences. Yet the river is freest not when it floods the plain, but when its banks give it direction and force. Real freedom, this essay argues, is shaped by constraint, not destroyed by it.</div>
+    </div>
+  </details>
+
+  <details class="bank"><summary><span class="tag">Hook</span> The striking contrast or fact <span class="plus">+</span></summary>
+    <div class="inner"><div class="when">A single arresting fact or juxtaposition earns attention — then must be unpacked, not left to dangle.</div>
+      <div class="model"><span class="ml">Topic — "The dual burden of a changing nation"</span>In the same decade that India halved child stunting, adult obesity rose by a third. A country is learning to feed its children and overfeed its adults at once — a portrait of progress and its unintended shadow.</div>
+    </div>
+  </details>
+
+  <div class="divider"></div>
+  <h3 class="serif" style="font-size:20px;margin:6px 0">Three ways to close</h3>
+
+  <details class="bank"><summary><span class="tag c">Close</span> Ring composition — return to the opening <span class="plus">+</span></summary>
+    <div class="inner"><div class="when">Echo your opening image, now transformed by the essay's argument. Feels crafted and complete.</div>
+      <div class="model"><span class="ml">Closing the Marthwada-tank essay</span>The teacher's cracked tank holds no more water today than it did at the start — but the village it watered is unrecognisable. We do not inherit the future; we irrigate it. Each small, deliberate act is a tank dug against the drought of fatalism, and a nation is only the sum of such quiet, stubborn building.</div>
+    </div>
+  </details>
+
+  <details class="bank"><summary><span class="tag c">Close</span> The widening frame <span class="plus">+</span></summary>
+    <div class="inner"><div class="when">Lift the particular issue into a larger horizon — constitutional values, the SDGs, the Viksit-Bharat vision — to show scale and stakes.</div>
+      <div class="model"><span class="ml">Closing the development-and-ecology essay</span>Reconciling growth with the living world is not one policy choice among many; it is the condition on which every other goal depends. It is the spirit of the 2030 Agenda's pledge to leave no one behind — extended, rightly, to the generations not yet born. A Viksit Bharat that arrives on a depleted earth would not be development at all, but a debt passed quietly to our grandchildren.</div>
+    </div>
+  </details>
+
+  <details class="bank"><summary><span class="tag c">Close</span> The earned-hope ending <span class="plus">+</span></summary>
+    <div class="inner"><div class="when">UPSC favours optimism — but earned, not naive. Acknowledge the difficulty, then point to a credible path forward.</div>
+      <div class="model"><span class="ml">Closing the technology-and-work essay</span>Technology will not, on its own, decide whether it liberates or displaces us; that choice remains stubbornly human. With foresight in our skilling, fairness in our institutions and dignity at the centre of our policy, the machine can become the partner of labour rather than its rival. The future of work is not something that happens to us — it is something we still have time to write.</div>
+    </div>
+  </details>
+</section>
+
+<!-- 05 CRAFT -->
+<section role="tabpanel" id="craft">
+  <div class="kicker">Now the actual beauty</div>
+  <h2 class="panel-h">The craft of the sentence</h2>
+  <p class="body">Elegant prose comes from restraint, rhythm and concreteness — not rare words. Each pair below shows a weaker version and the lift. Read both aloud; the difference is audible.</p>
+
+  <div class="craft"><div class="ch"><h4>1 · Prefer the concrete to the abstract</h4><span class="chip ok">Show it</span></div>
+    <div class="ba"><div class="col before"><span class="lbl">Weaker</span>There has been significant technological penetration across the agricultural sector, improving informational access for cultivators.</div>
+    <div class="col after"><span class="lbl">Lifted</span>A farmer now checks a weather app before deciding when to sow. The abstraction "digital agriculture" lives or dies in moments like that.</div></div>
+  </div>
+
+  <div class="craft"><div class="ch"><h4>2 · Cut the throat-clearing</h4><span class="chip ok">Start with the idea</span></div>
+    <div class="ba"><div class="col before"><span class="lbl">Weaker</span>It is a well-known fact that, in today's modern world, corruption is one of the biggest problems that our society is facing at present.</div>
+    <div class="col after"><span class="lbl">Lifted</span>Corruption quietly taxes the poorest hardest. It is the levy no budget records and no government admits.</div></div>
+  </div>
+
+  <div class="craft"><div class="ch"><h4>3 · Vary sentence length for rhythm</h4><span class="chip ok">Let a short one land</span></div>
+    <div class="ba"><div class="col before"><span class="lbl">Weaker</span>Democracy requires participation and it also requires institutions and it requires an informed citizenry and without all of these working together it cannot function properly over time.</div>
+    <div class="col after"><span class="lbl">Lifted</span>Democracy needs institutions, participation and an informed public, each leaning on the others. Remove any one, and the whole begins to lean. Then it falls.</div></div>
+  </div>
+
+  <div class="craft"><div class="ch"><h4>4 · One restrained metaphor beats five</h4><span class="chip ok">Don't over-reach</span></div>
+    <div class="ba"><div class="col before"><span class="lbl">Weaker</span>Education is the golden key that unlocks the shining door to the bright dawn of a glorious tomorrow lighting every dark corner of society.</div>
+    <div class="col after"><span class="lbl">Lifted</span>Education is the one inheritance no famine can take and no ruler can confiscate. It is wealth that multiplies as it is given away.</div></div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="grid2">
+    <div class="vcard"><div class="top"><h3>Quotes &amp; data</h3><span class="chip hl">Sparingly</span></div><div class="body-c">Use a quote only when it earns its place, and only if you're sure of the attribution — a misquoted line costs more than it gives. The same for data: one well-placed figure beats five vague ones. Your own resources (NFHS-6, SDGs) are a verified bank to draw from.</div></div>
+    <div class="vcard"><div class="top"><h3>The read-aloud test</h3><span class="chip ok">Free editing</span></div><div class="body-c">As you write, hear each sentence in your head. If you stumble, the examiner will too. Smoothness is not a luxury — it is the difference between prose the reader glides through and prose they have to decode.</div></div>
+  </div>
+</section>
+
+<!-- 06 SELF-MARK -->
+<section role="tabpanel" id="mark">
+  <div class="kicker">Mark your own draft cold</div>
+  <h2 class="panel-h">The self-mark rubric</h2>
+  <p class="body">Write an essay, leave it two days, then return and tick honestly. The tally is a band, not an official score — but it trains the eye that examiners use. Be ruthless: an unticked box is your next improvement.</p>
+
+  <div class="rubric" id="rubric"></div>
+  <div class="scorebar"><div><span class="big" id="rscore">0</span> <span style="opacity:.7">/ 100</span> &nbsp; <span class="band" id="rband">— tick as you review</span></div><button class="reset" id="rreset">Reset</button></div>
+
+  <div class="divider"></div>
+  <div class="kicker">How essays bleed marks</div>
+  <h3 class="serif" style="font-size:22px;margin:6px 0">The avoidable losses</h3>
+  <div class="pitfall"><b>Drifting from the topic.</b> The most expensive error. Re-read the exact wording mid-way and ask whether the last paragraph still serves it.</div>
+  <div class="pitfall"><b>A bloated introduction.</b> If the intro runs past ~12% of the essay, you're spending words you'll need later. Hook, narrow, thesis — then move.</div>
+  <div class="pitfall"><b>One dimension, five times.</b> Repetition disguised as length. Each movement must add a genuinely new lens, not re-phrase the last.</div>
+  <div class="pitfall"><b>A one-sided, strident voice.</b> Reads like a pamphlet. Concede the strongest opposing case before you resolve — that is maturity, not weakness.</div>
+  <div class="pitfall"><b>Shoehorned or unverified quotes.</b> A wrong attribution undoes the credibility the rest of the essay built. When unsure, leave it out.</div>
+  <div class="pitfall"><b>A rushed or preachy ending.</b> The last thing read is weighted heavily. Reserve time for it, and aim for earned hope, not a sermon.</div>
+</section>
+
+</div></main>
+
+<footer><div class="wrap">
+  <div class="mono">A craft companion for the UPSC essay paper. Model passages are original, written to illustrate technique — adapt them, don't memorise them. The surest gains come from one timed, self-marked essay a week.</div>
+</div></footer>
+
+<script>
+const tabs=[...document.querySelectorAll('.tab')];
+const panels=[...document.querySelectorAll('section[role=tabpanel]')];
+let critAnimated=false;
+tabs.forEach(t=>t.addEventListener('click',()=>{
+  tabs.forEach(x=>x.setAttribute('aria-selected',x===t));
+  const id=t.dataset.p;
+  panels.forEach(p=>p.classList.toggle('active',p.id===id));
+  window.scrollTo({top:0,behavior:'smooth'});
+  if(id==='mindset') requestAnimationFrame(()=>setTimeout(animateCrits,80));
+}));
+
+/* criteria */
+const CRIT=[
+ ['Coherent thread','one argument running through every paragraph',100,''],
+ ['Multidimensionality','many genuine lenses, not repetition',85,'w2'],
+ ['Balance & maturity','arguing with yourself, conceding the other side',75,'w3'],
+ ['Voice & language','reflective tone, elegant restrained prose',60,'w4'],
+];
+const cw=document.getElementById('crits');
+CRIT.forEach(([nm,sub,w,cls])=>{
+  const d=document.createElement('div');d.className='crit';
+  d.innerHTML=`<div class="crit-head"><div class="nm">${nm}<span>${sub}</span></div><div class="wt">weight</div></div>
+   <div class="track"><div class="fill ${cls}" data-w="${w}"></div></div>`;
+  cw.appendChild(d);
+});
+function animateCrits(){
+  if(critAnimated)return;critAnimated=true;
+  cw.querySelectorAll('.fill').forEach(f=>f.style.width=f.dataset.w+'%');
+}
+animateCrits();
+
+/* dimensions mapper */
+const TOPICS=[
+ ['"Fulfilment lies in the journey, not the destination"','Abstract',
+  'True fulfilment is found in growth and process, yet destinations give the journey its meaning — the wise hold both.',
+  [['Individual','Personal growth, learning, the satisfaction of effort over outcome — the student who loves the subject, not just the rank.'],
+   ['Philosophical','Stoic and Gita ideas of action without attachment to fruit; happiness as a by-product, not a target.'],
+   ['Societal','Nations that fixate only on GDP "destinations" miss the journey of wellbeing, equity and institutions.'],
+   ['Synthesis','Destinations orient us; journeys transform us. A goal-less journey wanders; a journey-less goal is hollow.']]],
+ ['"Technology and the future of work"','Issue-based',
+  'Technology will reshape work profoundly, but whether it liberates or displaces depends on human choices in skilling, regulation and dignity.',
+  [['Economic','Automation, productivity, gig economy, jobless growth; PLI and Skill India as responses.'],
+   ['Social','Reskilling divides, rural-urban and gender gaps in digital access, dignity of labour.'],
+   ['Ethical','Algorithmic bias, surveillance, the right to meaningful work; who bears the cost of "efficiency."'],
+   ['Future / global','AI, four-day weeks, universal basic income debates; India\u2019s demographic dividend as opportunity or risk.']]],
+ ['"Can development and ecology coexist?"','Issue-based',
+  'Development and ecology are not opposites but interdependent; the real choice is between short-sighted and sustainable growth.',
+  [['Economic','Growth vs natural capital, green jobs, cost of inaction; renewables surge alongside coal dependence.'],
+   ['Environmental','Climate (SDG 13), water stress, biodiversity; India\u2019s social gains outpacing its ecological ones.'],
+   ['Ethical','Intergenerational justice, the rights of the unborn, Gandhi\u2019s "enough for need, not greed."'],
+   ['Global','Common-but-differentiated responsibility, ISA, Net-Zero 2070, climate finance.']]],
+ ['"Freedom is not the absence of constraints"','Abstract',
+  'Genuine freedom is shaped and enabled by constraint — law, discipline, duty — not destroyed by it.',
+  [['Individual','Self-discipline as the root of autonomy; the musician freed by mastering the scales.'],
+   ['Political','Constitutional limits as the guarantor of liberty; rights paired with duties.'],
+   ['Philosophical','Negative vs positive liberty; Ambedkar on constitutional morality; Tagore\u2019s "freedom within."'],
+   ['Synthesis','The river is freest within its banks. Constraint that enables is freedom; constraint that crushes is not.']]],
+ ['"The strength of a society is measured by how it treats its weakest"','Abstract / ethical',
+  'A society\u2019s moral and practical strength lies less in its peaks than in its floor — how it protects those with least power.',
+  [['Ethical','Rawls\u2019 veil of ignorance; dignity as non-negotiable; compassion as civilisational maturity.'],
+   ['Social','Caste, disability, gender, the elderly; welfare as right, not charity (Leave No One Behind).'],
+   ['Economic','Inequality (SDG 10), social security, DBT and targeting; growth that includes vs growth that excludes.'],
+   ['Institutional','Rule of law for the powerless, access to justice (SDG 16), the state as shield not sword.']]],
+];
+const tlEl=document.getElementById('topicList');
+const mdEl=document.getElementById('mapDetail');
+TOPICS.forEach((t,i)=>{
+  const b=document.createElement('button');b.className='topic-btn'+(i===0?' on':'');
+  b.innerHTML=`${t[0]}<span class="ty">${t[1]}</span>`;
+  b.onclick=()=>{[...tlEl.children].forEach(c=>c.classList.remove('on'));b.classList.add('on');renderMap(i);};
+  tlEl.appendChild(b);
+});
+function renderMap(i){
+  const [topic,type,thesis,dims]=TOPICS[i];
+  mdEl.innerHTML=`<div class="thesis">Thesis in one line: ${thesis}</div>`+
+    dims.map(d=>`<div class="dim"><div class="dn">${d[0]}</div><div class="dx">${d[1]}</div></div>`).join('');
+}
+renderMap(0);
+
+/* rubric */
+const RUBRIC=[
+ ['Thread & structure',[
+   ['A single thesis is clear by the end of the introduction',10],
+   ['Every paragraph visibly serves that thesis',12],
+   ['Transitions connect movements; it reads as one journey',8],
+ ]],
+ ['Substance',[
+   ['At least three genuinely different dimensions',12],
+   ['Each dimension carries a concrete example, scheme or fact',10],
+   ['The strongest opposing view is fairly conceded',10],
+   ['A considered position is reached, not a shrug',6],
+ ]],
+ ['Bookends',[
+   ['The introduction hooks, then narrows to the thesis',8],
+   ['The introduction is under ~12% of the essay',4],
+   ['The conclusion gathers the thread and looks forward',8],
+ ]],
+ ['Craft',[
+   ['Concrete imagery outweighs vague abstraction',5],
+   ['Sentence length varies; rhythm reads smoothly aloud',4],
+   ['No throat-clearing or padded filler phrases',3],
+ ]],
+];
+const rb=document.getElementById('rubric');
+let rstate={};
+let idx=0;
+RUBRIC.forEach(([grp,items])=>{
+  const g=document.createElement('div');g.className='rgroup';
+  g.innerHTML=`<div class="rgroup-h">${grp}</div>`;
+  items.forEach(([txt,pts])=>{
+    const id='r'+(idx++);rstate[id]={pts,on:false};
+    const it=document.createElement('div');it.className='ritem';it.dataset.id=id;
+    it.innerHTML=`<div class="box"></div><div class="rt">${txt}<span>+${pts} points</span></div>`;
+    it.onclick=()=>{rstate[id].on=!rstate[id].on;it.classList.toggle('on',rstate[id].on);tally();};
+    g.appendChild(it);
+  });
+  rb.appendChild(g);
+});
+const rscore=document.getElementById('rscore'),rband=document.getElementById('rband');
+function tally(){
+  let s=0;Object.values(rstate).forEach(v=>{if(v.on)s+=v.pts;});
+  rscore.textContent=s;
+  let band='— keep reviewing';
+  if(s>=90)band='Examiner-grade. Polish and repeat.';
+  else if(s>=75)band='Strong essay. Close the gaps.';
+  else if(s>=55)band='Competent. Work the unticked boxes.';
+  else if(s>0)band='Foundations need work. Re-plan.';
+  rband.textContent=band;
+}
+document.getElementById('rreset').onclick=()=>{
+  Object.keys(rstate).forEach(k=>rstate[k].on=false);
+  rb.querySelectorAll('.ritem').forEach(i=>i.classList.remove('on'));tally();
+};
+tally();
+</script>
+</body>
+</html>

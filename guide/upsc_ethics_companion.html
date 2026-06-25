@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Ethics Paper (GS-IV) — A UPSC Companion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;0,800;1,400;1,600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f4f1e9;--paper-2:#ece7da;--ink:#16302c;--ink-soft:#3f5b54;
+    --teal:#0c7d6f;--teal-deep:#075b51;--coral:#cc4f33;--amber:#c8881f;--green:#3f7d4e;--plum:#6a4a6e;--slate:#65786f;
+    --line:#cdc6b3;--verified-bg:#e3efe8;--note-bg:#f6e3dc;--omit-bg:#efe6cf;
+    --shadow:0 1px 0 var(--line), 0 14px 30px -22px rgba(7,55,42,.5);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",system-ui,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+  .serif{font-family:"Spectral",Georgia,serif}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 22px}
+
+  header.hero{border-bottom:2px solid var(--ink);background:repeating-linear-gradient(90deg,transparent,transparent 38px,rgba(22,48,44,.04) 38px,rgba(22,48,44,.04) 39px),var(--paper);padding:46px 0 30px}
+  .eyebrow{font-family:"IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.22em;font-size:11px;color:var(--teal-deep);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .eyebrow b{color:var(--coral)}
+  h1{font-family:"Spectral",Georgia,serif;font-weight:800;font-size:clamp(34px,6vw,60px);line-height:1.02;letter-spacing:-.015em;margin:14px 0 6px}
+  h1 em{font-style:italic;color:var(--teal-deep)}
+  .sub{font-size:17px;color:var(--ink-soft);max-width:64ch}
+  .stamp-row{display:flex;gap:14px;flex-wrap:wrap;margin-top:26px}
+  .stamp{background:var(--paper);border:1.5px solid var(--ink);padding:12px 16px;min-width:118px;box-shadow:var(--shadow)}
+  .stamp .n{font-family:"IBM Plex Mono",monospace;font-size:28px;font-weight:600;line-height:1}
+  .stamp .l{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--slate);margin-top:6px}
+  .stamp.ok .n{color:var(--teal)}
+  .stamp.hl .n{color:var(--coral)}
+
+  nav.tabs{position:sticky;top:0;z-index:30;background:var(--paper);border-bottom:1px solid var(--line);box-shadow:0 6px 14px -14px rgba(0,0,0,.4)}
+  .tabs-inner{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+  .tabs-inner::-webkit-scrollbar{display:none}
+  .tab{appearance:none;background:none;border:none;cursor:pointer;white-space:nowrap;font-family:"IBM Plex Mono",monospace;font-size:12.5px;letter-spacing:.02em;padding:15px 16px;color:var(--ink-soft);border-bottom:2.5px solid transparent;transition:color .15s,border-color .15s}
+  .tab .ix{color:var(--slate);margin-right:7px}
+  .tab:hover{color:var(--ink)}
+  .tab[aria-selected="true"]{color:var(--ink);border-color:var(--coral)}
+  .tab[aria-selected="true"] .ix{color:var(--coral)}
+
+  main{padding:38px 0 90px}
+  section[role=tabpanel]{display:none;animation:fade .4s ease}
+  section[role=tabpanel].active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .lead{font-family:"Spectral",serif;font-size:21px;line-height:1.5;color:var(--ink);max-width:64ch;margin-bottom:8px}
+  .panel-h{font-family:"Spectral",serif;font-weight:800;font-size:clamp(24px,4vw,34px);letter-spacing:-.01em;margin:6px 0 4px}
+  .kicker{font-family:"IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.18em;font-size:11px;color:var(--teal-deep)}
+  p.body{color:var(--ink-soft);max-width:72ch;margin:10px 0}
+  .divider{height:1px;background:var(--line);margin:30px 0}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:22px}
+  @media(max-width:720px){.grid2{grid-template-columns:1fr}}
+  .vcard{border:1.5px solid var(--ink);background:var(--paper);box-shadow:var(--shadow)}
+  .vcard .top{padding:13px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .vcard .top h3{font-size:15px;letter-spacing:.01em}
+  .vcard .body-c{padding:14px 16px;font-size:14.5px;color:var(--ink-soft)}
+  .chip{font-family:"IBM Plex Mono",monospace;font-size:11px;padding:3px 8px;border:1px solid;border-radius:2px;text-transform:uppercase;letter-spacing:.06em}
+  .chip.ok{color:var(--teal-deep);background:var(--verified-bg);border-color:var(--teal)}
+  .chip.hl{color:var(--coral);background:var(--note-bg);border-color:var(--coral)}
+
+  /* browser grid + detail (concepts & thinkers) */
+  .pfilter{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 18px}
+  .pf{appearance:none;cursor:pointer;font-family:"IBM Plex Mono",monospace;font-size:12px;padding:7px 13px;border:1.3px solid var(--line);background:var(--paper);color:var(--ink-soft);transition:.15s;display:flex;align-items:center;gap:7px}
+  .pf:hover{border-color:var(--ink-soft)}
+  .pf.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+  .pf .dot{width:9px;height:9px;border-radius:50%}
+  .tilegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+  .tile{border:1.5px solid var(--ink);cursor:pointer;padding:12px;transition:transform .12s,box-shadow .12s;background:var(--paper);position:relative}
+  .tile:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+  .tile.dim{opacity:.32}
+  .tile.sel{outline:3px solid var(--ink);outline-offset:2px}
+  .tile .tt{font-size:14px;font-weight:600;line-height:1.2}
+  .tile .tc{font-family:"IBM Plex Mono",monospace;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;margin-top:6px}
+  .detail{margin-top:18px;border:1.5px solid var(--ink);background:var(--paper);box-shadow:var(--shadow)}
+  .detail .d-top{padding:14px 16px;display:flex;gap:14px;align-items:center;border-bottom:1px solid var(--line)}
+  .d-badge{font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:13px;color:#fff;padding:5px 10px;flex:0 0 auto}
+  .d-top h3{font-family:"Spectral",serif;font-size:20px}
+  .d-top .dsub{font-family:"IBM Plex Mono",monospace;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--slate)}
+  .d-body{padding:14px 16px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:640px){.d-body{grid-template-columns:1fr}}
+  .d-body .lab{font-family:"IBM Plex Mono",monospace;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--teal-deep);margin-bottom:3px}
+  .d-body .txt{font-size:13.5px;color:var(--ink-soft);margin-bottom:10px}
+  .d-body .txt.idea{font-family:"Spectral",serif;font-style:italic;color:var(--ink);border-left:3px solid var(--teal);padding-left:11px}
+
+  /* step flow */
+  .flow{display:flex;flex-direction:column;gap:0;margin-top:18px;border:1.5px solid var(--ink);box-shadow:var(--shadow)}
+  .step{display:grid;grid-template-columns:54px 1fr;border-bottom:1px solid var(--line)}
+  .step:last-child{border-bottom:none}
+  .step .sn{background:var(--ink);color:var(--paper);font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:15px;display:flex;align-items:center;justify-content:center}
+  .step .sc{padding:13px 16px}
+  .step .sc h4{font-size:15px;margin-bottom:3px}
+  .step .sc p{font-size:13.5px;color:var(--ink-soft)}
+
+  /* worked example reveal */
+  .worked{border:1.5px solid var(--ink);background:var(--paper);box-shadow:var(--shadow);margin-top:18px}
+  .worked .scenario{padding:16px;background:var(--omit-bg);border-bottom:1px solid var(--line);font-family:"Spectral",serif;font-size:15px;line-height:1.5}
+  .worked .scenario .l{font-family:"IBM Plex Mono",monospace;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--amber);display:block;margin-bottom:7px;font-weight:600}
+  .wstep{border-bottom:1px solid var(--line)}
+  .wstep:last-child{border-bottom:none}
+  .wstep summary{cursor:pointer;list-style:none;padding:13px 16px;display:flex;gap:12px;align-items:center;font-weight:600;font-size:14.5px}
+  .wstep summary::-webkit-details-marker{display:none}
+  .wstep summary .wn{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--coral);font-weight:600}
+  .wstep summary .plus{margin-left:auto;font-family:"IBM Plex Mono",monospace;color:var(--slate);transition:.2s}
+  .wstep[open] summary .plus{transform:rotate(45deg);color:var(--coral)}
+  .wstep .wbody{padding:0 16px 15px 16px;font-size:14px;color:var(--ink-soft)}
+  .wstep .wbody ul{margin:6px 0 0 18px}
+  .wstep .wbody li{margin:5px 0}
+
+  /* mapper */
+  .mapper{display:grid;grid-template-columns:1fr 1.35fr;gap:0;border:1.5px solid var(--ink);box-shadow:var(--shadow);margin-top:18px}
+  @media(max-width:760px){.mapper{grid-template-columns:1fr}}
+  .theme-list{border-right:1px solid var(--line);background:var(--paper)}
+  @media(max-width:760px){.theme-list{border-right:none;border-bottom:1px solid var(--line)}}
+  .theme-btn{display:block;width:100%;text-align:left;cursor:pointer;background:none;border:none;border-bottom:1px solid var(--line);padding:12px 15px;font-family:inherit;font-size:13.5px;color:var(--ink-soft);transition:.12s}
+  .theme-btn:last-child{border-bottom:none}
+  .theme-btn:hover{background:var(--paper-2);color:var(--ink)}
+  .theme-btn.on{background:var(--ink);color:var(--paper);font-weight:600}
+  .map-detail{padding:18px;background:var(--paper)}
+  .map-detail h3{font-family:"Spectral",serif;font-size:19px;margin-bottom:8px}
+  .map-detail .tags{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 12px}
+  .vtag{font-family:"IBM Plex Mono",monospace;font-size:11px;color:#fff;background:var(--teal);padding:3px 9px;border:1px solid var(--ink)}
+  .map-detail .howto{font-size:14px;color:var(--ink-soft)}
+  .map-detail .howto b{color:var(--ink)}
+
+  /* tools grid */
+  .toolgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:16px}
+  .tool{border:1px solid var(--line);background:var(--verified-bg);padding:12px 14px}
+  .tool .tn{font-size:14px;font-weight:600}
+  .tool .td{font-size:12.5px;color:var(--ink-soft);margin-top:4px}
+
+  /* principle bank */
+  .pbank{border:1.5px solid var(--ink);background:var(--paper);margin:12px 0;box-shadow:var(--shadow)}
+  .pbank summary{cursor:pointer;list-style:none;padding:14px 18px;display:flex;gap:12px;align-items:center;font-family:"Spectral",serif;font-size:17px;font-weight:600}
+  .pbank summary::-webkit-details-marker{display:none}
+  .pbank summary .plus{margin-left:auto;font-family:"IBM Plex Mono",monospace;color:var(--slate);transition:.2s}
+  .pbank[open] summary .plus{transform:rotate(45deg);color:var(--coral)}
+  .pbank .inner{padding:0 18px 16px}
+  .principle{border-left:3px solid var(--teal);background:var(--paper-2);padding:11px 14px;margin:8px 0;font-size:14px}
+  .principle .src{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:var(--teal-deep);text-transform:uppercase;letter-spacing:.05em;display:block;margin-top:5px}
+
+  /* rubric */
+  .rubric{border:1.5px solid var(--ink);background:var(--paper);box-shadow:var(--shadow)}
+  .rgroup{border-bottom:1px solid var(--line)}
+  .rgroup:last-child{border-bottom:none}
+  .rgroup-h{padding:11px 16px;background:var(--paper-2);font-family:"IBM Plex Mono",monospace;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--teal-deep)}
+  .ritem{display:flex;gap:12px;align-items:flex-start;padding:11px 16px;border-top:1px solid var(--line);cursor:pointer;transition:background .12s}
+  .ritem:hover{background:var(--paper-2)}
+  .ritem .box{flex:0 0 auto;width:20px;height:20px;border:1.5px solid var(--ink);background:var(--paper);display:flex;align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;font-size:13px;color:#fff;margin-top:1px}
+  .ritem.on .box{background:var(--teal);border-color:var(--teal)}
+  .ritem .rt{font-size:14px;color:var(--ink)}
+  .ritem .rt span{display:block;font-size:12px;color:var(--slate);margin-top:2px}
+  .scorebar{position:sticky;bottom:0;background:var(--ink);color:var(--paper);padding:14px 18px;display:flex;justify-content:space-between;align-items:center;gap:14px;border:1.5px solid var(--ink);flex-wrap:wrap}
+  .scorebar .big{font-family:"IBM Plex Mono",monospace;font-size:26px;font-weight:600}
+  .scorebar .band{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.05em}
+  .scorebar .reset{appearance:none;cursor:pointer;background:none;border:1px solid rgba(255,255,255,.4);color:var(--paper);font-family:"IBM Plex Mono",monospace;font-size:11px;padding:6px 12px}
+
+  .pitfall{border-left:3px solid var(--coral);background:var(--note-bg);padding:12px 16px;margin:10px 0;font-size:14px;color:var(--ink-soft)}
+  .pitfall b{color:var(--ink)}
+
+  footer{border-top:2px solid var(--ink);padding:26px 0;font-size:12.5px;color:var(--slate)}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow"><span>UPSC Civil Services · GS Paper IV</span> <span>•</span> <b>Ethics, Integrity &amp; Aptitude</b></div>
+    <h1>The one paper that <em>tests you</em>,<br>not just what you know.</h1>
+    <p class="sub">Ethics rewards a clear moral compass expressed through structure: crisp concepts, the right thinker at the right moment, balanced reasoning, and case answers that act like an officer — practical, lawful and humane.</p>
+    <div class="stamp-row">
+      <div class="stamp hl"><div class="n">250</div><div class="l">Marks · half your GS</div></div>
+      <div class="stamp ok"><div class="n">2</div><div class="l">Sections: theory + cases</div></div>
+      <div class="stamp ok"><div class="n">6</div><div class="l">Case studies (Sec B)</div></div>
+      <div class="stamp ok"><div class="n">You</div><div class="l">The subject on trial</div></div>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <div class="wrap"><div class="tabs-inner" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-p="mindset"><span class="ix">01</span>The Mindset</button>
+    <button class="tab" role="tab" aria-selected="false" data-p="concepts"><span class="ix">02</span>Concept Toolkit</button>
+    <button class="tab" role="tab" aria-selected="false" data-p="thinkers"><span class="ix">03</span>Moral Thinkers</button>
+    <button class="tab" role="tab" aria-selected="false" data-p="cases"><span class="ix">04</span>Cracking Cases</button>
+    <button class="tab" role="tab" aria-selected="false" data-p="probity"><span class="ix">05</span>Probity &amp; Use</button>
+    <button class="tab" role="tab" aria-selected="false" data-p="mark"><span class="ix">06</span>Self-Mark</button>
+  </div></div>
+</nav>
+
+<main><div class="wrap">
+
+<!-- 01 MINDSET -->
+<section role="tabpanel" id="mindset" class="active">
+  <div class="kicker">What this paper is really for</div>
+  <h2 class="panel-h">It tests judgement, not recall</h2>
+  <p class="lead">Other papers ask what you know. Ethics asks who you would be as an officer. The highest scorers don't have the rarest theory — they have a clear value-position, the discipline to structure it, and the maturity to weigh competing goods. Treat it as the most scoring paper, because it is the most teachable.</p>
+
+  <div class="grid2">
+    <div class="vcard">
+      <div class="top"><h3>The two halves</h3><span class="chip ok">Strategy</span></div>
+      <div class="body-c"><b>Section A</b> is theory — define crisply, illustrate with an example, take a balanced view. <b>Section B</b> is ~6 case studies — act as the decision-maker in the scenario. Section B often decides your score, so practise cases hardest.</div>
+    </div>
+    <div class="vcard">
+      <div class="top"><h3>The golden rule</h3><span class="chip hl">Show, structure, balance</span></div>
+      <div class="body-c">Every answer: a crisp concept, a concrete example (a leader, scheme, or lived situation), and a balanced judgement. Keywords, diagrams and a clear stance beat long moralising paragraphs.</div>
+    </div>
+    <div class="vcard">
+      <div class="top"><h3>Be practical, not preachy</h3><span class="chip ok">Tone</span></div>
+      <div class="body-c">Examiners reward feasible, humane, lawful decisions over idealistic sermons. Acknowledge constraints, choose a course, and own the trade-offs. Sounding noble while ducking the decision loses marks.</div>
+    </div>
+    <div class="vcard">
+      <div class="top"><h3>Your example bank</h3><span class="chip ok">Stock it</span></div>
+      <div class="body-c">Keep ready: thinkers and their core idea, civil-service values with real instances, governance tools, and 2–3 personal-life examples. Specific, verified material beats generic virtue-words every time.</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="kicker">The syllabus, in one breath</div>
+  <p class="body" style="font-size:15px;max-width:80ch">Ethics &amp; human interface · human values · attitude · aptitude and the foundational values for civil service · emotional intelligence · contributions of moral thinkers (Indian and world) · public/civil-service values and ethics in administration · probity in governance · and case studies across all of it. The next tabs turn each of these into something you can use, not just recite.</p>
+</section>
+
+<!-- 02 CONCEPT TOOLKIT -->
+<section role="tabpanel" id="concepts">
+  <div class="kicker">Definitions you can deploy</div>
+  <h2 class="panel-h">The concept toolkit</h2>
+  <p class="body">Tap any concept for a crisp definition, the distinction that earns marks, and where to use it. Filter by area. These are your Section-A building blocks.</p>
+  <div class="pfilter" id="cfilter"></div>
+  <div class="tilegrid" id="cgrid"></div>
+  <div class="detail" id="cdetail"></div>
+</section>
+
+<!-- 03 THINKERS -->
+<section role="tabpanel" id="thinkers">
+  <div class="kicker">The right thinker at the right moment</div>
+  <h2 class="panel-h">Moral thinkers &amp; philosophers</h2>
+  <p class="body">A well-placed thinker lifts a theory answer and resolves a case dilemma. Tap a name for the core idea (in plain words), the school it belongs to, and how to deploy it in an answer. Filter by tradition.</p>
+  <div class="pfilter" id="tfilter"></div>
+  <div class="tilegrid" id="tgrid"></div>
+  <div class="detail" id="tdetail"></div>
+</section>
+
+<!-- 04 CASES -->
+<section role="tabpanel" id="cases">
+  <div class="kicker">Section B — where the paper is won</div>
+  <h2 class="panel-h">A method for case studies</h2>
+  <p class="body">Don't write a story; run a process. The same six steps work for almost any case, from a bribe offer to a relief-allocation dilemma. Write the steps as labelled mini-paragraphs so the examiner sees the structure at a glance.</p>
+
+  <div class="flow">
+    <div class="step"><div class="sn">1</div><div class="sc"><h4>Name the core dilemma</h4><p>State the central ethical conflict in a line — usually a clash of two legitimate values (a "right vs right"), not simply right vs wrong.</p></div></div>
+    <div class="step"><div class="sn">2</div><div class="sc"><h4>Map the stakeholders</h4><p>List everyone affected and their legitimate interests — the citizen, the institution, your subordinates, your family, society at large, yourself.</p></div></div>
+    <div class="step"><div class="sn">3</div><div class="sc"><h4>Surface the values in conflict</h4><p>Identify the principles pulling against each other — e.g. compassion vs rule of law, loyalty vs integrity, efficiency vs equity.</p></div></div>
+    <div class="step"><div class="sn">4</div><div class="sc"><h4>Lay out the options</h4><p>Give 2–4 realistic courses of action, including the lazy and the heroic, so your final choice is visibly reasoned, not assumed.</p></div></div>
+    <div class="step"><div class="sn">5</div><div class="sc"><h4>Evaluate each option</h4><p>Weigh each on consequences, legality, feasibility and an ethical lens (duty / outcome / virtue). Show the trade-offs honestly.</p></div></div>
+    <div class="step"><div class="sn">6</div><div class="sc"><h4>Decide, justify, and look forward</h4><p>Commit to a course as the officer would, justify it with a value and a thinker if apt, and add a systemic fix so it doesn't recur.</p></div></div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="kicker">Worked example — open each step</div>
+  <h3 class="serif" style="font-size:22px;margin:6px 0 0">The factory, the jobs, and the river</h3>
+  <div class="worked">
+    <div class="scenario"><span class="l">The scenario</span>You are the District Collector. A politically powerful industrialist seeks fast-track clearance for a factory that would create 2,000 local jobs. But it violates environmental norms and would discharge effluent into the only water source of a downstream tribal hamlet. The local MLA hints that your transfer depends on your "cooperation."</div>
+
+    <details class="wstep"><summary><span class="wn">1</span> The core dilemma <span class="plus">+</span></summary>
+      <div class="wbody">Economic development and employment (a real public good) versus environmental protection and the right to life and water of a vulnerable, voiceless community — sharpened by political pressure that pits your career against your conscience. This is a right-vs-right clash, layered over a right-vs-wrong temptation.</div>
+    </details>
+    <details class="wstep"><summary><span class="wn">2</span> Stakeholders <span class="plus">+</span></summary>
+      <div class="wbody"><ul>
+        <li><b>Tribal hamlet:</b> health, livelihood, right to clean water — least powerful, most affected.</li>
+        <li><b>Job-seekers &amp; local economy:</b> legitimate interest in employment.</li>
+        <li><b>Industrialist &amp; MLA:</b> profit and political interest.</li>
+        <li><b>You / the administration:</b> rule of law, public trust, personal integrity and career.</li>
+        <li><b>Future generations &amp; the ecosystem:</b> the silent stakeholders.</li>
+      </ul></div>
+    </details>
+    <details class="wstep"><summary><span class="wn">3</span> Values in conflict <span class="plus">+</span></summary>
+      <div class="wbody">Development &amp; utility vs environmental sustainability and intergenerational justice; compassion for the poor vs political loyalty; personal career security vs integrity, objectivity and the rule of law.</div>
+    </details>
+    <details class="wstep"><summary><span class="wn">4</span> Options <span class="plus">+</span></summary>
+      <div class="wbody"><ul>
+        <li><b>(a)</b> Clear the factory as pressured — gains jobs and political favour, but breaks the law and harms the hamlet.</li>
+        <li><b>(b)</b> Reject outright — protects the hamlet but forfeits jobs and invites retaliation.</li>
+        <li><b>(c)</b> Conditional path — require effluent treatment, relocation of the discharge, and proper clearances before approval, so jobs and environment are both served.</li>
+      </ul></div>
+    </details>
+    <details class="wstep"><summary><span class="wn">5</span> Evaluation <span class="plus">+</span></summary>
+      <div class="wbody">Option (a) fails on legality and on the duty to the weakest (it treats the hamlet as a means — a Kantian red line). Option (b) is lawful but a false binary that needlessly sacrifices a genuine good. Option (c) is lawful, feasible and reconciles utility with sustainability — the Gandhian test of recalling the poorest face is met, and the rule of law holds.</div>
+    </details>
+    <details class="wstep"><summary><span class="wn">6</span> Decision &amp; way forward <span class="plus">+</span></summary>
+      <div class="wbody">Choose (c): grant clearance only on strict, enforceable environmental safeguards and statutory approvals, documented in writing. Resist the transfer threat through proper record-keeping and, if needed, escalation — integrity is not negotiable for career security. Systemically, push for transparent single-window clearance with mandatory environmental and social-impact audit, so the next officer never faces this pressure informally. The decision is humane, lawful, and durable.</div>
+    </details>
+  </div>
+  <p class="body" style="font-size:13px;margin-top:10px"><b>The pattern to copy:</b> reject false binaries, find the lawful third path that honours the weakest stakeholder, decide firmly, and fix the system. Resist threats without grandstanding.</p>
+</section>
+
+<!-- 05 PROBITY & USE -->
+<section role="tabpanel" id="probity">
+  <div class="kicker">Probity in governance</div>
+  <h2 class="panel-h">The tools — and where concepts plug in</h2>
+  <p class="body">Probity is integrity confirmed in public office. These are the instruments that institutionalise it; cite them by name in governance and case answers.</p>
+  <div class="toolgrid" id="toolgrid"></div>
+
+  <div class="divider"></div>
+  <div class="kicker">Match the concept to the case</div>
+  <h3 class="serif" style="font-size:22px;margin:6px 0">Where each idea earns its marks</h3>
+  <p class="body">Pick a recurring case-study situation to see which values, theories and tools to invoke.</p>
+  <div class="mapper">
+    <div class="theme-list" id="themeList"></div>
+    <div class="map-detail" id="mapDetail"></div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="kicker">A bank of principles to deploy</div>
+  <h3 class="serif" style="font-size:22px;margin:6px 0">Ideas, not quotations</h3>
+  <p class="body">Examiners reward understanding over memorised lines (a misquote costs more than it gives). Carry the <i>idea</i>, attribute it, and apply it.</p>
+
+  <details class="pbank"><summary>On integrity &amp; conscience <span class="plus">+</span></summary>
+    <div class="inner">
+      <div class="principle">Integrity is the consistency of one's values and actions — most of all when no one is watching.<span class="src">Civil-service value</span></div>
+      <div class="principle">When laws and rules fall silent, conscience is the officer's last and highest guide.<span class="src">Sources of ethical guidance</span></div>
+      <div class="principle">Gandhi's talisman: when in doubt, recall the face of the poorest, weakest person you have seen, and ask whether your act will help them.<span class="src">M.K. Gandhi — idea, paraphrased</span></div>
+    </div>
+  </details>
+  <details class="pbank"><summary>On duty, outcome &amp; character <span class="plus">+</span></summary>
+    <div class="inner">
+      <div class="principle">Act only on a principle you could will everyone to follow, and never treat a person merely as a means.<span class="src">Immanuel Kant — idea, paraphrased</span></div>
+      <div class="principle">The right action produces the greatest wellbeing for the greatest number — but never by sacrificing the basic rights of a minority.<span class="src">Utilitarianism, with a rights caveat</span></div>
+      <div class="principle">Virtue is a settled habit lying between two extremes; courage sits between recklessness and cowardice.<span class="src">Aristotle — idea, paraphrased</span></div>
+    </div>
+  </details>
+  <details class="pbank"><summary>On justice, service &amp; the weakest <span class="plus">+</span></summary>
+    <div class="inner">
+      <div class="principle">Design rules as if you did not know which place in society you would occupy — that is fairness.<span class="src">John Rawls — veil of ignorance, paraphrased</span></div>
+      <div class="principle">Service to the poorest is the truest form of service; see the divine in the deprived.<span class="src">Swami Vivekananda — idea, paraphrased</span></div>
+      <div class="principle">A constitution lives only through constitutional morality — the disciplined habit of honouring its spirit, not just its letter.<span class="src">B.R. Ambedkar — idea, paraphrased</span></div>
+    </div>
+  </details>
+</section>
+
+<!-- 06 SELF-MARK -->
+<section role="tabpanel" id="mark">
+  <div class="kicker">Mark your own answer cold</div>
+  <h2 class="panel-h">The self-mark rubric</h2>
+  <p class="body">Works for both a theory answer and a case answer. Tick honestly two days after writing. The tally is a band, not an official score — but it trains the eye examiners use.</p>
+
+  <div class="rubric" id="rubric"></div>
+  <div class="scorebar"><div><span class="big" id="rscore">0</span> <span style="opacity:.7">/ 100</span> &nbsp; <span class="band" id="rband">— tick as you review</span></div><button class="reset" id="rreset">Reset</button></div>
+
+  <div class="divider"></div>
+  <div class="kicker">How ethics answers bleed marks</div>
+  <h3 class="serif" style="font-size:22px;margin:6px 0">The avoidable losses</h3>
+  <div class="pitfall"><b>Preaching instead of deciding.</b> The commonest failure — noble paragraphs that never choose a course. Always commit to an action and own its trade-offs.</div>
+  <div class="pitfall"><b>Idealism without feasibility.</b> "Refuse the bribe and inspire everyone" ignores real constraints. Show how, lawfully and practically, you'd act.</div>
+  <div class="pitfall"><b>Ignoring stakeholders.</b> Skipping the voiceless party (the tribal hamlet, the subordinate, the future generation) drops the marks for completeness.</div>
+  <div class="pitfall"><b>Generic virtue-words.</b> "Honesty, integrity, transparency" repeated without a concept, example or thinker reads as padding. Be specific.</div>
+  <div class="pitfall"><b>Not playing the role.</b> In a case you are the officer named, with that officer's powers — not an outside commentator. Decide from inside the chair.</div>
+  <div class="pitfall"><b>No systemic fix.</b> Resolving only the immediate problem misses easy marks; add the reform that stops it recurring.</div>
+</section>
+
+</div></main>
+
+<footer><div class="wrap">
+  <div class="mono">A craft companion for GS Paper IV (Ethics, Integrity &amp; Aptitude). Thinkers' ideas are paraphrased for application, not reproduced as quotations — carry the idea, attribute it, apply it. Surest gains come from writing and self-marking case studies regularly.</div>
+</div></footer>
+
+<script>
+const tabs=[...document.querySelectorAll('.tab')];
+const panels=[...document.querySelectorAll('section[role=tabpanel]')];
+tabs.forEach(t=>t.addEventListener('click',()=>{
+  tabs.forEach(x=>x.setAttribute('aria-selected',x===t));
+  const id=t.dataset.p;
+  panels.forEach(p=>p.classList.toggle('active',p.id===id));
+  window.scrollTo({top:0,behavior:'smooth'});
+}));
+
+/* ---- CONCEPTS ---- */
+const CAT={Foundations:'#0c7d6f','Attitude & EI':'#6a4a6e','CS Values':'#c8881f',Governance:'#3f7d4e',Theories:'#cc4f33'};
+// title,cat,def,distinction,use
+const CONCEPTS=[
+ ['Ethics','Foundations','The systematic study of right and wrong — the reasoned "ought" behind human conduct.','Ethics is universal, reasoned inquiry; morals are the specific right/wrong beliefs of a group or person.','Open most Section-A answers by anchoring the term precisely.'],
+ ['Morals','Foundations','Personal and societal beliefs about right conduct, often drawn from religion or culture.','Morals can vary by community; ethics asks which of them survive reasoned scrutiny.','Use when distinguishing personal belief from defensible principle.'],
+ ['Values','Foundations','Enduring beliefs that guide choices and behaviour — honesty, justice, compassion.','Values are the "why" we act; attitudes are the "how" we are disposed to respond.','Cite when discussing human values and their inculcation.'],
+ ['Conscience','Foundations','The inner moral sense that judges our own acts — the officer\u2019s final guide.','Laws and rules are external sources; conscience is the internal one, supreme when they fall silent.','Decisive in case studies where rules give no clear answer.'],
+ ['Ethical dilemma','Foundations','A genuine conflict between two valid duties or values, with no clean right answer.','A dilemma is right-vs-right; an ethical lapse is right-vs-wrong driven by weakness.','Name the dilemma in step 1 of every case.'],
+ ['Determinants of ethics','Foundations','The sources that shape our ethics: family, society, religion, education, law, the Constitution.','Distinguish internal determinants (conscience) from external ones (law, peer group).','Use for "essence and determinants of ethics" questions.'],
+ ['Attitude','Attitude & EI','A learned predisposition to respond favourably or unfavourably toward something.','Three components (ABC): Affective (feeling), Behavioural (action tendency), Cognitive (belief).','Define before discussing attitude change or persuasion.'],
+ ['Moral vs political attitude','Attitude & EI','Moral attitude orients us to right/wrong; political attitude to ideology and power.','Both are attitudes, but differ in object and in how easily persuasion shifts them.','For syllabus item on moral and political attitudes.'],
+ ['Persuasion & influence','Attitude & EI','The processes that change attitudes — conformity, compliance, obedience, reasoned appeal.','Ethical persuasion appeals to reason and values; manipulation exploits bias and fear.','Useful in governance communication and behaviour-change cases.'],
+ ['Emotional intelligence','Attitude & EI','The capacity to perceive, understand and manage emotions in oneself and others.','Goleman\u2019s five: self-awareness, self-regulation, motivation, empathy, social skills.','Apply to leadership, stress, and handling difficult subordinates/citizens.'],
+ ['Integrity','CS Values','Wholeness — the consistency of one\u2019s values and actions, especially when unobserved.','Honesty is telling the truth; integrity is living by it under pressure.','The keystone civil-service value; cite in probity and case answers.'],
+ ['Objectivity','CS Values','Deciding on evidence and merit, free from personal bias or preference.','Objectivity concerns how you judge; impartiality concerns whom you favour (no one).','For recruitment, evaluation, and resource-allocation cases.'],
+ ['Impartiality & non-partisanship','CS Values','Serving all citizens equally and the government of the day without political alignment.','Impartiality = no favouritism among citizens; non-partisanship = no party loyalty.','Central to political-pressure case studies.'],
+ ['Empathy & compassion','CS Values','Understanding others\u2019 feelings (empathy) and being moved to relieve their suffering (compassion).','Empathy is feeling-with; compassion adds the will to act, especially for weaker sections.','Deploy for welfare delivery and vulnerable-stakeholder cases.'],
+ ['Aptitude','CS Values','The suitability — natural and cultivated — for civil-service work, allied to the right values.','Aptitude is capacity-plus-disposition; skill alone, without values, is not aptitude here.','For "aptitude and foundational values" questions.'],
+ ['Probity','Governance','Confirmed integrity and uprightness in public office.','Integrity is personal; probity is integrity demonstrated in the public role.','Anchor all probity-in-governance answers.'],
+ ['Accountability vs responsibility','Governance','Responsibility is the duty you hold; accountability is being answerable for how you discharge it.','You can delegate responsibility but you cannot delegate accountability.','Use in administrative-failure and oversight cases.'],
+ ['Code of conduct vs code of ethics','Governance','Conduct = specific, enforceable do\u2019s and don\u2019ts; ethics = aspirational values and principles.','Conduct tells you what not to do; ethics tells you who to be.','Cite the pair when discussing ethical frameworks for services.'],
+ ['Corporate governance','Governance','The ethical direction and control of companies, balancing all stakeholders\u2019 interests.','Public-sector probity and corporate governance share principles: transparency, accountability, fairness.','For private-institution and CSR-related cases.'],
+ ['Consequentialism','Theories','Judge an act by its outcomes; the right act maximises good results.','Outcome-focused, unlike deontology\u2019s focus on duty regardless of result.','Frame the "greater good" side of a dilemma.'],
+ ['Deontology','Theories','Judge an act by duty and rules; some acts are wrong whatever the outcome.','Duty-focused; Kant\u2019s test: universalisable rules, persons as ends not means.','Frame the "rights and duties" side of a dilemma.'],
+ ['Virtue ethics','Theories','Focus on character — a good person acting from settled virtues.','Asks "what would a person of good character do?" rather than "which rule/outcome?"','Use to discuss the kind of officer one should become.'],
+ ['Justice as fairness','Theories','Rawls: fair principles are those we\u2019d choose behind a veil of ignorance of our own status.','Centres the least advantaged; inequalities are just only if they help them most.','Powerful for equity and distributive-allocation cases.'],
+];
+const CCATS=['All','Foundations','Attitude & EI','CS Values','Governance','Theories'];
+let cActive='All',cSel=0;
+const cf=document.getElementById('cfilter');
+CCATS.forEach(c=>{
+  const b=document.createElement('button');b.className='pf'+(c==='All'?' on':'');
+  b.innerHTML=(c==='All'?'':`<span class="dot" style="background:${CAT[c]}"></span>`)+c;
+  b.onclick=()=>{cActive=c;[...cf.children].forEach(x=>x.classList.toggle('on',x===b));renderC();};
+  cf.appendChild(b);
+});
+const cgrid=document.getElementById('cgrid'),cdet=document.getElementById('cdetail');
+function renderC(){
+  cgrid.innerHTML='';
+  CONCEPTS.forEach((c,i)=>{
+    const dim=cActive!=='All'&&c[1]!==cActive;
+    const t=document.createElement('div');t.className='tile'+(dim?' dim':'')+(i===cSel?' sel':'');
+    t.style.borderColor=CAT[c[1]];
+    t.innerHTML=`<div class="tt">${c[0]}</div><div class="tc" style="color:${CAT[c[1]]}">${c[1]}</div>`;
+    t.onclick=()=>{cSel=i;renderC();renderCDet(i);};
+    cgrid.appendChild(t);
+  });
+}
+function renderCDet(i){
+  const [t,cat,def,dis,use]=CONCEPTS[i];
+  cdet.innerHTML=`<div class="d-top"><div class="d-badge" style="background:${CAT[cat]}">${cat}</div><h3>${t}</h3></div>
+    <div class="d-body">
+      <div><div class="lab">Definition</div><div class="txt">${def}</div><div class="lab">The distinction that scores</div><div class="txt">${dis}</div></div>
+      <div><div class="lab">Where to use it</div><div class="txt">${use}</div></div>
+    </div>`;
+}
+renderC();renderCDet(0);
+
+/* ---- THINKERS ---- */
+const TRAD={Indian:'#0c7d6f',Western:'#cc4f33'};
+// name,trad,school,idea,apply
+const THINKERS=[
+ ['Gandhi','Indian','Ethics of means & ends','Means must be as pure as the ends; truth and non-violence are inseparable from the goal. Trusteeship, Sarvodaya and Antyodaya put the last person first.','The means-vs-ends test and the talisman of the poorest face — ideal for welfare and integrity cases.'],
+ ['Buddha','Indian','The Middle Path','Avoid extremes; the Eightfold Path includes right action and right livelihood; compassion (karuna) and non-harm guide conduct.','Use for balance, restraint, and compassion-led decisions.'],
+ ['Kautilya','Indian','Statecraft ethics','In the happiness of the subjects lies the ruler\u2019s happiness (yogakshema); the state must be vigilant against corruption and serve public welfare.','Administrative ethics, welfare duty, anti-corruption vigilance.'],
+ ['Vivekananda','Indian','Service as worship','Serving the poor and suffering is the highest worship; strength, fearlessness and character are the foundation of service.','Empathy, public service as a calling, character-building.'],
+ ['Ambedkar','Indian','Constitutional morality','Liberty, equality and fraternity must become a habit of the heart; the Constitution lives through its spirit, not just its text; social justice is non-negotiable.','Constitutional values, equity, social-justice and rights cases.'],
+ ['Thiruvalluvar','Indian','Virtue & just rule','The Thirukkural binds private virtue to just governance — righteous conduct sustains both the home and the state.','Virtue ethics with an Indian, governance-linked voice.'],
+ ['Tagore','Indian','Freedom of mind','True education and freedom cultivate an unafraid, open mind; humanism over narrow nationalism.','Liberty, education values, tolerance.'],
+ ['Socrates','Western','Examined life','The unexamined life is not worth living; virtue is a form of knowledge, so wrongdoing often springs from ignorance.','Self-reflection and the duty of moral inquiry.'],
+ ['Plato','Western','Justice as harmony','Justice is each part of the soul and society performing its proper role; the wise should govern.','Meritocratic, wisdom-led governance.'],
+ ['Aristotle','Western','Virtue & the golden mean','Virtue is a habit lying between two extremes; flourishing (eudaimonia) comes from practical wisdom and good character.','The "what kind of officer" question; balanced character.'],
+ ['Kant','Western','Deontology','Act only on principles you could will to be universal law; treat people always as ends, never merely as means; duty over outcome.','The rights-and-duty side of a dilemma; human dignity.'],
+ ['Mill & Bentham','Western','Utilitarianism','The right action produces the greatest happiness for the greatest number; Mill adds the quality of pleasures and individual liberty.','The greater-good and cost-benefit side of a dilemma.'],
+ ['Rawls','Western','Justice as fairness','Choose social rules behind a veil of ignorance of your own status; inequalities are just only if they most help the least advantaged.','Equity, distributive justice, allocation cases.'],
+ ['Confucius','Western','Ethics of harmony','Lead by virtue and example; ren (humaneness) and right relationships sustain a harmonious society.','Ethical leadership and harmony-centred administration.'],
+];
+const TTRADS=['All','Indian','Western'];
+let tActive='All',tSel=0;
+const tf=document.getElementById('tfilter');
+TTRADS.forEach(c=>{
+  const b=document.createElement('button');b.className='pf'+(c==='All'?' on':'');
+  b.innerHTML=(c==='All'?'':`<span class="dot" style="background:${TRAD[c]}"></span>`)+c;
+  b.onclick=()=>{tActive=c;[...tf.children].forEach(x=>x.classList.toggle('on',x===b));renderT();};
+  tf.appendChild(b);
+});
+const tgrid=document.getElementById('tgrid'),tdet=document.getElementById('tdetail');
+function renderT(){
+  tgrid.innerHTML='';
+  THINKERS.forEach((t,i)=>{
+    const dim=tActive!=='All'&&t[1]!==tActive;
+    const el=document.createElement('div');el.className='tile'+(dim?' dim':'')+(i===tSel?' sel':'');
+    el.style.borderColor=TRAD[t[1]];
+    el.innerHTML=`<div class="tt">${t[0]}</div><div class="tc" style="color:${TRAD[t[1]]}">${t[2]}</div>`;
+    el.onclick=()=>{tSel=i;renderT();renderTDet(i);};
+    tgrid.appendChild(el);
+  });
+}
+function renderTDet(i){
+  const [name,trad,school,idea,apply]=THINKERS[i];
+  tdet.innerHTML=`<div class="d-top"><div class="d-badge" style="background:${TRAD[trad]}">${trad}</div><div><div class="dsub">${school}</div><h3>${name}</h3></div></div>
+    <div class="d-body">
+      <div><div class="lab">Core idea (paraphrased)</div><div class="txt idea">${idea}</div></div>
+      <div><div class="lab">How to deploy it</div><div class="txt">${apply}</div></div>
+    </div>`;
+}
+renderT();renderTDet(0);
+
+/* ---- TOOLS ---- */
+const TOOLS=[
+ ['RTI Act, 2005','Citizens\u2019 right to information — the backbone of transparency and accountability.'],
+ ['Citizen\u2019s Charter','A public declaration of service standards and timelines, with redress.'],
+ ['Code of Conduct','Enforceable do\u2019s and don\u2019ts for public servants (Conduct Rules).'],
+ ['Code of Ethics','Aspirational values guiding discretion beyond the rulebook.'],
+ ['Lokpal & Lokayuktas, 2013','Anti-corruption ombudsman at the Union and state levels.'],
+ ['Whistle Blowers Protection, 2014','Safeguards for those who expose wrongdoing in good faith.'],
+ ['Prevention of Corruption Act','The core legal instrument against bribery and abuse of office.'],
+ ['Social audit','Community verification of public spending (e.g. MGNREGA).'],
+ ['Second ARC, 4th Report','"Ethics in Governance" — the key reform blueprint to cite.'],
+ ['Sevottam','A service-delivery excellence and grievance-redress framework.'],
+ ['e-governance / DBT','Technology that reduces discretion, leakage and rent-seeking.'],
+ ['CVC','Apex integrity watchdog over central vigilance administration.'],
+];
+const tg=document.getElementById('toolgrid');
+TOOLS.forEach(([n,d])=>{const e=document.createElement('div');e.className='tool';e.innerHTML=`<div class="tn">${n}</div><div class="td">${d}</div>`;tg.appendChild(e);});
+
+/* ---- MAPPER ---- */
+const THEMES=[
+ ['Bribe or corruption offer',['Integrity','Probity','Deontology','PCA / Lokpal'],
+  'Refuse firmly and document. Frame integrity as non-negotiable (Kant: never a means to private gain), invoke the Prevention of Corruption Act, and add a systemic fix — e-governance/DBT to cut discretion. Show courage without grandstanding.'],
+ ['Political / senior pressure',['Non-partisanship','Objectivity','Rule of law','Courage'],
+  'Serve the government of the day, not a party. Put objections in writing, follow due process, escalate if unlawful. Cite civil-service neutrality and the officer\u2019s duty to the Constitution over any individual.'],
+ ['Conflict of interest',['Impartiality','Transparency','Recusal'],
+  'Disclose and recuse. Impartiality and transparency demand you not judge a matter where you have a stake; document the recusal and route the decision to an unconflicted authority.'],
+ ['Scarce relief / who gets it first',['Utilitarianism','Rawls','Compassion'],
+  'Combine the greatest-good logic with a Rawlsian priority for the worst-off; protect the most vulnerable first, use transparent, pre-stated criteria, and avoid ad-hoc favouritism.'],
+ ['Personal vs professional duty',['Integrity','Role morality','EI'],
+  'Separate private affection from public duty; the office\u2019s powers are held in trust, not for personal use. Use emotional intelligence to be humane in manner while firm in decision.'],
+ ['Whistleblowing dilemma',['Courage','Accountability','Whistle Blowers Act'],
+  'Weigh loyalty against the larger public interest; use lawful internal channels first, protect evidence, and invoke whistleblower safeguards. Accountability outranks misplaced institutional loyalty.'],
+ ['Serving the weaker sections',['Compassion','Empathy','Antyodaya','EI'],
+  'Lead with empathy and the Gandhian talisman of the poorest face; design delivery for dignity, not just efficiency. Vivekananda\u2019s service-as-worship and Antyodaya frame the answer.'],
+];
+const tl=document.getElementById('themeList');const md=document.getElementById('mapDetail');
+THEMES.forEach((t,i)=>{
+  const b=document.createElement('button');b.className='theme-btn'+(i===0?' on':'');b.textContent=t[0];
+  b.onclick=()=>{[...tl.children].forEach(c=>c.classList.remove('on'));b.classList.add('on');renderMap(i);};
+  tl.appendChild(b);
+});
+function renderMap(i){
+  const [name,tags,howto]=THEMES[i];
+  md.innerHTML=`<h3>${name}</h3><div class="tags">${tags.map(x=>`<span class="vtag">${x}</span>`).join('')}</div><div class="howto">${howto}</div>`;
+}
+renderMap(0);
+
+/* ---- RUBRIC ---- */
+const RUBRIC=[
+ ['Concept & structure',[
+   ['Core term/dilemma is defined or named crisply up front',12],
+   ['Answer is structured (steps, labels or sub-headings), not a single block',10],
+   ['Keywords and a clear stance are visible at a glance',6],
+ ]],
+ ['Substance',[
+   ['A concrete example, leader, scheme or tool is used',12],
+   ['A relevant thinker or ethical lens is applied (not name-dropped)',10],
+   ['Multiple stakeholders / dimensions are covered',10],
+   ['The opposing value is fairly weighed before deciding',8],
+ ]],
+ ['Decision & realism (cases)',[
+   ['A definite course of action is chosen, not dodged',12],
+   ['The decision is lawful and feasible, not merely idealistic',8],
+   ['Answer is written from inside the officer\u2019s role',4],
+   ['A systemic fix prevents recurrence',4],
+ ]],
+ ['Craft',[
+   ['Practical and humane in tone, never preachy',2],
+   ['Concise — no generic virtue-word padding',2],
+ ]],
+];
+const rb=document.getElementById('rubric');let rstate={},idx=0;
+RUBRIC.forEach(([grp,items])=>{
+  const g=document.createElement('div');g.className='rgroup';g.innerHTML=`<div class="rgroup-h">${grp}</div>`;
+  items.forEach(([txt,pts])=>{
+    const id='r'+(idx++);rstate[id]={pts,on:false};
+    const it=document.createElement('div');it.className='ritem';
+    it.innerHTML=`<div class="box"></div><div class="rt">${txt}<span>+${pts} points</span></div>`;
+    it.onclick=()=>{rstate[id].on=!rstate[id].on;it.classList.toggle('on',rstate[id].on);tally();};
+    g.appendChild(it);
+  });
+  rb.appendChild(g);
+});
+const rscore=document.getElementById('rscore'),rband=document.getElementById('rband');
+function tally(){
+  let s=0;Object.values(rstate).forEach(v=>{if(v.on)s+=v.pts;});
+  rscore.textContent=s;
+  let band='— keep reviewing';
+  if(s>=90)band='Examiner-grade. Polish and repeat.';
+  else if(s>=75)band='Strong answer. Close the gaps.';
+  else if(s>=55)band='Competent. Work the unticked boxes.';
+  else if(s>0)band='Foundations need work. Re-structure.';
+  rband.textContent=band;
+}
+document.getElementById('rreset').onclick=()=>{Object.keys(rstate).forEach(k=>rstate[k].on=false);rb.querySelectorAll('.ritem').forEach(i=>i.classList.remove('on'));tally();};
+tally();
+</script>
+</body>
+</html>

@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NFHS-6 (2023–24) — UPSC Study Resource</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;0,800;1,400&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f4f1e9;--paper-2:#ece7da;--ink:#16302c;--ink-soft:#3f5b54;
+    --teal:#0c7d6f;--teal-deep:#075b51;--coral:#cc4f33;--amber:#c8881f;--slate:#65786f;
+    --line:#cdc6b3;--verified-bg:#e3efe8;--note-bg:#f6e3dc;--omit-bg:#efe6cf;
+    --shadow:0 1px 0 var(--line), 0 14px 30px -22px rgba(7,55,42,.5);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",system-ui,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 22px}
+
+  header.hero{
+    border-bottom:2px solid var(--ink);
+    background:repeating-linear-gradient(90deg,transparent,transparent 38px,rgba(22,48,44,.04) 38px,rgba(22,48,44,.04) 39px),var(--paper);
+    padding:46px 0 30px;
+  }
+  .eyebrow{font-family:"IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.22em;font-size:11px;color:var(--teal-deep);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .eyebrow b{color:var(--coral)}
+  h1{font-family:"Spectral",Georgia,serif;font-weight:800;font-size:clamp(34px,6vw,60px);line-height:1.02;letter-spacing:-.015em;margin:14px 0 6px}
+  h1 em{font-style:italic;color:var(--teal-deep)}
+  .sub{font-size:17px;color:var(--ink-soft);max-width:62ch}
+  .stamp-row{display:flex;gap:14px;flex-wrap:wrap;margin-top:26px}
+  .stamp{background:var(--paper);border:1.5px solid var(--ink);padding:12px 16px;min-width:128px;box-shadow:var(--shadow)}
+  .stamp .n{font-family:"IBM Plex Mono",monospace;font-size:30px;font-weight:600;line-height:1}
+  .stamp .l{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--slate);margin-top:6px}
+  .stamp.ok .n{color:var(--teal)}
+  .stamp.omit .n{color:var(--amber)}
+
+  nav.tabs{position:sticky;top:0;z-index:30;background:var(--paper);border-bottom:1px solid var(--line);box-shadow:0 6px 14px -14px rgba(0,0,0,.4)}
+  .tabs-inner{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+  .tabs-inner::-webkit-scrollbar{display:none}
+  .tab{appearance:none;background:none;border:none;cursor:pointer;white-space:nowrap;font-family:"IBM Plex Mono",monospace;font-size:12.5px;letter-spacing:.02em;padding:15px 16px;color:var(--ink-soft);border-bottom:2.5px solid transparent;transition:color .15s,border-color .15s}
+  .tab .ix{color:var(--slate);margin-right:7px}
+  .tab:hover{color:var(--ink)}
+  .tab[aria-selected="true"]{color:var(--ink);border-color:var(--coral)}
+  .tab[aria-selected="true"] .ix{color:var(--coral)}
+
+  main{padding:38px 0 90px}
+  section[role=tabpanel]{display:none;animation:fade .4s ease}
+  section[role=tabpanel].active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .lead{font-family:"Spectral",serif;font-size:21px;line-height:1.5;color:var(--ink);max-width:64ch;margin-bottom:8px}
+  .panel-h{font-family:"Spectral",serif;font-weight:800;font-size:clamp(24px,4vw,34px);letter-spacing:-.01em;margin:6px 0 4px}
+  .kicker{font-family:"IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.18em;font-size:11px;color:var(--teal-deep)}
+  p.body{color:var(--ink-soft);max-width:70ch;margin:10px 0}
+  .divider{height:1px;background:var(--line);margin:30px 0}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:22px}
+  @media(max-width:720px){.grid2{grid-template-columns:1fr}}
+  .vcard{border:1.5px solid var(--ink);background:var(--paper);box-shadow:var(--shadow)}
+  .vcard .top{padding:13px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .vcard .top h3{font-size:15px;letter-spacing:.01em}
+  .vcard .body-c{padding:14px 16px;font-size:14.5px;color:var(--ink-soft)}
+  .chip{font-family:"IBM Plex Mono",monospace;font-size:11px;padding:3px 8px;border:1px solid;border-radius:2px;text-transform:uppercase;letter-spacing:.06em}
+  .chip.ok{color:var(--teal-deep);background:var(--verified-bg);border-color:var(--teal)}
+  .chip.omit{color:var(--amber);background:var(--omit-bg);border-color:var(--amber)}
+
+  /* precision notes */
+  .note-item{border-left:3px solid var(--coral);background:var(--note-bg);padding:14px 16px;margin:14px 0}
+  .note-item h4{font-size:15.5px;margin-bottom:6px}
+  .note-item .pick{font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:600;color:var(--teal-deep);margin:6px 0}
+  .note-item p{font-size:14px;color:var(--ink-soft)}
+
+  /* dashboard */
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 24px}
+  .fbtn{appearance:none;cursor:pointer;font-family:"IBM Plex Mono",monospace;font-size:12px;padding:7px 13px;border:1.3px solid var(--line);background:var(--paper);color:var(--ink-soft);transition:.15s}
+  .fbtn:hover{border-color:var(--ink-soft)}
+  .fbtn.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+  .bar-row{padding:13px 0;border-bottom:1px solid var(--line)}
+  .bar-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:8px}
+  .bar-name{font-size:14.5px;font-weight:500;max-width:62%}
+  .bar-name .note{display:block;font-size:11.5px;color:var(--slate);font-weight:400}
+  .delta{font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:600;white-space:nowrap}
+  .delta.up{color:var(--teal)}.delta.down{color:var(--coral)}.delta.flat{color:var(--slate)}
+  .track{position:relative;height:30px;background:var(--paper-2);border:1px solid var(--line);overflow:hidden}
+  .fill5,.fill6{position:absolute;left:0;height:14px;display:flex;align-items:center;justify-content:flex-end;transition:width 1.1s cubic-bezier(.22,1,.36,1);width:0}
+  .fill5{top:1px;background:repeating-linear-gradient(45deg,var(--slate),var(--slate) 5px,#7c8d84 5px,#7c8d84 10px)}
+  .fill6{top:15px;background:var(--teal)}
+  .fill6.concern{background:var(--coral)}
+  .fill .v{font-family:"IBM Plex Mono",monospace;font-size:10.5px;color:#fff;padding-right:5px;font-weight:600}
+  .legend{display:flex;gap:18px;font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--slate);margin:4px 0 6px;flex-wrap:wrap}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .sw{width:18px;height:10px;display:inline-block}
+  .sw5{background:repeating-linear-gradient(45deg,var(--slate),var(--slate) 4px,#7c8d84 4px,#7c8d84 8px)}
+  .sw6{background:var(--teal)}.sw6c{background:var(--coral)}
+
+  /* omissions */
+  .redact-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:10px;margin-top:20px}
+  .redact{border:1px solid var(--line);background:var(--omit-bg);padding:12px;position:relative;overflow:hidden}
+  .redact .lab{font-size:13px;font-weight:600}
+  .redact .why{font-size:11.5px;color:var(--slate);margin-top:5px}
+  .redact .bar-cover{margin-top:9px;height:11px;background:var(--ink);width:100%}
+  .redact:hover .bar-cover{background:var(--coral);transition:.2s}
+  .twocol{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:20px}
+  @media(max-width:720px){.twocol{grid-template-columns:1fr}}
+  .box{border:1.5px solid var(--ink);padding:16px;background:var(--paper);box-shadow:var(--shadow)}
+  .box h4{font-family:"Spectral",serif;font-size:18px;margin-bottom:8px}
+  .box ul{margin:8px 0 0 18px;font-size:14px;color:var(--ink-soft)}
+  .box ul li{margin:6px 0}
+  .pov{display:flex;gap:10px;margin-top:10px;font-size:13.5px}
+  .pov .who{font-family:"IBM Plex Mono",monospace;font-size:11px;text-transform:uppercase;letter-spacing:.05em;min-width:64px;color:var(--slate);padding-top:2px}
+
+  /* toolkit */
+  .angle{border:1.5px solid var(--ink);background:var(--paper);margin:14px 0;box-shadow:var(--shadow)}
+  .angle summary{cursor:pointer;list-style:none;padding:15px 18px;display:flex;gap:14px;align-items:center;font-family:"Spectral",serif;font-size:18px;font-weight:600}
+  .angle summary::-webkit-details-marker{display:none}
+  .angle summary .num{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--coral);font-weight:600}
+  .angle summary .plus{margin-left:auto;font-family:"IBM Plex Mono",monospace;color:var(--slate);transition:.2s}
+  .angle[open] summary .plus{transform:rotate(45deg);color:var(--coral)}
+  .angle .inner{padding:0 18px 18px 18px;font-size:14.5px;color:var(--ink-soft)}
+  .angle .inner .tline{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--teal-deep);text-transform:uppercase;letter-spacing:.08em;margin:12px 0 4px}
+  .memlist{columns:2;column-gap:26px;margin-top:8px}
+  @media(max-width:600px){.memlist{columns:1}}
+  .memlist .m{break-inside:avoid;display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px dotted var(--line);font-size:13.5px}
+  .memlist .m b{font-family:"IBM Plex Mono",monospace;color:var(--teal-deep);white-space:nowrap}
+
+  /* quiz */
+  .quiz-card{border:1.5px solid var(--ink);background:var(--paper);box-shadow:var(--shadow);padding:22px;max-width:680px}
+  .q-progress{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--slate);display:flex;justify-content:space-between;margin-bottom:10px}
+  .q-text{font-family:"Spectral",serif;font-size:20px;line-height:1.4;margin-bottom:16px}
+  .opt{display:block;width:100%;text-align:left;cursor:pointer;background:var(--paper);border:1.3px solid var(--line);padding:12px 14px;margin:8px 0;font-size:14.5px;font-family:inherit;color:var(--ink);transition:.12s}
+  .opt:hover:not(:disabled){border-color:var(--ink-soft);background:var(--paper-2)}
+  .opt:disabled{cursor:default}
+  .opt.correct{border-color:var(--teal);background:var(--verified-bg)}
+  .opt.wrong{border-color:var(--coral);background:var(--note-bg)}
+  .q-explain{margin-top:14px;padding:12px 14px;border-left:3px solid var(--teal);background:var(--verified-bg);font-size:14px;color:var(--ink-soft);display:none}
+  .q-explain.show{display:block}
+  .q-nav{margin-top:18px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .btn{appearance:none;cursor:pointer;font-family:"IBM Plex Mono",monospace;font-size:13px;padding:10px 18px;border:1.5px solid var(--ink);background:var(--ink);color:var(--paper);transition:.15s}
+  .btn:hover{background:var(--teal-deep);border-color:var(--teal-deep)}
+  .btn[disabled]{opacity:.35;cursor:default}
+  .btn.ghost{background:none;color:var(--ink)}
+  .q-score{text-align:center;padding:10px 0}
+  .q-score .big{font-family:"IBM Plex Mono",monospace;font-size:48px;font-weight:600;color:var(--teal)}
+
+  footer{border-top:2px solid var(--ink);padding:26px 0;font-size:12.5px;color:var(--slate)}
+  footer .mono{color:var(--ink-soft)}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.fill5,.fill6{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow"><span>National Family Health Survey · Round 6 · 2023–24</span> <span>•</span> <b>Released 29 May 2026</b></div>
+    <h1>A field guide to <em>the numbers</em><br>for the answer hall.</h1>
+    <p class="sub">India's largest health survey, mapped for the exam. Verified maternal–child figures, the data-omission debate, ready-made Mains framings, and a self-test — every figure cross-checked against the MoHFW / PIB release.</p>
+    <div class="stamp-row">
+      <div class="stamp ok"><div class="n">90.6%</div><div class="l">Institutional delivery</div></div>
+      <div class="stamp ok"><div class="n">29.3%</div><div class="l">Child stunting<br><span style="font-size:9px">(was 35.5%)</span></div></div>
+      <div class="stamp ok"><div class="n">60.2%</div><div class="l">Health insurance<br><span style="font-size:9px">(was 41.0%)</span></div></div>
+      <div class="stamp omit"><div class="n">43</div><div class="l">Indicators dropped</div></div>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <div class="wrap"><div class="tabs-inner" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-p="overview"><span class="ix">01</span>Overview</button>
+    <button class="tab" role="tab" aria-selected="false" data-p="data"><span class="ix">02</span>Key Data</button>
+    <button class="tab" role="tab" aria-selected="false" data-p="omit"><span class="ix">03</span>The Omissions</button>
+    <button class="tab" role="tab" aria-selected="false" data-p="toolkit"><span class="ix">04</span>Mains Toolkit</button>
+    <button class="tab" role="tab" aria-selected="false" data-p="notes"><span class="ix">05</span>Precision Notes</button>
+    <button class="tab" role="tab" aria-selected="false" data-p="quiz"><span class="ix">06</span>Self-Test</button>
+  </div></div>
+</nav>
+
+<main><div class="wrap">
+
+<!-- 01 OVERVIEW -->
+<section role="tabpanel" id="overview" class="active">
+  <div class="kicker">The survey at a glance</div>
+  <h2 class="panel-h">What NFHS-6 is</h2>
+  <p class="lead">Released by the Ministry of Health &amp; Family Welfare (IIPS, Mumbai as nodal agency), NFHS-6 covered ~6.79 lakh households across 715 districts in every State and UT except Manipur. It is the first round funded entirely by the Government of India and the first since the pandemic.</p>
+
+  <div class="grid2">
+    <div class="vcard">
+      <div class="top"><h3>Design &amp; method</h3><span class="chip ok">Scope</span></div>
+      <div class="body-c">Multi-stage stratified sample with district-level estimates and urban/rural strata. Data collected via CAPI with biomarker (CAB) collection, including HIV testing. Built to inform evidence-based planning down to the district.</div>
+    </div>
+    <div class="vcard">
+      <div class="top"><h3>New this round</h3><span class="chip ok">13 added</span></div>
+      <div class="body-c">Fresh modules on Direct Bank Transfers, Self-Help Groups, digital and financial inclusion, and expanded clinical tests. These reflect a shift toward welfare-delivery and lifestyle-disease tracking.</div>
+    </div>
+    <div class="vcard">
+      <div class="top"><h3>The headline debate</h3><span class="chip omit">Critique</span></div>
+      <div class="body-c">The fact sheet shrank from 131 indicators to 101 — 43 dropped, including anaemia, child mortality, sex ratio, sanitation and clean fuel. This data-transparency question is the single most exam-worthy point in the survey.</div>
+    </div>
+    <div class="vcard">
+      <div class="top"><h3>How to use this</h3><span class="chip ok">Method</span></div>
+      <div class="body-c">Lock the verified pairs on the Key Data tab, deploy the framings in the Mains Toolkit, keep the Precision Notes handy for the figures examiners trip you on, then pressure-test recall with the Self-Test.</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="kicker">The arc in one line</div>
+  <p class="body" style="font-size:16px;max-width:74ch">NFHS-6 shows steady gains in maternal–child health, immunisation, nutrition, financial protection and women's digital inclusion — while flagging a new generation of challenges: rising non-communicable disease, an over-medicalisation of childbirth, and the data gaps created by the dropped indicators. The full national report is still awaited, so treat disaggregated and state-level figures as provisional.</p>
+</section>
+
+<!-- 02 KEY DATA -->
+<section role="tabpanel" id="data">
+  <div class="kicker">NFHS-5 (2019–21) → NFHS-6 (2023–24)</div>
+  <h2 class="panel-h">The data ledger</h2>
+  <p class="body">Striped bar = NFHS-5. Solid bar = NFHS-6 (teal = improving trend, coral = worsening). Filter by theme; bars animate on first view.</p>
+  <div class="filters" id="filters"></div>
+  <div class="legend">
+    <span><i class="sw sw5"></i> NFHS-5</span>
+    <span><i class="sw sw6"></i> NFHS-6 (gain)</span>
+    <span><i class="sw sw6c"></i> NFHS-6 (concern)</span>
+  </div>
+  <div id="bars"></div>
+</section>
+
+<!-- 03 OMISSIONS -->
+<section role="tabpanel" id="omit">
+  <div class="kicker">131 indicators in NFHS-5 → 101 in NFHS-6</div>
+  <h2 class="panel-h">What went missing — and why it's the story</h2>
+  <p class="body">43 indicators were dropped from the fact sheet and 13 added. The omissions cut across health, vital statistics and living conditions. Hover a card to see it "redacted."</p>
+
+  <div class="redact-grid" id="redactGrid"></div>
+
+  <div class="twocol">
+    <div class="box">
+      <h4>The anaemia debate</h4>
+      <p class="body" style="margin-top:0">The most contested drop. NFHS-5 found roughly two-thirds of women of reproductive age anaemic. NFHS-6 reports no anaemia prevalence at all.</p>
+      <div class="pov"><span class="who">Govt</span><span>Haemoglobin testing was suspended because the finger-prick (capillary) method overstates anaemia. Estimates will come from ICMR's Diet &amp; Biomarkers Survey (DABS) using gold-standard venous blood.</span></div>
+      <div class="pov"><span class="who">Critics</span><span>Removing the metric breaks the NFHS-5 trend line and weakens accountability on Anaemia Mukt Bharat. A <i>Lancet</i> editorial and public-health activists called it a transparency setback.</span></div>
+    </div>
+    <div class="box">
+      <h4>Where the data "went" instead</h4>
+      <ul>
+        <li><b>Mortality (IMR, U5MR, NMR):</b> deferred to the Sample Registration System. NFHS-5 had IMR 35, U5MR 42, NMR 24.9 per 1,000.</li>
+        <li><b>Sex ratio at birth:</b> dropped (NFHS-5: 929 females / 1,000 males).</li>
+        <li><b>Sanitation &amp; clean cooking fuel:</b> routed to Swachh Survekshan Grameen and MoSPI surveys.</li>
+        <li><b>Disability:</b> deferred to SRS / Census.</li>
+        <li><b>FP quality, HIV knowledge, cancer screening:</b> promised in the full national report — not yet released.</li>
+      </ul>
+    </div>
+  </div>
+  <p class="body" style="font-size:13.5px;margin-top:16px"><b>The balanced line for an answer:</b> routing indicators to "the most authoritative source" can raise single-survey quality — but it fragments a once-comprehensive, equity-disaggregated dataset across systems that no longer allow the same household-level analysis, just as some flagship programmes face scrutiny.</p>
+</section>
+
+<!-- 04 TOOLKIT -->
+<section role="tabpanel" id="toolkit">
+  <div class="kicker">For GS-II (Health/Governance) &amp; GS-III (Economy/Society)</div>
+  <h2 class="panel-h">Using NFHS-6 in Mains answers</h2>
+  <p class="body">Five framings that turn NFHS-6 from a data dump into an argument — each with the core point and exactly where to deploy it. Tap to open.</p>
+
+  <details class="angle"><summary><span class="num">A1</span> The dual burden of malnutrition <span class="plus">+</span></summary>
+    <div class="inner">
+      <div class="tline">The argument</div>
+      India is fighting undernutrition and overnutrition at once. Child stunting fell to 29.3% and severe wasting to 5.2%, yet ~1 in 3 children remains stunted and underweight barely moved (32.1%→31.8%). Adult obesity surged — women 24%→30.7% (urban 42.8%), men 22.9%→27.3% — alongside rising diabetes.
+      <div class="tline">Deploy it for</div>
+      Nutrition policy, NCD burden, POSHAN Abhiyaan evaluation, "double burden" questions. Pair with rising blood sugar (women 13.5%→17.8%, men 15.6%→20.9%).
+    </div>
+  </details>
+
+  <details class="angle"><summary><span class="num">A2</span> Data transparency &amp; the omissions <span class="plus">+</span></summary>
+    <div class="inner">
+      <div class="tline">The argument</div>
+      A national survey's value lies in comparable, disaggregated, household-level data over time. Dropping 43 indicators (131→101) — anaemia, mortality, sex ratio, sanitation — fragments this across SRS, DABS and Census, weakening equity analysis and trend continuity even if single-source quality improves.
+      <div class="tline">Deploy it for</div>
+      Governance, evidence-based policymaking, role of statistical systems, accountability. The strongest, most distinctive hook — lead with it.
+    </div>
+  </details>
+
+  <details class="angle"><summary><span class="num">A3</span> Over-medicalisation: the C-section spike <span class="plus">+</span></summary>
+    <div class="inner">
+      <div class="tline">The argument</div>
+      C-sections rose 21.5%→27.2% nationally, hitting 54.1% in private facilities and ~40% in urban areas — far above WHO's 10–15% optimal band. Safe-motherhood gains coexist with unnecessary surgical risk: a regulation / market-failure story.
+      <div class="tline">Deploy it for</div>
+      Health-system regulation, public vs private care, maternal health quality — not just access.
+    </div>
+  </details>
+
+  <details class="angle"><summary><span class="num">A4</span> Women's empowerment: the digital &amp; financial leap <span class="plus">+</span></summary>
+    <div class="inner">
+      <div class="tline">The argument</div>
+      Women's internet use nearly doubled (33.3%→64.3%), own-and-use bank accounts reached 89.0%, mobile ownership 53.9%→63.6%. New DBT and SHG modules track welfare delivery. Empowerment, however, is uneven — decision-making autonomy and literacy were not refreshed in the fact sheet.
+      <div class="tline">Deploy it for</div>
+      GS-I society, gender, digital divide, financial inclusion (PMJDY), DBT-based welfare.
+    </div>
+  </details>
+
+  <details class="angle"><summary><span class="num">A5</span> Equity: the persistent gradient <span class="plus">+</span></summary>
+    <div class="inner">
+      <div class="tline">The argument</div>
+      National averages hide gaps. Southern/western states (Kerala, Tamil Nadu, Goa) approach universal institutional delivery and single-digit stunting; high-burden states (Bihar, MP, Jharkhand) lag. Urban out-performs rural; caste, wealth and region still structure outcomes.
+      <div class="tline">Deploy it for</div>
+      Cooperative federalism, targeted vs universal schemes, regional disparity, SDG localisation. <i>Caveat:</i> NFHS-6 state cross-tabs aren't in the fact sheet yet — cite directionally.
+    </div>
+  </details>
+
+  <div class="divider"></div>
+  <div class="kicker">Flash recall</div>
+  <h3 class="panel-h" style="font-size:22px;margin-top:6px">Numbers worth owning</h3>
+  <div class="memlist" id="memlist"></div>
+</section>
+
+<!-- 05 PRECISION NOTES -->
+<section role="tabpanel" id="notes">
+  <div class="kicker">Get these exactly right</div>
+  <h2 class="panel-h">Precision notes</h2>
+  <p class="body">A handful of NFHS-6 figures are routinely misquoted. Lock the exact wording so your answer scripts stay airtight.</p>
+
+  <div class="note-item">
+    <h4>1 · Total Fertility Rate vs the replacement level</h4>
+    <div class="pick">TFR = 2.0 — which is below the replacement level of 2.1</div>
+    <p>Replacement-level fertility is 2.1, not 2.0, so India sits just beneath it — a population-stabilisation point examiners reward. The newer SRS 2024 data puts national TFR lower still, around 1.9.</p>
+  </div>
+
+  <div class="note-item">
+    <h4>2 · Breastfeeding under 6 months</h4>
+    <div class="pick">~95.6% of infants under 6 months were breastfed (official framing)</div>
+    <p>The MoHFW release frames this indicator positively. If you need a feeding-gap angle instead, use a safer real figure — only about 15% of children aged 6–23 months get a minimum acceptable diet — rather than a breastfeeding "decline."</p>
+  </div>
+
+  <div class="note-item">
+    <h4>3 · High blood sugar — national vs urban</h4>
+    <div class="pick">Women 17.8% national (21.9% urban) · Men 20.9% national (23.9% urban)</div>
+    <p>The urban sub-figures run several points above the national rate. Quote the national number unless you explicitly mean urban, and keep the two apart.</p>
+  </div>
+
+  <div class="note-item">
+    <h4>4 · Contraceptive prevalence labelling</h4>
+    <div class="pick">69.1% is the total CPR (up from 66.7%)</div>
+    <p>The 66.7→69.1 jump is overall contraceptive prevalence, not the modern-method rate. Reliance on modern methods reportedly slipped (~56.4%→52.7%) as traditional methods rose — itself a useful family-planning critique point.</p>
+  </div>
+
+  <div class="divider"></div>
+  <p class="body" style="font-size:13.5px"><b>One standing caveat:</b> the detailed national report is still awaited, so most state-level cross-tabs and several disaggregated figures aren't in the fact sheet. Cite them directionally and say so in answers.</p>
+</section>
+
+<!-- 06 QUIZ -->
+<section role="tabpanel" id="quiz">
+  <div class="kicker">Recall under pressure</div>
+  <h2 class="panel-h">Self-test</h2>
+  <p class="body">Eight questions on the verified figures and the critique. Pick an answer to see why.</p>
+  <div class="quiz-card" id="quizCard"></div>
+</section>
+
+</div></main>
+
+<footer><div class="wrap">
+  <div class="mono">Sources: MoHFW / PIB press release (29 May 2026, PRID 2266600) · Business Standard, Newslaundry &amp; The South First on the 43 omitted indicators · Daily Excelsior / Omnicuris on the anaemia–DABS rationale · Drishti IAS, Vajiram &amp; Ravi, NextIAS fact-sheet summaries. All figures cross-checked across ≥2 sources.</div>
+  <p style="margin-top:10px">The full NFHS-6 national report is still awaited — treat any disaggregated/state figure as provisional and say so in answers.</p>
+</div></footer>
+
+<script>
+const tabs=[...document.querySelectorAll('.tab')];
+const panels=[...document.querySelectorAll('section[role=tabpanel]')];
+let barsAnimated=false;
+tabs.forEach(t=>t.addEventListener('click',()=>{
+  tabs.forEach(x=>x.setAttribute('aria-selected',x===t));
+  const id=t.dataset.p;
+  panels.forEach(p=>p.classList.toggle('active',p.id===id));
+  window.scrollTo({top:0,behavior:'smooth'});
+  if(id==='data') requestAnimationFrame(()=>setTimeout(animateBars,80));
+}));
+
+const DATA=[
+ ['Maternal','Antenatal care (any)','',92.6,95.9,false,false],
+ ['Maternal','ANC in 1st trimester','',70.0,76.2,false,false],
+ ['Maternal','ANC — 4+ visits','',58.5,65.2,false,false],
+ ['Maternal','Institutional delivery','',88.6,90.6,false,false],
+ ['Maternal','Skilled birth attendance','',89.4,91.3,false,false],
+ ['Maternal','Newborn PNC within 2 days','',79.1,85.3,false,false],
+ ['Maternal','Mothers IFA 180+ days','',26.0,37.8,false,false],
+ ['Maternal','C-section (overall)','Above WHO 10–15% band',21.5,27.2,true,false],
+ ['Maternal','C-section in private facilities','',47.4,54.1,true,false],
+ ['Child','Full immunisation (12–23m)','',83.8,87.1,false,false],
+ ['Child','Rotavirus 3-dose','',36.4,85.4,false,false],
+ ['Child','Measles 2nd dose','',58.6,71.8,false,false],
+ ['Child','ARI symptoms','Lower is better',2.8,1.9,false,true],
+ ['Child','Severe diarrhoea','Lower is better',1.3,0.5,false,true],
+ ['Child','Stunting (under-5)','Lower is better',35.5,29.3,false,true],
+ ['Child','Severe wasting','Lower is better',7.7,5.2,false,true],
+ ['Child','Underweight (under-5)','Lower is better — barely moved',32.1,31.8,false,true],
+ ['Child','Early breastfeeding (≤1 hr)','',41.8,50.1,false,false],
+ ['Child','Complementary feeding (6–8m)','',45.9,59.5,false,false],
+ ['Population','Total Fertility Rate','Below replacement (2.1)',2.0,2.0,false,false],
+ ['Population','Contraceptive prevalence (total)','',66.7,69.1,false,false],
+ ['Population','Population aged 60+','Ageing trend',11.8,12.9,true,false],
+ ['Women','Women ever used internet','',33.3,64.3,false,false],
+ ['Women','Women own & use bank account','',78.6,89.0,false,false],
+ ['Women','Women own a mobile phone','',53.9,63.6,false,false],
+ ['Women','Menstrual hygiene (15–24)','',77.6,79.2,false,false],
+ ['Access','Household health insurance','',41.0,60.2,false,false],
+ ['NCD','Women overweight/obese','Rising — urban 42.8%',24.0,30.7,true,false],
+ ['NCD','Men overweight/obese','Rising — urban 36.3%',22.9,27.3,true,false],
+ ['NCD','Women high blood sugar','National (urban 21.9%)',13.5,17.8,true,false],
+ ['NCD','Men high blood sugar','National (urban 23.9%)',15.6,20.9,true,false],
+];
+const THEMES=['All','Maternal','Child','Population','Women','Access','NCD'];
+let activeTheme='All';
+const filt=document.getElementById('filters');
+THEMES.forEach(th=>{
+  const b=document.createElement('button');
+  b.className='fbtn'+(th==='All'?' on':'');b.textContent=th;
+  b.onclick=()=>{activeTheme=th;[...filt.children].forEach(c=>c.classList.toggle('on',c===b));renderBars();};
+  filt.appendChild(b);
+});
+const barsEl=document.getElementById('bars');
+function renderBars(){
+  const rows=DATA.filter(r=>activeTheme==='All'||r[0]===activeTheme);
+  barsEl.innerHTML='';
+  rows.forEach(r=>{
+    const [theme,name,note,v5,v6,concern,downGood]=r;
+    const isTFR=name==='Total Fertility Rate';
+    const scale=isTFR?(x=>x/2.1*100):(x=>x);
+    let diff=+(v6-v5).toFixed(1);
+    let dcls='flat',dtxt='no change';
+    if(diff!==0){
+      const improved = downGood ? diff<0 : diff>0;
+      dcls = improved ? 'up' : 'down';
+      dtxt=(diff>0?'+':'')+diff+(isTFR?'':' pp');
+    }
+    const row=document.createElement('div');row.className='bar-row';
+    row.innerHTML=`
+      <div class="bar-head">
+        <div class="bar-name">${name}${note?`<span class="note">${note}</span>`:''}</div>
+        <div class="delta ${dcls}">${isTFR?(v5+' → '+v6):(v5+'% → '+v6+'%')} <span style="opacity:.7">(${dtxt})</span></div>
+      </div>
+      <div class="track">
+        <div class="fill5" data-w="${scale(v5)}"><span class="v">${isTFR?v5:v5+'%'}</span></div>
+        <div class="fill6 ${concern?'concern':''}" data-w="${scale(v6)}"><span class="v">${isTFR?v6:v6+'%'}</span></div>
+      </div>`;
+    barsEl.appendChild(row);
+  });
+  barsAnimated=false;
+  if(document.getElementById('data').classList.contains('active')) requestAnimationFrame(()=>setTimeout(animateBars,60));
+}
+function animateBars(){
+  if(barsAnimated)return;barsAnimated=true;
+  barsEl.querySelectorAll('.fill5,.fill6').forEach(f=>{f.style.width=Math.min(100,+f.dataset.w)+'%';});
+}
+renderBars();
+
+const OMIT=[
+ ['Anaemia (all groups)','→ ICMR DABS (venous blood)'],['Infant mortality (IMR)','→ SRS'],
+ ['Under-5 mortality','→ SRS'],['Sex ratio at birth','dropped (was 929)'],
+ ['Sanitation','→ Swachh Survekshan'],['Clean cooking fuel','→ MoSPI surveys'],
+ ['Disability','→ SRS / Census'],['HIV/AIDS knowledge','full report (awaited)'],
+ ['Cancer screening','dropped'],['FP quality / counselling','full report (awaited)'],
+ ['Birth & death registration','→ CRS'],['Adult literacy','dropped'],
+];
+const rg=document.getElementById('redactGrid');
+OMIT.forEach(o=>{
+  const d=document.createElement('div');d.className='redact';
+  d.innerHTML=`<div class="lab">${o[0]}</div><div class="why">${o[1]}</div><div class="bar-cover"></div>`;
+  rg.appendChild(d);
+});
+
+const MEM=[
+ ['Households / districts','6.79 lakh / 715'],['Indicators (5 → 6)','131 → 101'],
+ ['Institutional delivery','90.6%'],['Skilled birth attendance','91.3%'],
+ ['ANC 4+ visits','65.2%'],['Full immunisation','87.1%'],
+ ['Stunting (under-5)','29.3%'],['Severe wasting','5.2%'],
+ ['Underweight','31.8%'],['TFR (below 2.1)','2.0'],
+ ['Total CPR','69.1%'],['Health insurance','60.2%'],
+ ['Women internet use','64.3%'],['Women bank a/c','89.0%'],
+ ['C-section overall','27.2%'],['Women obese (urban)','30.7% (42.8%)'],
+ ['60+ population','12.9%'],['Indicators dropped','43'],
+];
+const ml=document.getElementById('memlist');
+MEM.forEach(m=>{const d=document.createElement('div');d.className='m';d.innerHTML=`<span>${m[0]}</span><b>${m[1]}</b>`;ml.appendChild(d);});
+
+const QUIZ=[
+ {q:'India\u2019s TFR in NFHS-6 is 2.0. How should this be described?',
+  o:['At replacement level','Below replacement level (2.1)','Above replacement level','Replacement level is 2.0'],
+  a:1,e:'Replacement-level fertility is 2.1. At 2.0, India is just below it \u2014 and SRS 2024 puts it lower still (~1.9).'},
+ {q:'How many indicators were dropped from the NFHS-6 fact sheet?',
+  o:['13','24','43','60'],
+  a:2,e:'43 indicators were omitted and 13 added; the fact sheet shrank from 131 (NFHS-5) to 101. This data-transparency debate is the survey\u2019s strongest critique point.'},
+ {q:'Why does NFHS-6 report no anaemia prevalence?',
+  o:['Anaemia was eliminated','Capillary blood testing was dropped; estimates move to ICMR\u2019s venous-blood DABS','It was never measured before','The data is classified'],
+  a:1,e:'The govt cites concerns that finger-prick (capillary) sampling overstates anaemia, deferring estimates to ICMR\u2019s Diet & Biomarkers Survey using venous blood. Critics say it breaks the trend line.'},
+ {q:'Institutional deliveries moved from 88.6% to:',
+  o:['85.3%','90.6%','95.9%','91.3%'],
+  a:1,e:'90.6%. (85.3% is newborn PNC within 2 days, 95.9% is any ANC, 91.3% is skilled birth attendance \u2014 anchor them apart.)'},
+ {q:'Which child indicator barely improved, signalling persistent undernutrition?',
+  o:['Stunting','Severe wasting','Underweight','Full immunisation'],
+  a:2,e:'Underweight moved only 32.1%\u219231.8%, even as stunting fell 6.2pp and severe wasting 2.5pp \u2014 the core of the "progress but persistent burden" framing.'},
+ {q:'The C-section rate in private facilities reached:',
+  o:['27.2%','16.9%','40.0%','54.1%'],
+  a:3,e:'54.1% in private facilities (overall 27.2%, urban ~40%, public 16.9%) \u2014 all far above WHO\u2019s 10\u201315% optimal band.'},
+ {q:'How does NFHS-6 report breastfeeding among infants under 6 months?',
+  o:['It declined sharply','~95.6% of under-6m infants were breastfed','It was not measured','Exactly 50.1%'],
+  a:1,e:'The MoHFW release frames it positively at ~95.6%. (50.1% is the separate "early breastfeeding within one hour of birth" indicator.)'},
+ {q:'Household health insurance coverage rose from 41.0% to:',
+  o:['52.7%','60.2%','69.1%','64.3%'],
+  a:1,e:'60.2% \u2014 a ~19pp leap, largely credited to Ayushman Bharat\u2013PMJAY and state schemes. (64.3% is women\u2019s internet use; 69.1% is total CPR.)'},
+];
+let qi=0,score=0,answered=false;
+const qc=document.getElementById('quizCard');
+function renderQ(){
+  if(qi>=QUIZ.length){renderScore();return;}
+  answered=false;
+  const item=QUIZ[qi];
+  qc.innerHTML=`
+    <div class="q-progress"><span>Question ${qi+1} / ${QUIZ.length}</span><span>Score ${score}</span></div>
+    <div class="q-text">${item.q}</div>
+    <div id="opts"></div>
+    <div class="q-explain" id="exp"></div>
+    <div class="q-nav">
+      <button class="btn ghost" id="restart">Restart</button>
+      <button class="btn" id="next" disabled>Next →</button>
+    </div>`;
+  const opts=qc.querySelector('#opts');
+  item.o.forEach((txt,i)=>{
+    const b=document.createElement('button');b.className='opt';b.textContent=txt;
+    b.onclick=()=>choose(i);opts.appendChild(b);
+  });
+  qc.querySelector('#next').onclick=()=>{qi++;renderQ();};
+  qc.querySelector('#restart').onclick=()=>{qi=0;score=0;renderQ();};
+}
+function choose(i){
+  if(answered)return;answered=true;
+  const item=QUIZ[qi];
+  const btns=[...qc.querySelectorAll('.opt')];
+  btns.forEach((b,ix)=>{b.disabled=true;if(ix===item.a)b.classList.add('correct');});
+  if(i===item.a){score++;}else{btns[i].classList.add('wrong');}
+  const exp=qc.querySelector('#exp');exp.textContent=(i===item.a?'Correct. ':'Not quite. ')+item.e;exp.classList.add('show');
+  qc.querySelector('#next').disabled=false;
+  qc.querySelector('#next').textContent=qi+1>=QUIZ.length?'See score →':'Next →';
+  qc.querySelector('.q-progress').children[1].textContent='Score '+score;
+}
+function renderScore(){
+  const pct=Math.round(score/QUIZ.length*100);
+  let msg= pct===100?'Exam-ready on these.':pct>=75?'Solid \u2014 patch the misses.':pct>=50?'Getting there. Re-read the Key Data tab.':'Cycle back through Key Data & Precision Notes.';
+  qc.innerHTML=`<div class="q-score"><div class="big">${score}/${QUIZ.length}</div>
+    <p class="body" style="margin:8px auto 16px">${msg}</p>
+    <button class="btn" id="again">Try again</button></div>`;
+  qc.querySelector('#again').onclick=()=>{qi=0;score=0;renderQ();};
+}
+renderQ();
+</script>
+</body>
+</html>

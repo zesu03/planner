@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sustainable Development Goals — UPSC Study Resource</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;0,800;1,400&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f4f1e9;--paper-2:#ece7da;--ink:#16302c;--ink-soft:#3f5b54;
+    --teal:#0c7d6f;--teal-deep:#075b51;--coral:#cc4f33;--amber:#c8881f;--green:#3f7d4e;--slate:#65786f;
+    --line:#cdc6b3;--verified-bg:#e3efe8;--note-bg:#f6e3dc;--omit-bg:#efe6cf;
+    --shadow:0 1px 0 var(--line), 0 14px 30px -22px rgba(7,55,42,.5);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",system-ui,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-variant-numeric:tabular-nums}
+  .wrap{max-width:1060px;margin:0 auto;padding:0 22px}
+
+  header.hero{border-bottom:2px solid var(--ink);background:repeating-linear-gradient(90deg,transparent,transparent 38px,rgba(22,48,44,.04) 38px,rgba(22,48,44,.04) 39px),var(--paper);padding:46px 0 30px}
+  .eyebrow{font-family:"IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.22em;font-size:11px;color:var(--teal-deep);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .eyebrow b{color:var(--coral)}
+  h1{font-family:"Spectral",Georgia,serif;font-weight:800;font-size:clamp(34px,6vw,60px);line-height:1.02;letter-spacing:-.015em;margin:14px 0 6px}
+  h1 em{font-style:italic;color:var(--teal-deep)}
+  .sub{font-size:17px;color:var(--ink-soft);max-width:62ch}
+  .stamp-row{display:flex;gap:14px;flex-wrap:wrap;margin-top:26px}
+  .stamp{background:var(--paper);border:1.5px solid var(--ink);padding:12px 16px;min-width:128px;box-shadow:var(--shadow)}
+  .stamp .n{font-family:"IBM Plex Mono",monospace;font-size:30px;font-weight:600;line-height:1}
+  .stamp .l{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;color:var(--slate);margin-top:6px}
+  .stamp.ok .n{color:var(--teal)}
+  .stamp.omit .n{color:var(--amber)}
+
+  nav.tabs{position:sticky;top:0;z-index:30;background:var(--paper);border-bottom:1px solid var(--line);box-shadow:0 6px 14px -14px rgba(0,0,0,.4)}
+  .tabs-inner{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+  .tabs-inner::-webkit-scrollbar{display:none}
+  .tab{appearance:none;background:none;border:none;cursor:pointer;white-space:nowrap;font-family:"IBM Plex Mono",monospace;font-size:12.5px;letter-spacing:.02em;padding:15px 16px;color:var(--ink-soft);border-bottom:2.5px solid transparent;transition:color .15s,border-color .15s}
+  .tab .ix{color:var(--slate);margin-right:7px}
+  .tab:hover{color:var(--ink)}
+  .tab[aria-selected="true"]{color:var(--ink);border-color:var(--coral)}
+  .tab[aria-selected="true"] .ix{color:var(--coral)}
+
+  main{padding:38px 0 90px}
+  section[role=tabpanel]{display:none;animation:fade .4s ease}
+  section[role=tabpanel].active{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  .lead{font-family:"Spectral",serif;font-size:21px;line-height:1.5;color:var(--ink);max-width:64ch;margin-bottom:8px}
+  .panel-h{font-family:"Spectral",serif;font-weight:800;font-size:clamp(24px,4vw,34px);letter-spacing:-.01em;margin:6px 0 4px}
+  .kicker{font-family:"IBM Plex Mono",monospace;text-transform:uppercase;letter-spacing:.18em;font-size:11px;color:var(--teal-deep)}
+  p.body{color:var(--ink-soft);max-width:72ch;margin:10px 0}
+  .divider{height:1px;background:var(--line);margin:30px 0}
+
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:22px}
+  @media(max-width:720px){.grid2{grid-template-columns:1fr}}
+  .vcard{border:1.5px solid var(--ink);background:var(--paper);box-shadow:var(--shadow)}
+  .vcard .top{padding:13px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}
+  .vcard .top h3{font-size:15px;letter-spacing:.01em}
+  .vcard .body-c{padding:14px 16px;font-size:14.5px;color:var(--ink-soft)}
+  .chip{font-family:"IBM Plex Mono",monospace;font-size:11px;padding:3px 8px;border:1px solid;border-radius:2px;text-transform:uppercase;letter-spacing:.06em}
+  .chip.ok{color:var(--teal-deep);background:var(--verified-bg);border-color:var(--teal)}
+  .chip.omit{color:var(--amber);background:var(--omit-bg);border-color:var(--amber)}
+
+  /* goal grid */
+  .pfilter{display:flex;gap:8px;flex-wrap:wrap;margin:16px 0 18px}
+  .pf{appearance:none;cursor:pointer;font-family:"IBM Plex Mono",monospace;font-size:12px;padding:7px 13px;border:1.3px solid var(--line);background:var(--paper);color:var(--ink-soft);transition:.15s;display:flex;align-items:center;gap:7px}
+  .pf:hover{border-color:var(--ink-soft)}
+  .pf.on{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+  .pf .dot{width:9px;height:9px;border-radius:50%}
+  .goalgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(86px,1fr));gap:8px}
+  .goal{aspect-ratio:1;border:1.5px solid var(--ink);cursor:pointer;position:relative;display:flex;flex-direction:column;justify-content:space-between;padding:8px;transition:transform .12s,box-shadow .12s;color:#fff;overflow:hidden}
+  .goal:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+  .goal.dim{opacity:.28}
+  .goal .gn{font-family:"IBM Plex Mono",monospace;font-size:18px;font-weight:600;line-height:1}
+  .goal .gt{font-size:9.5px;line-height:1.15;font-weight:600}
+  .goal.sel{outline:3px solid var(--ink);outline-offset:2px}
+  .gdetail{margin-top:18px;border:1.5px solid var(--ink);background:var(--paper);box-shadow:var(--shadow);min-height:120px}
+  .gdetail .gd-top{padding:14px 16px;display:flex;gap:14px;align-items:center;border-bottom:1px solid var(--line)}
+  .gd-badge{font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:20px;color:#fff;width:42px;height:42px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .gd-top h3{font-family:"Spectral",serif;font-size:19px}
+  .gd-top .gp{font-family:"IBM Plex Mono",monospace;font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--slate)}
+  .gd-body{padding:14px 16px;display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:640px){.gd-body{grid-template-columns:1fr}}
+  .gd-body .lab{font-family:"IBM Plex Mono",monospace;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--teal-deep);margin-bottom:3px}
+  .gd-body .txt{font-size:13.5px;color:var(--ink-soft);margin-bottom:10px}
+  .status-pill{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:10.5px;padding:2px 8px;border-radius:2px;border:1px solid}
+  .s-ontrack{color:var(--teal-deep);background:var(--verified-bg);border-color:var(--teal)}
+  .s-moderate{color:var(--amber);background:var(--omit-bg);border-color:var(--amber)}
+  .s-stagnant{color:var(--slate);background:var(--paper-2);border-color:var(--slate)}
+  .s-worsen{color:var(--coral);background:var(--note-bg);border-color:var(--coral)}
+
+  /* scorecard bars */
+  .bar-row{padding:11px 0;border-bottom:1px solid var(--line)}
+  .bar-head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:7px}
+  .bar-name{font-size:14px;font-weight:500}
+  .bar-name .note{display:block;font-size:11px;color:var(--slate);font-weight:400}
+  .delta{font-family:"IBM Plex Mono",monospace;font-size:12.5px;font-weight:600;white-space:nowrap;color:var(--teal)}
+  .track{position:relative;height:18px;background:var(--paper-2);border:1px solid var(--line);overflow:hidden}
+  .fill{position:absolute;left:0;top:0;height:100%;display:flex;align-items:center;justify-content:flex-end;transition:width 1.1s cubic-bezier(.22,1,.36,1);width:0;background:var(--teal)}
+  .fill.amber{background:var(--amber)}.fill.coral{background:var(--coral)}
+  .fill .v{font-family:"IBM Plex Mono",monospace;font-size:9.5px;color:#fff;padding-right:5px;font-weight:600}
+  .ladder{display:flex;gap:0;margin:14px 0;border:1.5px solid var(--ink)}
+  .rung{flex:1;padding:10px 8px;text-align:center;border-right:1px solid var(--line)}
+  .rung:last-child{border-right:none}
+  .rung .rn{font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600}
+  .rung .rl{font-size:10px;color:var(--slate);text-transform:uppercase;letter-spacing:.05em;margin-top:3px}
+  .rung.r1{background:var(--paper-2)}.rung.r2{background:var(--omit-bg)}.rung.r3{background:var(--verified-bg)}.rung.r4{background:var(--teal);color:#fff}
+  .rung.r4 .rl{color:rgba(255,255,255,.8)}
+
+  /* theme mapper */
+  .mapper{display:grid;grid-template-columns:1fr 1.3fr;gap:0;border:1.5px solid var(--ink);box-shadow:var(--shadow);margin-top:18px}
+  @media(max-width:760px){.mapper{grid-template-columns:1fr}}
+  .theme-list{border-right:1px solid var(--line);background:var(--paper)}
+  @media(max-width:760px){.theme-list{border-right:none;border-bottom:1px solid var(--line)}}
+  .theme-btn{display:block;width:100%;text-align:left;cursor:pointer;background:none;border:none;border-bottom:1px solid var(--line);padding:12px 15px;font-family:inherit;font-size:13.5px;color:var(--ink-soft);transition:.12s}
+  .theme-btn:last-child{border-bottom:none}
+  .theme-btn:hover{background:var(--paper-2);color:var(--ink)}
+  .theme-btn.on{background:var(--ink);color:var(--paper);font-weight:600}
+  .theme-btn .gs{font-family:"IBM Plex Mono",monospace;font-size:10px;color:var(--slate);display:block;margin-top:2px}
+  .theme-btn.on .gs{color:rgba(255,255,255,.7)}
+  .map-detail{padding:18px;background:var(--paper)}
+  .map-detail h3{font-family:"Spectral",serif;font-size:20px;margin-bottom:4px}
+  .map-detail .sdg-tags{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0}
+  .sdg-tag{font-family:"IBM Plex Mono",monospace;font-size:11px;color:#fff;padding:3px 9px;border:1px solid var(--ink)}
+  .map-detail .howto{font-size:14px;color:var(--ink-soft);margin-top:8px}
+  .map-detail .howto b{color:var(--ink)}
+  .map-detail .ex{margin-top:12px;padding:12px 14px;border-left:3px solid var(--teal);background:var(--verified-bg);font-size:13.5px;color:var(--ink-soft)}
+  .map-detail .ex .l{font-family:"IBM Plex Mono",monospace;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--teal-deep);display:block;margin-bottom:4px}
+
+  /* toolkit angles */
+  .angle{border:1.5px solid var(--ink);background:var(--paper);margin:14px 0;box-shadow:var(--shadow)}
+  .angle summary{cursor:pointer;list-style:none;padding:15px 18px;display:flex;gap:14px;align-items:center;font-family:"Spectral",serif;font-size:18px;font-weight:600}
+  .angle summary::-webkit-details-marker{display:none}
+  .angle summary .num{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--coral);font-weight:600}
+  .angle summary .plus{margin-left:auto;font-family:"IBM Plex Mono",monospace;color:var(--slate);transition:.2s}
+  .angle[open] summary .plus{transform:rotate(45deg);color:var(--coral)}
+  .angle .inner{padding:0 18px 18px 18px;font-size:14.5px;color:var(--ink-soft)}
+  .angle .inner .tline{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--teal-deep);text-transform:uppercase;letter-spacing:.08em;margin:12px 0 4px}
+  .memlist{columns:2;column-gap:26px;margin-top:8px}
+  @media(max-width:600px){.memlist{columns:1}}
+  .memlist .m{break-inside:avoid;display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-bottom:1px dotted var(--line);font-size:13.5px}
+  .memlist .m b{font-family:"IBM Plex Mono",monospace;color:var(--teal-deep);white-space:nowrap}
+
+  /* precision notes */
+  .note-item{border-left:3px solid var(--coral);background:var(--note-bg);padding:14px 16px;margin:14px 0}
+  .note-item h4{font-size:15.5px;margin-bottom:6px}
+  .note-item .pick{font-family:"IBM Plex Mono",monospace;font-size:13px;font-weight:600;color:var(--teal-deep);margin:6px 0}
+  .note-item p{font-size:14px;color:var(--ink-soft)}
+
+  /* quiz */
+  .quiz-card{border:1.5px solid var(--ink);background:var(--paper);box-shadow:var(--shadow);padding:22px;max-width:680px}
+  .q-progress{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--slate);display:flex;justify-content:space-between;margin-bottom:10px}
+  .q-text{font-family:"Spectral",serif;font-size:20px;line-height:1.4;margin-bottom:16px}
+  .opt{display:block;width:100%;text-align:left;cursor:pointer;background:var(--paper);border:1.3px solid var(--line);padding:12px 14px;margin:8px 0;font-size:14.5px;font-family:inherit;color:var(--ink);transition:.12s}
+  .opt:hover:not(:disabled){border-color:var(--ink-soft);background:var(--paper-2)}
+  .opt:disabled{cursor:default}
+  .opt.correct{border-color:var(--teal);background:var(--verified-bg)}
+  .opt.wrong{border-color:var(--coral);background:var(--note-bg)}
+  .q-explain{margin-top:14px;padding:12px 14px;border-left:3px solid var(--teal);background:var(--verified-bg);font-size:14px;color:var(--ink-soft);display:none}
+  .q-explain.show{display:block}
+  .q-nav{margin-top:18px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+  .btn{appearance:none;cursor:pointer;font-family:"IBM Plex Mono",monospace;font-size:13px;padding:10px 18px;border:1.5px solid var(--ink);background:var(--ink);color:var(--paper);transition:.15s}
+  .btn:hover{background:var(--teal-deep);border-color:var(--teal-deep)}
+  .btn[disabled]{opacity:.35;cursor:default}
+  .btn.ghost{background:none;color:var(--ink)}
+  .q-score{text-align:center;padding:10px 0}
+  .q-score .big{font-family:"IBM Plex Mono",monospace;font-size:48px;font-weight:600;color:var(--teal)}
+
+  footer{border-top:2px solid var(--ink);padding:26px 0;font-size:12.5px;color:var(--slate)}
+  footer .mono{color:var(--ink-soft)}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.fill{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <div class="eyebrow"><span>The 2030 Agenda · 17 Goals · 169 Targets</span> <span>•</span> <b>Data current to 2026</b></div>
+    <h1>The SDGs, built to <em>plug into</em><br>every answer you write.</h1>
+    <p class="sub">A working guide to the Sustainable Development Goals for UPSC — the framework, India's scorecard, and a theme-by-theme map of exactly where to weave the SDGs into GS-I, II, III and the essay.</p>
+    <div class="stamp-row">
+      <div class="stamp ok"><div class="n">71</div><div class="l">SDG India Index<br><span style="font-size:9px">(NITI Aayog, /100)</span></div></div>
+      <div class="stamp ok"><div class="n">99th</div><div class="l">Global rank<br><span style="font-size:9px">(of 167, first top-100)</span></div></div>
+      <div class="stamp omit"><div class="n">17%</div><div class="l">Global targets<br>on track for 2030</div></div>
+      <div class="stamp omit"><div class="n">2</div><div class="l">India SDGs<br>on track (global lens)</div></div>
+    </div>
+  </div>
+</header>
+
+<nav class="tabs">
+  <div class="wrap"><div class="tabs-inner" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-p="overview"><span class="ix">01</span>Overview</button>
+    <button class="tab" role="tab" aria-selected="false" data-p="goals"><span class="ix">02</span>The 17 Goals</button>
+    <button class="tab" role="tab" aria-selected="false" data-p="score"><span class="ix">03</span>India's Scorecard</button>
+    <button class="tab" role="tab" aria-selected="false" data-p="mapper"><span class="ix">04</span>Where SDGs Fit</button>
+    <button class="tab" role="tab" aria-selected="false" data-p="notes"><span class="ix">05</span>Precision Notes</button>
+    <button class="tab" role="tab" aria-selected="false" data-p="quiz"><span class="ix">06</span>Self-Test</button>
+  </div></div>
+</nav>
+
+<main><div class="wrap">
+
+<!-- 01 OVERVIEW -->
+<section role="tabpanel" id="overview" class="active">
+  <div class="kicker">The framework in brief</div>
+  <h2 class="panel-h">What the SDGs are</h2>
+  <p class="lead">Adopted by all 193 UN member states in September 2015 as <i>Transforming Our World: The 2030 Agenda for Sustainable Development</i> (Resolution A/RES/70/1) — 17 goals, 169 targets, ~231 unique indicators, with 2030 as the deadline. They succeed the Millennium Development Goals (2000–2015).</p>
+
+  <div class="grid2">
+    <div class="vcard">
+      <div class="top"><h3>The five Ps</h3><span class="chip ok">Structure</span></div>
+      <div class="body-c"><b>People, Planet, Prosperity, Peace, Partnership</b> — the SDGs integrate the three dimensions of development (economic, social, environmental) and are framed as universal, indivisible and interlinked.</div>
+    </div>
+    <div class="vcard">
+      <div class="top"><h3>The guiding principle</h3><span class="chip ok">LNOB</span></div>
+      <div class="body-c"><b>Leave No One Behind.</b> Progress must reach the furthest-behind first. Unlike the MDGs (8 goals, developing-world focus), the SDGs are universal — binding on rich and poor countries alike.</div>
+    </div>
+    <div class="vcard">
+      <div class="top"><h3>How progress is tracked</h3><span class="chip ok">HLPF · VNR</span></div>
+      <div class="body-c">The UN High-Level Political Forum reviews progress; countries submit <b>Voluntary National Reviews</b>. India submitted VNRs in 2017 and 2020. 190 of 193 states have now done a VNR.</div>
+    </div>
+    <div class="vcard">
+      <div class="top"><h3>India's machinery</h3><span class="chip ok">NITI Aayog</span></div>
+      <div class="body-c"><b>NITI Aayog</b> is the nodal body for SDG coordination and localisation. MoSPI maintains the National Indicator Framework. The SDG India Index drives competitive &amp; cooperative federalism among states.</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="kicker">Two scoreboards — don't confuse them</div>
+  <h3 class="panel-h" style="font-size:22px">The domestic index vs the global report</h3>
+  <p class="body" style="font-size:15px;max-width:78ch">The <b>SDG India Index</b> (NITI Aayog, with MoSPI and the UN in India) scores India's states and UTs — national score <b>71/100</b>. The <b>Sustainable Development Report</b> (SDSN, led by Jeffrey Sachs) ranks countries globally — India <b>99th of 167, score 67</b>. Same subject, different producers, different scales: a classic Prelims trap.</p>
+</section>
+
+<!-- 02 GOALS -->
+<section role="tabpanel" id="goals">
+  <div class="kicker">17 goals · grouped by the five Ps</div>
+  <h2 class="panel-h">Tap a goal</h2>
+  <p class="body">Each tile opens its aim, India's progress status (global-report lens), the flagship schemes that map to it, and the UPSC topics it connects to. Filter by the five Ps.</p>
+  <div class="pfilter" id="pfilter"></div>
+  <div class="goalgrid" id="goalgrid"></div>
+  <div class="gdetail" id="gdetail"></div>
+</section>
+
+<!-- 03 SCORECARD -->
+<section role="tabpanel" id="score">
+  <div class="kicker">NITI Aayog SDG India Index 2023–24 (4th edition)</div>
+  <h2 class="panel-h">India's scorecard</h2>
+  <p class="body">National composite score climbed from 57 (2018 baseline) to 66 (2020–21) to <b>71</b>. State scores now span 57–79 (up from 42–69 in 2018); 32 of 36 states and UTs are now Front-Runners.</p>
+
+  <div class="kicker" style="margin-top:18px">The four performance bands</div>
+  <div class="ladder">
+    <div class="rung r1"><div class="rn">0–49</div><div class="rl">Aspirant</div></div>
+    <div class="rung r2"><div class="rn">50–64</div><div class="rl">Performer</div></div>
+    <div class="rung r3"><div class="rn">65–99</div><div class="rl">Front-Runner</div></div>
+    <div class="rung r4"><div class="rn">100</div><div class="rl">Achiever</div></div>
+  </div>
+
+  <div class="grid2" style="margin-top:18px">
+    <div class="vcard">
+      <div class="top"><h3>Top performers (states)</h3><span class="chip ok">Front-Runners</span></div>
+      <div class="body-c"><b>Kerala (79)</b> and <b>Uttarakhand (79)</b> jointly top, then Tamil Nadu (78), Goa &amp; Himachal Pradesh (77). Among UTs, <b>Chandigarh (77)</b> leads. Fastest improver: <b>Uttar Pradesh (+25</b> over baseline).</div>
+    </div>
+    <div class="vcard">
+      <div class="top"><h3>Lagging</h3><span class="chip omit">Need a push</span></div>
+      <div class="body-c"><b>Bihar, Jharkhand and Nagaland</b> anchor the bottom. Weakest goal areas nationally are <b>SDG 2 (Zero Hunger)</b> and <b>SDG 5 (Gender Equality)</b>; strongest gains in SDG 1, 8, 13 and 15.</div>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="kicker">India in the global Sustainable Development Report (SDSN)</div>
+  <h3 class="panel-h" style="font-size:22px">The climb to 99th</h3>
+  <p class="body">India entered the global top 100 for the first time, rising 120th (2021) → 112th (2023) → 109th (2024) → <b>99th of 167</b> (2025, score 67). The 2026 edition flags India among the largest gainers worldwide. Bars show the rank improvement (shorter = better rank).</p>
+  <div id="rankbars"></div>
+  <p class="body" style="font-size:13px;margin-top:10px"><b>Global context:</b> Finland leads (~87); none of the 17 goals is globally on track and only ~17% of targets are projected to be met by 2030. On the global lens India is firmly on track on just two goals — SDG 1 (No Poverty) and SDG 10 (Reduced Inequalities) — while SDG 13 (Climate Action) is flagged as worsening.</p>
+</section>
+
+<!-- 04 WHERE SDGs FIT -->
+<section role="tabpanel" id="mapper">
+  <div class="kicker">The whole point — citing SDGs in answers</div>
+  <h2 class="panel-h">Where the SDGs fit your answers</h2>
+  <p class="body">Pick a common UPSC theme to see which SDGs to invoke, how to weave them in, and a ready phrase you can adapt. SDGs are the single most reusable framework across GS-I, II, III and the essay — a dependable conclusion-booster.</p>
+  <div class="mapper">
+    <div class="theme-list" id="themeList"></div>
+    <div class="map-detail" id="mapDetail"></div>
+  </div>
+
+  <div class="divider"></div>
+  <div class="kicker">For GS &amp; essay</div>
+  <h3 class="panel-h" style="font-size:22px">Five framings worth memorising</h3>
+
+  <details class="angle"><summary><span class="num">A1</span> SDGs as the conclusion framework <span class="plus">+</span></summary>
+    <div class="inner"><div class="tline">The move</div>Close almost any development answer by tying the issue to a specific SDG and the 2030 deadline. "Addressing X is central to meeting SDG __ and the Leave-No-One-Behind pledge." Adds direction and a global anchor without padding.
+    <div class="tline">Works for</div>Poverty, health, education, gender, environment, governance — nearly every GS-II/III prompt and the essay.</div>
+  </details>
+
+  <details class="angle"><summary><span class="num">A2</span> Cooperative &amp; competitive federalism <span class="plus">+</span></summary>
+    <div class="inner"><div class="tline">The argument</div>The SDG India Index is the textbook example of NITI Aayog using data to rank states, spread best practice and nudge laggards — competitive federalism — while pooling central-state effort on shared goals — cooperative federalism.
+    <div class="tline">Works for</div>GS-II polity/governance, NITI Aayog's mandate, centre-state relations, evidence-based policymaking.</div>
+  </details>
+
+  <details class="angle"><summary><span class="num">A3</span> The growth–sustainability tension <span class="plus">+</span></summary>
+    <div class="inner"><div class="tline">The argument</div>India's rank shows GDP size and SDG performance don't move together — the US and China sit far above India on income yet face their own SDG gaps, while India's environmental goals (SDG 13 climate, SDG 12 consumption) lag its social gains. Growth must be decoupled from ecological cost.
+    <div class="tline">Works for</div>GS-III economy/environment, green growth, Mission LiFE, just transition, the essay.</div>
+  </details>
+
+  <details class="angle"><summary><span class="num">A4</span> Localisation &amp; the last mile <span class="plus">+</span></summary>
+    <div class="inner"><div class="tline">The argument</div>National averages hide district and group disparities. SDG localisation — district indices, the Aspirational Districts Programme, panchayat-level targets — operationalises Leave-No-One-Behind and is where the 2030 race is actually won or lost.
+    <div class="tline">Works for</div>GS-II governance/welfare delivery, decentralisation, Aspirational Districts, GS-I society/regional disparity.</div>
+  </details>
+
+  <details class="angle"><summary><span class="num">A5</span> India as a global SDG actor <span class="plus">+</span></summary>
+    <div class="inner"><div class="tline">The argument</div>India links domestic delivery to global leadership — the International Solar Alliance, the G20 presidency's development agenda, LiFE, and South-South cooperation — positioning the 2030 Agenda within the Viksit Bharat @2047 vision.
+    <div class="tline">Works for</div>GS-II international relations, GS-III environment/energy diplomacy, the essay.</div>
+  </details>
+
+  <div class="divider"></div>
+  <div class="kicker">Flash recall</div>
+  <h3 class="panel-h" style="font-size:22px">Numbers worth owning</h3>
+  <div class="memlist" id="memlist"></div>
+</section>
+
+<!-- 05 PRECISION NOTES -->
+<section role="tabpanel" id="notes">
+  <div class="kicker">Get these exactly right</div>
+  <h2 class="panel-h">Precision notes</h2>
+  <p class="body">The details examiners build Prelims traps around. Lock the exact attributions and figures.</p>
+
+  <div class="note-item">
+    <h4>1 · Two different scoreboards</h4>
+    <div class="pick">SDG India Index = NITI Aayog (score 71) · Sustainable Development Report = SDSN (rank 99th, score 67)</div>
+    <p>The domestic index is produced by NITI Aayog with MoSPI and the UN in India. The global ranking is by the UN Sustainable Development Solutions Network (Jeffrey Sachs) — UN-backed, not an official UN body. Different producer, scale and purpose.</p>
+  </div>
+
+  <div class="note-item">
+    <h4>2 · 17 goals, but 16 are scored in the India Index</h4>
+    <div class="pick">17 goals overall · SDG India Index scores 16 (SDG 17 assessed qualitatively)</div>
+    <p>The 4th edition covers 16 goals, 70 targets, 113 indicators. SDG 17 (Partnerships) is not given a composite score. The global SDR scores all 17.</p>
+  </div>
+
+  <div class="note-item">
+    <h4>3 · The counts to keep straight</h4>
+    <div class="pick">17 goals · 169 targets · ~231 unique indicators (Global Indicator Framework)</div>
+    <p>The MDGs had 8 goals; the SDGs have 17. Targets are 169. The UN Global Indicator Framework lists 231 unique indicators. Adopted 2015, deadline 2030.</p>
+  </div>
+
+  <div class="note-item">
+    <h4>4 · The four performance bands</h4>
+    <div class="pick">Aspirant 0–49 · Performer 50–64 · Front-Runner 65–99 · Achiever 100</div>
+    <p>A state at 71 is a Front-Runner, not an Achiever. "Achiever" requires a perfect 100 on that goal/composite — rare. Don't muddle the band names or cut-offs.</p>
+  </div>
+
+  <div class="note-item">
+    <h4>5 · India's "on track" goals are a global-lens figure</h4>
+    <div class="pick">SDR 2025: India on track on SDG 1 &amp; SDG 10; SDG 13 worsening</div>
+    <p>This "only two on track" reading comes from the global SDR. The domestic SDG India Index, using different indicators, records strong progress on SDG 13 and 15 — so always state which scoreboard you're citing.</p>
+  </div>
+
+  <div class="divider"></div>
+  <p class="body" style="font-size:13.5px"><b>Standing caveat:</b> the SDG India Index is updated periodically (4th edition is 2023–24) and the global SDR annually, so verify the latest figures near your exam date and name the edition you quote.</p>
+</section>
+
+<!-- 06 QUIZ -->
+<section role="tabpanel" id="quiz">
+  <div class="kicker">Recall under pressure</div>
+  <h2 class="panel-h">Self-test</h2>
+  <p class="body">Eight questions on the framework, the data and the traps. Pick an answer to see why.</p>
+  <div class="quiz-card" id="quizCard"></div>
+</section>
+
+</div></main>
+
+<footer><div class="wrap">
+  <div class="mono">Sources: NITI Aayog SDG India Index 2023–24 (4th edition) &amp; UN in India · Sustainable Development Report 2025/2026, UN SDSN (Sachs et al.) · UN 2030 Agenda (A/RES/70/1) · Drishti IAS, Vision IAS, Vajiram &amp; Ravi summaries · PIB. Figures cross-checked across multiple sources.</div>
+  <p style="margin-top:10px">The SDG India Index updates periodically and the global SDR annually — confirm the latest edition near your exam and cite which scoreboard you mean.</p>
+</div></footer>
+
+<script>
+/* tabs */
+const tabs=[...document.querySelectorAll('.tab')];
+const panels=[...document.querySelectorAll('section[role=tabpanel]')];
+let rankAnimated=false;
+tabs.forEach(t=>t.addEventListener('click',()=>{
+  tabs.forEach(x=>x.setAttribute('aria-selected',x===t));
+  const id=t.dataset.p;
+  panels.forEach(p=>p.classList.toggle('active',p.id===id));
+  window.scrollTo({top:0,behavior:'smooth'});
+  if(id==='score') requestAnimationFrame(()=>setTimeout(animateRank,80));
+}));
+
+/* ---- GOALS DATA ---- */
+const P={People:'#0c7d6f',Planet:'#3f7d4e',Prosperity:'#c8881f',Peace:'#cc4f33',Partnership:'#16302c'};
+// num,short,P,status[ontrack/moderate/stagnant/worsen],aim,india,schemes,upsc
+const GOALS=[
+ [1,'No Poverty','People','ontrack','End poverty in all forms.','On track (global lens); steep multidimensional-poverty decline.','PM Awas, MGNREGA, PM-KISAN, NSAP, PMGKAY','GS-II welfare · GS-III inclusive growth'],
+ [2,'Zero Hunger','People','stagnant','End hunger, food security, better nutrition.','Stagnating; a weak goal in the SDG India Index.','NFSA/PDS, POSHAN Abhiyaan, PM-POSHAN, PMMVY','GS-II food security · GS-III agriculture'],
+ [3,'Good Health','People','moderate','Healthy lives and well-being for all.','Improving — strong gains in immunisation, institutional delivery (NFHS-6).','Ayushman Bharat–PMJAY, NHM, Mission Indradhanush','GS-II health'],
+ [4,'Quality Education','People','moderate','Inclusive, equitable, lifelong learning.','Mixed — access strong, learning outcomes (ASER) lag.','NEP 2020, Samagra Shiksha, PM SHRI, NIPUN Bharat','GS-II education'],
+ [5,'Gender Equality','People','stagnant','Empower all women and girls.','Weak goal nationally; gender gaps in work and autonomy persist.','BBBP, PMMVY, gender budgeting, Mission Shakti','GS-I gender · GS-II women'],
+ [6,'Clean Water & Sanitation','Planet','moderate','Water and sanitation for all.','Moderately improving; freshwater withdrawals a concern.','Jal Jeevan Mission, Swachh Bharat, Namami Gange','GS-II services · GS-III water'],
+ [7,'Affordable Clean Energy','Prosperity','moderate','Modern, sustainable energy for all.','Moderately improving; renewables surging, coal dependence remains.','PM Surya Ghar, PM-KUSUM, Ujjwala, Natl Solar Mission','GS-III energy'],
+ [8,'Decent Work & Growth','Prosperity','moderate','Inclusive growth and decent work.','Notable progress in the SDG India Index.','Skill India, Startup India, MUDRA, PLI schemes','GS-III economy/employment'],
+ [9,'Industry, Innovation, Infra','Prosperity','stagnant','Resilient infra, inclusive industry, innovation.','Stagnating on the global lens despite rising innovation rank.','Make in India, PM GatiShakti, Digital India','GS-III infrastructure'],
+ [10,'Reduced Inequalities','Prosperity','ontrack','Reduce inequality within and among nations.','On track (global lens); DBT and targeting cited.','DBT, reservation, Aspirational Districts, Stand-Up India','GS-I/II social justice'],
+ [11,'Sustainable Cities','Prosperity','stagnant','Inclusive, safe, resilient cities.','Stagnating; air quality and urban services strained.','Smart Cities, AMRUT, PMAY-Urban','GS-I urbanisation'],
+ [12,'Responsible Consumption','Planet','stagnant','Sustainable production and consumption.','Stagnating; circular-economy push early-stage.','Mission LiFE, EPR rules, e-waste/plastic rules','GS-III environment'],
+ [13,'Climate Action','Planet','worsen','Combat climate change and impacts.','Global SDR flags worsening; India Index records progress.','Panchamrit/Net-Zero 2070, NAPCC, ISA, NDCs','GS-III climate'],
+ [14,'Life Below Water','Planet','moderate','Conserve oceans, seas, marine resources.','Moderately improving.','Deep Ocean Mission, Sagarmala, marine protected areas','GS-III environment'],
+ [15,'Life on Land','Planet','moderate','Protect terrestrial ecosystems, halt loss.','Notable progress in the SDG India Index (forest cover).','CAMPA, Green India Mission, ISFR, Project Tiger/Cheetah','GS-III biodiversity'],
+ [16,'Peace, Justice, Institutions','Peace','stagnant','Peaceful societies, justice, strong institutions.','Globally, corruption and press-freedom indicators reversed.','e-Courts, RTI, judicial reform, police modernisation','GS-II governance/judiciary'],
+ [17,'Partnerships','Partnership','moderate','Revitalise the global partnership.','Not scored in the India Index; India active via ISA, G20.','VNRs, ISA, G20 dev agenda, South-South cooperation','GS-II international relations'],
+];
+const STAT={ontrack:['On track','s-ontrack'],moderate:['Moderately improving','s-moderate'],stagnant:['Stagnating','s-stagnant'],worsen:['Worsening','s-worsen']};
+const PS=['All','People','Planet','Prosperity','Peace','Partnership'];
+let activeP='All';
+
+const pf=document.getElementById('pfilter');
+PS.forEach(p=>{
+  const b=document.createElement('button');b.className='pf'+(p==='All'?' on':'');
+  b.innerHTML=(p==='All'?'':`<span class="dot" style="background:${P[p]}"></span>`)+p;
+  b.onclick=()=>{activeP=p;[...pf.children].forEach(c=>c.classList.toggle('on',c===b));renderGoals();};
+  pf.appendChild(b);
+});
+const gg=document.getElementById('goalgrid');
+const gd=document.getElementById('gdetail');
+let selGoal=1;
+function renderGoals(){
+  gg.innerHTML='';
+  GOALS.forEach(g=>{
+    const [n,short,p]=g;
+    const tile=document.createElement('div');
+    tile.className='goal'+(activeP!=='All'&&p!==activeP?' dim':'')+(n===selGoal?' sel':'');
+    tile.style.background=P[p];
+    tile.innerHTML=`<div class="gn">${n}</div><div class="gt">${short}</div>`;
+    tile.onclick=()=>{selGoal=n;renderGoals();renderDetail(n);};
+    gg.appendChild(tile);
+  });
+}
+function renderDetail(n){
+  const g=GOALS.find(x=>x[0]===n);
+  const [num,short,p,status,aim,india,schemes,upsc]=g;
+  const [stxt,scls]=STAT[status];
+  gd.innerHTML=`
+    <div class="gd-top">
+      <div class="gd-badge" style="background:${P[p]}">${num}</div>
+      <div><div class="gp">${p}</div><h3>${short}</h3></div>
+    </div>
+    <div class="gd-body">
+      <div>
+        <div class="lab">The aim</div><div class="txt">${aim}</div>
+        <div class="lab">India status (global lens)</div><div class="txt"><span class="status-pill ${scls}">${stxt}</span><br><span style="display:block;margin-top:6px">${india}</span></div>
+      </div>
+      <div>
+        <div class="lab">Linked flagship schemes</div><div class="txt">${schemes}</div>
+        <div class="lab">Cite it in</div><div class="txt">${upsc}</div>
+      </div>
+    </div>`;
+}
+renderGoals();renderDetail(1);
+
+/* ---- RANK BARS (lower rank = better; bar length = position from 167) ---- */
+const RANK=[['2021',120],['2023',112],['2024',109],['2025',99]];
+const rb=document.getElementById('rankbars');
+function buildRank(){
+  rb.innerHTML='';
+  RANK.forEach(([yr,r])=>{
+    const pct=((167-r)/167*100).toFixed(1);
+    const row=document.createElement('div');row.className='bar-row';
+    row.innerHTML=`<div class="bar-head"><div class="bar-name">SDR ${yr}<span class="note">rank of 167 — shorter bar = worse rank</span></div><div class="delta">${r}th</div></div>
+      <div class="track"><div class="fill ${r>110?'amber':''}" data-w="${pct}"><span class="v">#${r}</span></div></div>`;
+    rb.appendChild(row);
+  });
+}
+buildRank();
+function animateRank(){
+  if(rankAnimated)return;rankAnimated=true;
+  rb.querySelectorAll('.fill').forEach(f=>f.style.width=f.dataset.w+'%');
+}
+
+/* ---- THEME MAPPER ---- */
+const THEMES=[
+ ['Poverty & welfare schemes','GS-II / GS-III',['1','2','10'],'#0c7d6f',
+  'Frame welfare delivery as the engine of SDG 1 and 10. Connect DBT, PM-KISAN and MGNREGA to multidimensional-poverty reduction and the Leave-No-One-Behind pledge.',
+  'India\u2019s sharp fall in multidimensional poverty advances SDG 1 (No Poverty) and SDG 10 (Reduced Inequalities), both flagged on track in the 2025 SDR.'],
+ ['Health & nutrition','GS-II',['2','3'],'#0c7d6f',
+  'Pair NFHS-6 gains (institutional delivery, immunisation) with SDG 3, and stunting/hunger with SDG 2 — India\u2019s weakest goal in the India Index.',
+  'Rising immunisation and institutional delivery move India toward SDG 3, even as stagnating SDG 2 (Zero Hunger) shows the unfinished nutrition agenda.'],
+ ['Education','GS-II',['4'],'#0c7d6f',
+  'Tie NEP 2020 and foundational-literacy missions to SDG 4. Distinguish access (strong) from learning outcomes (the real SDG 4 gap, per ASER).',
+  'NEP 2020 reorients schooling toward SDG 4\u2019s emphasis on learning outcomes, not just enrolment.'],
+ ['Women & gender','GS-I / GS-II',['5','10'],'#0c7d6f',
+  'Anchor gender questions in SDG 5 — another weak goal nationally — covering work participation, gender budgeting and safety.',
+  'Closing gaps in female labour-force participation is essential to SDG 5 (Gender Equality), where India still trails.'],
+ ['Water, sanitation & rivers','GS-II / GS-III',['6'],'#3f7d4e',
+  'Link Jal Jeevan Mission and Swachh Bharat to SDG 6, but flag freshwater stress — the reason the global SDR rates SDG 6 only \u201cmoderately improving.\u201d',
+  'Jal Jeevan Mission advances SDG 6, yet rising freshwater withdrawals warn that access gains must be matched by water-use sustainability.'],
+ ['Energy transition','GS-III',['7','13'],'#c8881f',
+  'Connect renewables, Ujjwala and PM Surya Ghar to SDG 7, and the Net-Zero-2070 / Panchamrit pledges to SDG 13.',
+  'India\u2019s renewable surge drives SDG 7, while the Panchamrit targets align energy policy with SDG 13 (Climate Action).'],
+ ['Economy, jobs & industry','GS-III',['8','9'],'#c8881f',
+  'Frame growth, skilling and Make-in-India under SDG 8 and 9 — noting SDG 9 stagnation on the global lens despite a rising innovation rank.',
+  'Skill India and PLI schemes target SDG 8 (Decent Work), but stagnating SDG 9 shows infrastructure and innovation must scale faster.'],
+ ['Inequality & federalism','GS-I / GS-II',['10','16'],'#c8881f',
+  'Use the SDG India Index as the model of competitive-cooperative federalism, and tie targeting/DBT to SDG 10.',
+  'The SDG India Index operationalises competitive federalism, nudging states toward SDG 10 through transparent benchmarking.'],
+ ['Urbanisation','GS-I',['11'],'#c8881f',
+  'Link Smart Cities, AMRUT and PMAY-Urban to SDG 11; flag air quality and service gaps behind its stagnation.',
+  'Smart Cities and AMRUT pursue SDG 11, though urban air quality remains a binding constraint on sustainable cities.'],
+ ['Environment & climate','GS-III',['12','13','14','15'],'#3f7d4e',
+  'The environmental cluster is where India\u2019s SDG story is weakest globally. Pair Mission LiFE with SDG 12, Net-Zero with SDG 13, and forest/biodiversity work with SDG 15.',
+  'India\u2019s social gains outpace its environmental ones: SDG 13 (Climate Action) is flagged worsening even as forest cover lifts SDG 15.'],
+ ['Governance & judiciary','GS-II',['16'],'#cc4f33',
+  'Anchor institutional-reform answers in SDG 16 — justice access, e-courts, RTI, anti-corruption — noting global reversals on corruption and press freedom.',
+  'Judicial and transparency reforms advance SDG 16 (Peace, Justice and Strong Institutions), a goal facing global setbacks.'],
+ ['Foreign policy & multilateralism','GS-II',['17'],'#16302c',
+  'Position India as an SDG actor via the International Solar Alliance, G20 development agenda, LiFE and South-South cooperation under SDG 17.',
+  'Through the ISA and its G20 presidency, India advances SDG 17 (Partnerships), linking domestic delivery to global leadership.'],
+ ['Essay & Viksit Bharat','Essay',['1','13','17'],'#16302c',
+  'Use the SDGs as a structural spine — the 2030 milestone nested inside the Viksit-Bharat-@2047 horizon — to give development essays direction and a global frame.',
+  'The 2030 Agenda is the intermediate milestone on the road to Viksit Bharat @2047 — sustainability and prosperity pursued together.'],
+];
+const tl=document.getElementById('themeList');
+const md=document.getElementById('mapDetail');
+let selTheme=0;
+THEMES.forEach((t,i)=>{
+  const b=document.createElement('button');b.className='theme-btn'+(i===0?' on':'');
+  b.innerHTML=`${t[0]}<span class="gs">${t[1]}</span>`;
+  b.onclick=()=>{selTheme=i;[...tl.children].forEach(c=>c.classList.remove('on'));b.classList.add('on');renderMap(i);};
+  tl.appendChild(b);
+});
+function renderMap(i){
+  const [name,gs,sdgs,col,howto,ex]=THEMES[i];
+  const tags=sdgs.map(s=>{
+    const g=GOALS.find(x=>String(x[0])===s);
+    return `<span class="sdg-tag" style="background:${P[g[2]]}">SDG ${s} · ${g[1]}</span>`;
+  }).join('');
+  md.innerHTML=`<h3>${name}</h3><div class="gs mono" style="font-size:11px;color:var(--slate)">${gs}</div>
+    <div class="sdg-tags">${tags}</div>
+    <div class="howto"><b>How to weave it in:</b> ${howto}</div>
+    <div class="ex"><span class="l">Ready phrase</span>${ex}</div>`;
+}
+renderMap(0);
+
+/* ---- MEM ---- */
+const MEM=[
+ ['Goals / targets','17 / 169'],['Indicators (GIF)','~231'],
+ ['Adopted / deadline','2015 / 2030'],['Predecessor','MDGs (8 goals)'],
+ ['SDG India Index score','71 / 100'],['Index edition','4th (2023–24)'],
+ ['Index — goals scored','16 of 17'],['Top states','Kerala & Uttarakhand (79)'],
+ ['Top UT','Chandigarh (77)'],['Fastest improver','Uttar Pradesh (+25)'],
+ ['Global rank (SDR 2025)','99th of 167'],['Global score','67 / 100'],
+ ['Global targets on track','~17%'],['India on track (global)','SDG 1 & 10'],
+ ['Nodal body (India)','NITI Aayog'],['Global report by','UN SDSN (Sachs)'],
+ ['Performance bands','Aspirant→Achiever'],['Guiding principle','Leave No One Behind'],
+];
+const ml=document.getElementById('memlist');
+MEM.forEach(m=>{const d=document.createElement('div');d.className='m';d.innerHTML=`<span>${m[0]}</span><b>${m[1]}</b>`;ml.appendChild(d);});
+
+/* ---- QUIZ ---- */
+const QUIZ=[
+ {q:'Who releases the SDG India Index?',
+  o:['UN SDSN','NITI Aayog (with MoSPI & UN in India)','Ministry of Finance','World Bank'],
+  a:1,e:'NITI Aayog produces the SDG India Index. The global Sustainable Development Report is by the UN SDSN (Jeffrey Sachs) \u2014 a frequent Prelims mix-up.'},
+ {q:'How many goals and targets do the SDGs have?',
+  o:['8 goals, 21 targets','17 goals, 169 targets','17 goals, 230 targets','15 goals, 169 targets'],
+  a:1,e:'17 goals and 169 targets, tracked through ~231 unique indicators. The MDGs (the predecessor) had 8 goals.'},
+ {q:'India\u2019s national SDG India Index score (4th edition) is:',
+  o:['57','66','71','99'],
+  a:2,e:'71/100 \u2014 up from 66 (2020\u201321) and the 2018 baseline of 57. (99th is India\u2019s global rank, not its score.)'},
+ {q:'Which states jointly topped the SDG India Index 2023\u201324?',
+  o:['Tamil Nadu & Goa','Kerala & Uttarakhand','Himachal Pradesh & Punjab','Maharashtra & Gujarat'],
+  a:1,e:'Kerala and Uttarakhand, both at 79. Chandigarh led among UTs; Bihar, Jharkhand and Nagaland were at the bottom.'},
+ {q:'In the 2025 Sustainable Development Report, India ranked:',
+  o:['49th of 167','71st of 167','99th of 167','120th of 167'],
+  a:2,e:'99th of 167 (score 67) \u2014 India\u2019s first entry into the global top 100, up from 109th in 2024.'},
+ {q:'What share of global SDG targets is projected to be met by 2030?',
+  o:['About 17%','About 50%','About 75%','All 17 goals are on track'],
+  a:0,e:'Only ~17% of targets are on track; the SDR notes none of the 17 goals is globally on track \u2014 a key "progress has stalled" data point.'},
+ {q:'How many of the 17 goals does the SDG India Index actually score?',
+  o:['All 17','16 (SDG 17 assessed qualitatively)','13','15'],
+  a:1,e:'16 goals, 70 targets, 113 indicators. SDG 17 (Partnerships) is assessed qualitatively, not given a composite score in the India Index.'},
+ {q:'The guiding principle of the 2030 Agenda is:',
+  o:['Common but differentiated responsibility','Leave No One Behind','Polluter pays','Maximum governance'],
+  a:1,e:'"Leave No One Behind" \u2014 progress must reach the furthest-behind first. The SDGs are also universal, unlike the developing-world-focused MDGs.'},
+];
+let qi=0,score=0,answered=false;
+const qc=document.getElementById('quizCard');
+function renderQ(){
+  if(qi>=QUIZ.length){renderScore();return;}
+  answered=false;const item=QUIZ[qi];
+  qc.innerHTML=`
+    <div class="q-progress"><span>Question ${qi+1} / ${QUIZ.length}</span><span>Score ${score}</span></div>
+    <div class="q-text">${item.q}</div><div id="opts"></div>
+    <div class="q-explain" id="exp"></div>
+    <div class="q-nav"><button class="btn ghost" id="restart">Restart</button><button class="btn" id="next" disabled>Next →</button></div>`;
+  const opts=qc.querySelector('#opts');
+  item.o.forEach((txt,i)=>{const b=document.createElement('button');b.className='opt';b.textContent=txt;b.onclick=()=>choose(i);opts.appendChild(b);});
+  qc.querySelector('#next').onclick=()=>{qi++;renderQ();};
+  qc.querySelector('#restart').onclick=()=>{qi=0;score=0;renderQ();};
+}
+function choose(i){
+  if(answered)return;answered=true;const item=QUIZ[qi];
+  const btns=[...qc.querySelectorAll('.opt')];
+  btns.forEach((b,ix)=>{b.disabled=true;if(ix===item.a)b.classList.add('correct');});
+  if(i===item.a){score++;}else{btns[i].classList.add('wrong');}
+  const exp=qc.querySelector('#exp');exp.textContent=(i===item.a?'Correct. ':'Not quite. ')+item.e;exp.classList.add('show');
+  qc.querySelector('#next').disabled=false;
+  qc.querySelector('#next').textContent=qi+1>=QUIZ.length?'See score →':'Next →';
+  qc.querySelector('.q-progress').children[1].textContent='Score '+score;
+}
+function renderScore(){
+  const pct=Math.round(score/QUIZ.length*100);
+  let msg=pct===100?'Exam-ready on these.':pct>=75?'Solid \u2014 patch the misses.':pct>=50?'Getting there. Re-read the Overview & Scorecard.':'Cycle back through the Precision Notes.';
+  qc.innerHTML=`<div class="q-score"><div class="big">${score}/${QUIZ.length}</div><p class="body" style="margin:8px auto 16px">${msg}</p><button class="btn" id="again">Try again</button></div>`;
+  qc.querySelector('#again').onclick=()=>{qi=0;score=0;renderQ();};
+}
+renderQ();
+</script>
+</body>
+</html>
