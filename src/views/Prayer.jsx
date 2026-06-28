@@ -364,10 +364,7 @@ export default function Prayer({
                 </div>
               </div>
               <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginBottom: 12 }}>
-                Tracking since {qaza?.startDate || "today"}. Tap <strong>+</strong> when you make one up as qaza.
-                {totalOwed > 0 && (
-                  <> Prayed on time but forgot to mark it? Tick the missed day in the 7-day tracker below — it won't count as qaza.</>
-                )}
+                Since {qaza?.startDate || "today"} · tap <strong>+</strong> as you make each one up.
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
                 {QAZA_PRAYERS.map((p) => {
@@ -560,23 +557,28 @@ function RemindersPanel({ notifications, updateNotifications }) {
     if (blocked || busy) return;
     setError("");
     if (enabled) {
-      updateNotifications({
-        ...notifications,
-        prayer: { ...(notifications?.prayer || {}), enabled: false },
-      });
+      // Functional updater (not a stale spread of `notifications`) so a
+      // concurrent write still in the debounce window — e.g. usePrayer's
+      // prayerTimes mirror — isn't clobbered.
+      updateNotifications((prev) => ({
+        ...prev,
+        prayer: { ...(prev?.prayer || {}), enabled: false },
+      }));
       return;
     }
     setBusy(true);
     try {
       const { token, timezone } = await requestPermissionAndToken();
-      const existingTokens = Array.isArray(notifications?.fcmTokens) ? notifications.fcmTokens : [];
-      const existingPerPrayer = notifications?.prayer?.perPrayer || {};
-      const nextPerPrayer = { Fajr: true, Dhuhr: true, Asr: true, Maghrib: true, Isha: true, ...existingPerPrayer };
-      updateNotifications({
-        ...notifications,
-        prayer: { enabled: true, perPrayer: nextPerPrayer },
-        fcmTokens: existingTokens.includes(token) ? existingTokens : [...existingTokens, token],
-        timezone,
+      updateNotifications((prev) => {
+        const existingTokens = Array.isArray(prev?.fcmTokens) ? prev.fcmTokens : [];
+        const existingPerPrayer = prev?.prayer?.perPrayer || {};
+        const nextPerPrayer = { Fajr: true, Dhuhr: true, Asr: true, Maghrib: true, Isha: true, ...existingPerPrayer };
+        return {
+          ...prev,
+          prayer: { enabled: true, perPrayer: nextPerPrayer },
+          fcmTokens: existingTokens.includes(token) ? existingTokens : [...existingTokens, token],
+          timezone,
+        };
       });
       setPermission("granted");
     } catch (e) {
