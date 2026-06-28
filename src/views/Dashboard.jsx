@@ -4,13 +4,13 @@ import {
   INTENTIONS,
 } from "../lib/constants";
 import { todayStr } from "../lib/dates";
-import { isGoalDone, pct } from "../lib/goals";
+import { isGoalDone } from "../lib/goals";
 import { goldA, S } from "../lib/styles";
 import GoalCard from "../components/GoalCard";
 import EmptyState from "../components/EmptyState";
 import Modal from "../components/Modal";
 import NowCard from "../components/NowCard";
-import { MorningPanel, EveningPanel } from "../components/DailyPanels";
+import ContinuityStrip from "../components/ContinuityStrip";
 
 // Dashboard / daily-loop view. Reads aggregate state from Planner; does not
 // own any. Morning + Evening panels at the top scaffold the day; the rest
@@ -18,8 +18,6 @@ import { MorningPanel, EveningPanel } from "../components/DailyPanels";
 export default function Dashboard({
   goals,
   muhasaba,
-  totalFocusMins,
-  totalSessions,
   overallPct,
   prayerTimes,
   intentionIdx,
@@ -92,14 +90,6 @@ export default function Dashboard({
       : aiPreviewSrc
     : null;
 
-  const statTiles = [
-    { label: "Goals", value: goals.length, color: "#7F77DD" },
-    { label: "Short-term", value: goals.filter((g) => g.type === "short").length, color: "#378ADD" },
-    { label: "Completed", value: goals.filter((g) => pct(g) === 100).length, color: "#1D9E75" },
-    { label: "Focus mins", value: totalFocusMins, color: "var(--gold)" },
-    { label: "Sessions", value: totalSessions, color: "#D88E4A" },
-  ];
-
   const upcomingGoals = [...goals]
     .filter((g) => !isGoalDone(g))
     .sort((a, b) => new Date(a.due) - new Date(b.due))
@@ -129,41 +119,18 @@ export default function Dashboard({
         onOpenGoals={() => setView("add")}
       />
 
-      {/* Daily loop — Morning + Evening panels. Time-of-day emphasises one;
-          both stay visible so the user sees the rhythm at a glance. */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))",
-        gap: 14,
-        marginBottom: 18,
-      }}>
-        <MorningPanel
-          phase={dayPhase}
-          prayerTimesSet={!!prayerTimes}
-          yDua={yDua}
-          yMirrorTomorrow={yMirrorTomorrow}
-          nextPrayer={nextPrayer}
-          prayerCity={prayerCity}
-          firstTask={firstTask}
-          qazaOwedTotal={qazaOwedTotal}
-          onOpenYesterday={() => { setMuhasabaDay(yDua?.day || todayStr()); setView("muhasaba"); }}
-          onOpenMirrorDay={(day) => { setMuhasabaDay(day); setView("muhasaba"); }}
-          onOpenPrayer={() => setView("prayer")}
-          onOpenAddPrayer={() => setView("prayer")}
-          onStartFirstTask={(gId, tId) => startTaskTimer(gId, tId)}
-          onOpenGoals={() => setView("add")}
-        />
-        <EveningPanel
-          phase={dayPhase}
-          prayersTodaySummary={prayersTodaySummary}
-          focusTodaySummary={focusTodaySummary}
-          muhasabaStateValue={muhasabaStateValue}
-          todayDua={todayDua}
-          onOpenPrayer={() => setView("prayer")}
-          onOpenFocus={() => setView("pomodoro")}
-          onOpenMuhasaba={() => { setMuhasabaDay(todayStr()); setView("muhasaba"); }}
-        />
-      </div>
+      {/* Continuity thread — only the day-to-day spiritual beats the hero
+          doesn't already show. Renders nothing when there's nothing to carry. */}
+      <ContinuityStrip
+        yDua={yDua}
+        yMirrorTomorrow={yMirrorTomorrow}
+        qazaOwedTotal={qazaOwedTotal}
+        todayDua={todayDua}
+        onOpenYesterday={() => { setMuhasabaDay(yDua?.day || todayStr()); setView("muhasaba"); }}
+        onOpenMirrorDay={(day) => { setMuhasabaDay(day); setView("muhasaba"); }}
+        onOpenPrayer={() => setView("prayer")}
+        onOpenMuhasaba={() => { setMuhasabaDay(todayStr()); setView("muhasaba"); }}
+      />
 
       {/* First-run onboarding — auto-dismisses when all three steps are done */}
       {showOnboarding && (() => {
@@ -238,55 +205,14 @@ export default function Dashboard({
         );
       })()}
 
-      {/* stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginBottom: 20 }}>
-        {statTiles.map((t) => {
-          // Each tile gets a faint background wash + edge tint matching its
-          // accent. The gold tile goes through goldA() so the tint follows
-          // the active theme; category-coloured tiles use direct hex+alpha
-          // because those colours don't change between dark and light.
-          const isVar = t.color.startsWith("var(");
-          const tint = isVar ? goldA(12) : t.color + "1f";
-          const border = isVar ? goldA(28) : t.color + "44";
-          return (
-            <div key={t.label} className="tile-hover"
-              style={{
-                background: tint,
-                borderRadius: "var(--border-radius-md)",
-                padding: "14px 16px",
-                border: `0.5px solid ${border}`,
-              }}>
-              <div style={{ fontSize: 13, color: "var(--color-text-secondary)", marginBottom: 5 }}>{t.label}</div>
-              <div style={{ fontSize: 28, fontWeight: 500, color: t.color }}>{t.value}</div>
-            </div>
-          );
-        })}
+      {/* upcoming goals — overall % folded into the header instead of its
+          own card; the row of vanity stat tiles now lives in the Stats tab. */}
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12 }}>
+        <span style={{ fontSize: 16, fontWeight: 500 }}>Upcoming goals</span>
+        {goals.length > 0 && (
+          <span style={{ fontSize: 13, color: "var(--color-text-tertiary)" }}>{overallPct}% overall</span>
+        )}
       </div>
-
-      {/* overall progress */}
-      <div style={{ ...S.card, marginBottom: 16 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 15, marginBottom: 7 }}>
-          <span style={{ fontWeight: 500 }}>Overall progress</span>
-          <span style={{ color: "var(--gold)", fontWeight: 500 }}>{overallPct}%</span>
-        </div>
-        <div style={{ height: 10, background: "var(--color-background-secondary)", borderRadius: 99, overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${overallPct}%`, background: "var(--gold)", borderRadius: 99, transition: "width 0.4s" }} />
-        </div>
-        <div style={{ fontSize: 13, color: "var(--color-text-tertiary)", marginTop: 6, textAlign: "center" }}>
-          Every effort counts towards your Aakhirah
-        </div>
-      </div>
-
-      {/* random intention nudge */}
-      <div style={{
-        textAlign: "center", fontSize: 14, color: "var(--color-text-tertiary)",
-        fontStyle: "italic", marginBottom: 16, padding: "0 16px",
-      }}>
-        {INTENTIONS[intentionIdx]}
-      </div>
-
-      {/* upcoming goals */}
-      <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 10 }}>Upcoming goals</div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
         {upcomingGoals.map((g) => (
           <GoalCard key={g.id} g={g} lastActivityDay={lastActivityByGoal[g.id]} onSelect={() => onSelectGoal(g.id)} />
@@ -435,6 +361,11 @@ export default function Dashboard({
                   📿 {savedCount} saved
                 </button>
               )}
+            </div>
+            {/* niyyah lead-out — the rotating intention, folded into the
+                verse's closing moment rather than floating mid-page. */}
+            <div style={{ fontSize: 13, color: "var(--color-text-tertiary)", fontStyle: "italic", marginTop: 16, opacity: 0.85, maxWidth: 480, marginLeft: "auto", marginRight: "auto" }}>
+              {INTENTIONS[intentionIdx]}
             </div>
           </div>
         );
