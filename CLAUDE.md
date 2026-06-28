@@ -11,6 +11,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 There is no test runner, linter, or type-checker configured. Don't add one without asking.
 
+The **service worker is build-only**: vite-plugin-pwa compiles `src/sw.js` → `dist/sw.js` during `npm run build` (with the Workbox precache manifest injected). `npm run dev` does **not** serve it, so offline boot and background FCM pushes can't be tested against the dev server — use `npm run build && npm run preview` (or a deploy) for anything touching the SW.
+
 ## Required environment
 
 `Copy .env.example` to `.env` and fill in `VITE_FIREBASE_*` for client auth/Firestore.
@@ -21,7 +23,7 @@ For **prayer-time push notifications** (FCM), add `VITE_FIREBASE_VAPID_KEY` (cli
 
 ## Architecture
 
-React 18 + Vite SPA. No TypeScript, no router, no state management library, no component library, no test framework.
+React 18 + Vite SPA, shipped as an installable **PWA** (vite-plugin-pwa). No TypeScript, no router, no state management library, no component library, no test framework. The one third-party UI dependency is **@dnd-kit** (core/sortable/utilities), used solely for drag-to-reorder of tasks in [src/views/GoalDetail.jsx](src/views/GoalDetail.jsx).
 
 **Auth gates everything via [src/AuthWrapper.jsx](src/AuthWrapper.jsx).** `App` renders `<AuthWrapper>{(user) => <Planner user={user} />}</AuthWrapper>`. Until Firebase Auth resolves, nothing else mounts; `Planner` can assume `user.uid` exists.
 
@@ -33,6 +35,8 @@ src/
                          data, and view dispatch. Per-domain hooks own the
                          heavy state below.
   useFirestore.jsx     ← single doc-per-user hook, debounced writes
+  sw.js                ← the ONE service worker (app-shell precache + FCM
+                         background push). Vite-processed via injectManifest.
   firebase.js, AuthWrapper.jsx, App.jsx, main.jsx, index.css
 
   hooks/               per-domain custom hooks (extracted from Planner)
@@ -99,11 +103,15 @@ api/
                        by ?secret=CRON_SECRET. Prunes dead FCM tokens.
 
 public/
-  firebase-messaging-sw.js   FCM service worker. Receives background pushes
-                             and renders system notifications. Firebase config
-                             passed via registration query string (file is
-                             served from /public, not Vite-processed).
+  manifest.webmanifest       PWA manifest (gold-and-dark Aakhirah branding).
+                             Hand-authored; vite-plugin-pwa is set
+                             `manifest: false` so it won't clobber this.
+  favicon.ico, icon.svg      App icons (precached + listed in includeAssets).
 ```
+
+(Historical note: FCM used to live in a separate `public/firebase-messaging-sw.js`
+registered with config on the query string. That file is gone — its job moved
+into `src/sw.js`. See the PWA / service worker section below.)
 
 **Stats is a spiritual dashboard, not just productivity.** The top two sections are **Prayer Health** (per-prayer 30-day grid + completion % + this-month total + qaza balance) and **Habit Health** (per-recurring-task streak + 30-day rate across all active goals). Productivity sections — focus heatmap, niyyah trend, mirror patterns, per-goal sparklines, top focus tasks, recent sessions — follow below. When adding new sections, default to spiritual signals before productivity ones.
 
@@ -137,7 +145,7 @@ All user data lives in a single document at `users/{uid}`, managed by the `useUs
 - `savedVerses[]` — bookmarked ayat from the verse-of-day card; `{ id, verseKey, arabic, translation, url, savedAt }`. De-duped by `verseKey` (re-saving is a no-op). Newest-first.
 - `notifications` — prayer-reminder push config. Shape: `{ prayer: { enabled, perPrayer: { Fajr, Dhuhr, Asr, Maghrib, Isha } }, fcmTokens[], timezone, prayerTimes: { date: "YYYY-MM-DD", times: { Fajr: "05:23", ... } }, lastSentAt: { "YYYY-MM-DD_Fajr": ISO, ... } }`. `fcmTokens[]` is multi-device (each browser/PWA install gets its own); the server endpoint prunes tokens that FCM reports as unregistered. `prayerTimes` is written by `usePrayer` whenever the client fetches today's Aladhan timings AND notifications are enabled — the server cron has no Aladhan call of its own. `lastSentAt` is keyed by `${userLocalDate}_${prayer}` and is GC'd to today's keys on each successful push. **Reminders are best-effort: server skips silently if `prayerTimes.date` is stale (user hasn't opened the app today).**
 
-The hook subscribes via `onSnapshot`, exposes seven `update*` setters, and writes via a **1.2-second debounced** `setDoc(..., { merge: true })`. Because writes are debounced, the hook keeps `latest*Ref` mirrors so rapid updates don't lose data. **When adding a new top-level field, mirror the pattern: state + ref + include in the merged write payload.**
+The hook subscribes via `onSnapshot`, exposes eight `update*` setters (one per top-level field), and writes via a **1.2-second debounced** `setDoc(..., { merge: true })`. Because writes are debounced, the hook keeps `latest*Ref` mirrors so rapid updates don't lose data. A `loadedRef` gates `save()` — no write fires until the first snapshot returns, so a setter called before Firestore responds can't flush the empty initial refs over real data (this once wiped a user's doc when geolocation resolved mid-load). **When adding a new top-level field, mirror the pattern: state + ref + include in the merged write payload.**
 
 `Planner.jsx` wraps each setter in an `apply*Update(updaterOrValue)` callback that accepts either a value or a functional updater `(prev) => next`. **Always go through `applyGoalsUpdate` / `applyPrayerLogUpdate` / `applyFocusLogUpdate` / `applyMuhasabaUpdate` / `applyQazaUpdate` / `applySavedVersesUpdate`** — calling the raw `update*` directly bypasses the functional-updater pattern.
 
@@ -175,6 +183,20 @@ The light gold (`#7a5810`) is intentionally darker than dark gold so opacity-tin
 ```
 
 If you simplify it to `/(.*)`, `vercel dev` will swallow `/src/main.jsx` requests and the page goes blank. Production is unaffected because Vercel checks the filesystem before applying rewrites.
+
+### PWA / service worker
+
+**One service worker, [src/sw.js](src/sw.js), owns root scope `/` and does two jobs:** app-shell precache (offline boot) and FCM background push. They share one SW because only one can control `/`.
+
+- **Build via [vite.config.js](vite.config.js)** with `strategies: 'injectManifest'` — `src/sw.js` is hand-authored and Workbox only injects the precache list (`self.__WB_MANIFEST`) at build time. `generateSW` mode can't express the FCM handler, so injectManifest is mandatory.
+- **Firebase config is Vite-env-injected** (`import.meta.env.VITE_FIREBASE_*` inlined at build), not passed on the registration query string like the old SW. The values aren't secrets — they already ship in the client bundle.
+- **`registerType: 'autoUpdate'`** — a new deploy's SW takes over on the next load with no prompt. No in-app update toast yet.
+- **Old-SW cleanup**: [src/App.jsx](src/App.jsx) runs a one-shot `unregister('/firebase-messaging-sw.js')` on mount so existing users don't keep the dead FCM-only worker. Safe to remove once all installs have cycled.
+- **Notification chrome lives in one place**: background pushes call `showNotification` in `src/sw.js`; foreground pushes are forwarded there by `attachForegroundHandler` in `lib/notifications.js` so both look identical. `notificationclick` only opens **relative** paths (`safeRelativePath`) to block phishing via a crafted FCM payload.
+
+### Firestore security rules
+
+[firestore.rules](firestore.rules): one rule — `users/{uid}/{document=**}` is read/write only for `request.auth.uid == uid`; everything else is default-deny. The `{document=**}` wildcard pre-covers the eventual muhasaba subcollection migration. Deploy with `firebase deploy --only firestore:rules`. **The entire data model lives under the one user doc, so this single rule is the whole authorization surface** — adding a top-level collection without a matching rule means it's denied by default (intentional).
 
 ## Conventions worth preserving
 
