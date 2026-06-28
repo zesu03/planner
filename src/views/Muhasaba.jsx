@@ -205,6 +205,40 @@ function Section({ n, title, hint, children, accent = "var(--gold)" }) {
   );
 }
 
+// Collapsible disclosure for the optional "depth" blocks (yesterday's du'a
+// verdict, the goal check, the relational audit). Keeps the nightly form
+// from opening as a wall — the five pillars stay visible, the extras tuck
+// behind a tappable header. Opens by default when already filled so a
+// returning user sees their own entries without hunting.
+function Collapsible({ title, accent = "var(--gold)", cardStyle, defaultOpen = false, summary, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div style={{ ...S.card, marginBottom: 14, padding: 0, overflow: "hidden", ...cardStyle }}>
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open}
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+          width: "100%", padding: "12px 16px", background: "transparent", border: "none",
+          cursor: "pointer", textAlign: "left",
+        }}>
+        <span style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
+          <span style={{ fontSize: 12, color: accent, fontWeight: 600, letterSpacing: "0.4px", textTransform: "uppercase", flexShrink: 0 }}>
+            {title}
+          </span>
+          {!open && summary && (
+            <span style={{ fontSize: 12, color: "var(--color-text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {summary}
+            </span>
+          )}
+        </span>
+        <span aria-hidden style={{ fontSize: 18, color: "var(--color-text-tertiary)", lineHeight: 1, flexShrink: 0, transition: "transform 0.15s ease", transform: open ? "rotate(45deg)" : "none" }}>
+          +
+        </span>
+      </button>
+      {open && <div style={{ padding: "0 16px 16px" }}>{children}</div>}
+    </div>
+  );
+}
+
 export default function Muhasaba({
   muhasaba,
   muhasabaDay,
@@ -375,11 +409,15 @@ export default function Muhasaba({
         const setNote = (text) => {
           updateEntry({ duaCheck: { status: dc.status, note: text } });
         };
+        const verdictLabel = dc.status ? STATUSES.find((s) => s.value === dc.status)?.label : null;
         return (
-          <div style={{ ...S.card, marginBottom: 14, background: "rgba(63,140,160,0.08)", borderColor: "rgba(63,140,160,0.32)" }}>
-            <div style={{ fontSize: 12, color: "#7BB6C7", fontWeight: 600, letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: 5 }}>
-              Yesterday's du'a — today is its test
-            </div>
+          <Collapsible
+            title="Yesterday's du'a"
+            accent="#7BB6C7"
+            cardStyle={{ background: "rgba(63,140,160,0.08)", borderColor: "rgba(63,140,160,0.32)" }}
+            defaultOpen={!!dc.status}
+            summary={verdictLabel || "today is its test"}
+          >
             <div style={{ fontSize: 15, color: "var(--color-text-primary)", fontStyle: "italic", marginBottom: 12 }}>
               "{yesterdayDua}"
             </div>
@@ -411,7 +449,7 @@ export default function Muhasaba({
                 }
                 style={{ width: "100%", resize: "vertical", boxSizing: "border-box", marginTop: 2 }} />
             )}
-          </div>
+          </Collapsible>
         );
       })()}
 
@@ -423,11 +461,15 @@ export default function Muhasaba({
         const activeGoals = (goals || []).filter((g) => !g.completedAt);
         if (activeGoals.length === 0) return null;
         const checks = entry.goalChecks || {};
+        const answered = activeGoals.filter((g) => checks[g.id]).length;
         return (
-          <div style={{ ...S.card, marginBottom: 14, background: "rgba(127,119,221,0.05)", borderColor: "rgba(127,119,221,0.28)" }}>
-            <div style={{ fontSize: 12, color: "#9B92F2", fontWeight: 600, letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: 4 }}>
-              Tonight's goal check
-            </div>
+          <Collapsible
+            title="Tonight's goal check"
+            accent="#9B92F2"
+            cardStyle={{ background: "rgba(127,119,221,0.05)", borderColor: "rgba(127,119,221,0.28)" }}
+            defaultOpen={answered > 0}
+            summary={answered > 0 ? `${answered}/${activeGoals.length} answered` : `${activeGoals.length} ${activeGoals.length === 1 ? "goal" : "goals"} to review`}
+          >
             <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginBottom: 12, fontStyle: "italic", lineHeight: 1.5 }}>
               Did the day move your stated niyyahs forward? Be honest — drift is harder to repair the longer you avoid naming it.
             </div>
@@ -479,7 +521,7 @@ export default function Muhasaba({
                 );
               })}
             </div>
-          </div>
+          </Collapsible>
         );
       })()}
 
