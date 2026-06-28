@@ -222,6 +222,12 @@ export default function Dashboard({
             title="Plant your first niyyah"
             hint="Start with a Deen goal — memorising a surah, daily Quran, regular dhikr. Small, consistent steps build the strongest habits." />
         )}
+        {goals.length > 0 && upcomingGoals.length === 0 && (
+          <EmptyState icon="✓"
+            title="All goals complete — alhamdulillah"
+            hint="Nothing pending. Plant a new niyyah, or rest in what you've finished."
+            padY={20} />
+        )}
       </div>
 
       {/* AI reflection teaser */}
