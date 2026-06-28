@@ -14,7 +14,7 @@ import Modal from "../components/Modal";
 // quietly — the user expands what they want to drill into. The spiritual
 // cards above (Prayer / Qaza / Voluntary / Habits / Patterns) stay
 // always-visible because they're the page's identity.
-function CollapsibleSection({ title, icon, right, defaultOpen = false, children }) {
+function CollapsibleSection({ title, icon, right, accent = "var(--gold)", defaultOpen = false, children }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
     <div style={{ ...S.card, marginBottom: 16, padding: open ? undefined : "12px 14px" }}>
@@ -24,24 +24,58 @@ function CollapsibleSection({ title, icon, right, defaultOpen = false, children 
         style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
           gap: 10, width: "100%",
-          background: "transparent", border: "none", padding: 0,
-          cursor: "pointer", textAlign: "left",
+          background: "transparent", border: "none", textAlign: "left",
+          cursor: "pointer",
           color: "var(--color-text-primary)",
+          padding: 0,
+          ...(open ? { paddingBottom: 12, borderBottom: "0.5px solid var(--color-border-tertiary)" } : {}),
         }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 16, fontWeight: 500 }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 15, fontWeight: 600, minWidth: 0 }}>
           <span style={{
-            display: "inline-block", width: 12, color: "var(--color-text-tertiary)",
+            display: "inline-block", width: 10, flexShrink: 0, color: "var(--color-text-tertiary)",
             transition: "transform 0.2s",
             transform: open ? "rotate(90deg)" : "rotate(0deg)",
           }}>›</span>
-          {icon && <span>{icon}</span>}
+          {icon && (
+            <span style={{
+              width: 30, height: 30, borderRadius: 9, flexShrink: 0,
+              background: `color-mix(in srgb, ${accent} 14%, transparent)`,
+              display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15,
+            }}>{icon}</span>
+          )}
           {title}
         </span>
         {right && (
-          <span style={{ fontSize: 12, color: "var(--color-text-tertiary)", fontWeight: 400 }}>{right}</span>
+          <span style={{ fontSize: 12, color: "var(--color-text-tertiary)", fontWeight: 400, whiteSpace: "nowrap" }}>{right}</span>
         )}
       </button>
       {open && <div style={{ marginTop: 14 }}>{children}</div>}
+    </div>
+  );
+}
+
+// Shared section header — an icon in a tinted chip, the title, an optional
+// right-aligned meta, and a hairline divider beneath. Used across the open
+// sections so the page reads as one composed dashboard rather than a stack of
+// differently-styled cards.
+function SectionHeader({ icon, title, accent = "var(--gold)", right }) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+      marginBottom: 14, paddingBottom: 12,
+      borderBottom: "0.5px solid var(--color-border-tertiary)", flexWrap: "wrap",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+        {icon && (
+          <span style={{
+            width: 30, height: 30, borderRadius: 9, flexShrink: 0,
+            background: `color-mix(in srgb, ${accent} 14%, transparent)`,
+            display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15,
+          }}>{icon}</span>
+        )}
+        <span style={{ fontSize: 15, fontWeight: 600, color: "var(--color-text-primary)" }}>{title}</span>
+      </div>
+      {right && <span style={{ fontSize: 12, color: "var(--color-text-tertiary)", whiteSpace: "nowrap" }}>{right}</span>}
     </div>
   );
 }
@@ -566,14 +600,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
           dashboard, not a productivity tab. Per-prayer 30-day daily grid +
           completion rate + this-month total + qaza balance. */}
       <div style={{ ...S.card, marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
-          <div style={{ fontSize: 16, fontWeight: 500 }}>
-            🕌 Prayer health
-          </div>
-          <div style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>
-            last {prayerHealth.DAYS} days
-          </div>
-        </div>
+        <SectionHeader icon="🕌" title="Prayer health" right={`last ${prayerHealth.DAYS} days`} />
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {prayerHealth.perPrayer.map((p) => {
             const color = PRAYER_COLORS[p.name];
@@ -618,12 +645,8 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
           nothing's been paid (fresh user has nothing to say here). */}
       {(qazaBalance.totalMissed > 0 || qazaBalance.totalPaid > 0) && (
         <div style={{ ...S.card, marginBottom: 16 }}>
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12, gap: 10, flexWrap: "wrap" }}>
-            <div style={{ fontSize: 16, fontWeight: 500 }}>📿 Qaza balance</div>
-            <div style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>
-              {qazaBalance.startDate ? `since ${qazaBalance.startDate}` : "lifetime"}
-            </div>
-          </div>
+          <SectionHeader icon="📿" title="Qaza balance" accent="#BA7517"
+            right={qazaBalance.startDate ? `since ${qazaBalance.startDate}` : "lifetime"} />
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 320 }}>
               <thead>
@@ -684,10 +707,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
           for someone not tracking nafl yet. */}
       {voluntary.some((v) => v.count > 0 || v.streak > 0) && (
         <div style={{ ...S.card, marginBottom: 16 }}>
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12, gap: 10, flexWrap: "wrap" }}>
-            <div style={{ fontSize: 16, fontWeight: 500 }}>🌃 Voluntary practice</div>
-            <div style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>30-day window</div>
-          </div>
+          <SectionHeader icon="🌃" title="Voluntary practice" accent="#5a4a8c" right="30-day window" />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
             {voluntary.map((v) => {
               const color = PRAYER_COLORS[v.name] || "var(--gold)";
@@ -728,14 +748,8 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
           parent goal so the user can edit/tick from one click. */}
       {habitHealth.length > 0 && (
         <div style={{ ...S.card, marginBottom: 16 }}>
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12, gap: 10, flexWrap: "wrap" }}>
-            <div style={{ fontSize: 16, fontWeight: 500 }}>
-              🔁 Habit health
-            </div>
-            <div style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>
-              {habitHealth.length} habit{habitHealth.length === 1 ? "" : "s"} · 30-day window
-            </div>
-          </div>
+          <SectionHeader icon="🔁" title="Habit health" accent="#1D9E75"
+            right={`${habitHealth.length} habit${habitHealth.length === 1 ? "" : "s"} · 30-day window`} />
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {habitHealth.map((h) => {
               const cat = CAT_COLORS[h.category] || "var(--gold)";
@@ -793,14 +807,8 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
           dropping into productivity history. Stays expanded always. */}
       {mirrorPatterns.groups.length > 0 && (
         <div style={{ ...S.card, marginBottom: 16 }}>
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12, gap: 10, flexWrap: "wrap" }}>
-            <div style={{ fontSize: 16, fontWeight: 500 }}>
-              🪞 Patterns from the mirror
-            </div>
-            <div style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>
-              across {mirrorPatterns.reportsScanned} report{mirrorPatterns.reportsScanned === 1 ? "" : "s"} · last {mirrorPatterns.windowDays} days
-            </div>
-          </div>
+          <SectionHeader icon="🪞" title="Patterns from the mirror" accent="#7BB6C7"
+            right={`across ${mirrorPatterns.reportsScanned} report${mirrorPatterns.reportsScanned === 1 ? "" : "s"} · last ${mirrorPatterns.windowDays} days`} />
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {mirrorPatterns.groups.map((g) => {
               const isVar = g.color.startsWith("var(");
