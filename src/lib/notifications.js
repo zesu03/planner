@@ -9,7 +9,10 @@
 //     `isIosNeedsInstall()` so the UI can show an honest "Install first" hint.
 //
 // On opt-in we:
-//   1. Register the service worker that FCM hands push payloads to.
+//   1. Wait for the auto-registered service worker (/sw.js — registered by
+//      vite-plugin-pwa) to become ready. It already initializes Firebase
+//      and handles onBackgroundMessage; we just need its registration to
+//      hand to getToken.
 //   2. Request Notification permission (browser prompt).
 //   3. Call getToken with the VAPID key to obtain an FCM registration token.
 //   4. Persist the token + the user's IANA timezone to the user doc.
@@ -19,9 +22,7 @@
 // as unregistered.
 
 import { getToken, onMessage } from "firebase/messaging";
-import { firebaseConfig, getMessagingIfSupported } from "../firebase";
-
-const SW_URL = "/firebase-messaging-sw.js";
+import { getMessagingIfSupported } from "../firebase";
 
 // iOS detection. The Notification API is missing entirely on iOS Safari
 // outside of an installed PWA, so the typeof check is the cheapest signal.
@@ -51,21 +52,6 @@ export function currentPermission() {
   return Notification.permission;
 }
 
-// Register (or reuse) the FCM service worker. The config is passed via
-// query string so the SW — which is a static file in /public not processed
-// by Vite — can initialize Firebase without us hardcoding project keys.
-async function registerSw() {
-  const params = new URLSearchParams({
-    apiKey: firebaseConfig.apiKey || "",
-    authDomain: firebaseConfig.authDomain || "",
-    projectId: firebaseConfig.projectId || "",
-    storageBucket: firebaseConfig.storageBucket || "",
-    messagingSenderId: firebaseConfig.messagingSenderId || "",
-    appId: firebaseConfig.appId || "",
-  });
-  return navigator.serviceWorker.register(`${SW_URL}?${params.toString()}`);
-}
-
 // Full opt-in flow. Returns { token, timezone } on success, or throws with
 // a user-displayable message. UI catches and shows the message.
 export async function requestPermissionAndToken() {
@@ -86,7 +72,17 @@ export async function requestPermissionAndToken() {
     throw new Error("Permission denied. You can re-enable in your browser's site settings.");
   }
 
-  const swReg = await registerSw();
+  // vite-plugin-pwa auto-registers /sw.js on page load. ready resolves once
+  // an active SW controls the page (or installs one if needed). But ready
+  // NEVER resolves if registration failed (or in `npm run dev`, where no SW
+  // is generated), which would hang the opt-in flow forever — so race it
+  // against a timeout and surface a retryable error instead.
+  const swReg = await Promise.race([
+    navigator.serviceWorker.ready,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("Notifications service didn't start. Reload the page and try again.")), 10000)
+    ),
+  ]);
   const messaging = await getMessagingIfSupported();
   const token = await getToken(messaging, {
     vapidKey,
@@ -114,7 +110,7 @@ export async function attachForegroundHandler() {
   if (!messaging) return () => {};
   return onMessage(messaging, async (payload) => {
     try {
-      const reg = await navigator.serviceWorker.getRegistration(SW_URL);
+      const reg = await navigator.serviceWorker.ready;
       if (!reg) return;
       const title = payload.notification?.title || "Reminder";
       const body = payload.notification?.body || "";
