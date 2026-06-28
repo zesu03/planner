@@ -328,9 +328,6 @@ export default function GoalDetail({ selected, goBack }) {
               <span style={S.pill(CAT_COLORS[selected.category] + "22", CAT_COLORS[selected.category])}>
                 {selected.category}
               </span>
-              <span style={S.pill("var(--color-background-secondary)", "var(--color-text-secondary)")}>
-                {selected.type === "short" ? "Short-term" : "Long-term"}
-              </span>
               {done ? (
                 <>
                   <span key={selected.completedAt || "done"} className="pop-in"
@@ -418,13 +415,11 @@ export default function GoalDetail({ selected, goBack }) {
           </div>
         )}
 
-        {/* metrics — 3 tiles wide on desktop, drops to 1-column on very
-            narrow phones (<400px) where the 22px value "1h 45m" wraps
-            awkwardly inside an ~80px tile. The .goal-metrics class
-            handles the responsive collapse in index.css. */}
-        <div className="goal-metrics">
+        {/* metrics — ETA + Logged only. Progress used to be a third tile,
+            but it's now folded onto the bar below (inline %), so the area
+            shows each number once instead of three times. */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
           {[
-            ["Progress", `${p}%`, CAT_COLORS[selected.category]],
             ["ETA", fmtMins(totalEta), "#378ADD"],
             ["Logged", fmtMins(totalLogged), "#1D9E75"],
           ].map(([l, v, c]) => (
@@ -434,7 +429,12 @@ export default function GoalDetail({ selected, goBack }) {
             </div>
           ))}
         </div>
-        <ProgressBar val={p} color={CAT_COLORS[selected.category]} height={8} />
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <ProgressBar val={p} color={CAT_COLORS[selected.category]} height={8} />
+          </div>
+          <span style={{ fontSize: 14, fontWeight: 600, color: CAT_COLORS[selected.category], fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{p}%</span>
+        </div>
         <div style={{ fontSize: 14, color: "var(--color-text-secondary)", marginTop: 5, marginBottom: 16 }}>
           {(() => {
             const oneShots = selected.tasks.filter((t) => !isRecurring(t));
