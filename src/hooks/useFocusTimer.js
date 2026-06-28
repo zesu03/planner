@@ -33,6 +33,7 @@ import { newId } from "../lib/ids";
 import { localDateStr } from "../lib/dates";
 import { getFocusSeconds } from "../lib/focus";
 import { getAudioCtx, playTimerSound } from "../lib/audio";
+import { haptic } from "../lib/feedback";
 
 const FOCUS_LOG_CAP = 100;
 
@@ -139,6 +140,7 @@ export function useFocusTimer({
     }
     setLastSession({ id: entry.id, taskId: pomTaskId, goalId: pomGoalId, mins, completedAt: at.toISOString(), kind: "complete" });
     playTimerSound("focusEnd");
+    haptic([0, 30, 40, 30]);   // celebratory buzz on mobile, matching the reward system
     accumulatedSecRef.current = 0;
     startedAtRef.current = null;
     const task = pomGoalId && pomTaskId

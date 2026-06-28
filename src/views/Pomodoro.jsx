@@ -525,13 +525,10 @@ export default function Pomodoro({
         dismissLastSession={dismissLastSession}
         updateLastSessionNote={updateLastSessionNote}
       />
-      <div style={{ ...S.goldCard, textAlign: "center", marginBottom: 16, padding: "14px 20px" }}>
-        <div style={{ fontSize: 13, color: "var(--gold)", marginBottom: 4, fontWeight: 600, letterSpacing: "0.4px", textTransform: "uppercase" }}>
-          Reminder
-        </div>
-        <div style={{ fontSize: 14, fontStyle: "italic", color: "var(--color-text-secondary)" }}>
-          Make your intention before you begin — this effort is for Allah.
-        </div>
+      {/* Quiet niyyah lead-in — the "Bismillah — Start" button below carries
+          the intention too, so this stays a one-line whisper, not a card. */}
+      <div style={{ textAlign: "center", fontSize: 13, fontStyle: "italic", color: "var(--color-text-tertiary)", marginTop: 2, marginBottom: 18 }}>
+        Make your intention before you begin — this effort is for Allah.
       </div>
 
       {/* Dial + Daily progress side-by-side; stack on narrow screens. */}
@@ -812,19 +809,21 @@ export default function Pomodoro({
             End focus
           </button>
         )}
+        {/* Secondary "view" options — smaller + muted so the core actions
+            (Start / Reset / End) lead the row. */}
         <button
           onClick={() => (pip.pipWindow ? pip.close() : pip.open())}
           disabled={!pip.supported}
           title={pip.supported
             ? (pip.pipWindow ? "Close pop-out" : "Open a floating timer that stays on top")
             : "Pop-out requires Chrome or Edge"}
-          style={{ fontSize: 16, padding: "9px 18px", opacity: pip.supported ? 1 : 0.5, cursor: pip.supported ? "pointer" : "not-allowed" }}>
+          style={{ fontSize: 13, padding: "7px 14px", color: "var(--color-text-tertiary)", opacity: pip.supported ? 1 : 0.5, cursor: pip.supported ? "pointer" : "not-allowed" }}>
           {pip.pipWindow ? "Close pop-out" : "Pop out ⧉"}
         </button>
         <button
           onClick={enterFullscreen}
           title="Hide everything else — just the dial, the task, and the niyyah"
-          style={{ fontSize: 16, padding: "9px 18px" }}>
+          style={{ fontSize: 13, padding: "7px 14px", color: "var(--color-text-tertiary)" }}>
           Focus mode ⛶
         </button>
       </div>
