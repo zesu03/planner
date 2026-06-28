@@ -44,6 +44,16 @@ function variantFor(celebration) {
       actionLabel: "Open Muhasaba ›",
     };
   }
+  if (celebration.kind === "istiqamahStreak") {
+    return {
+      accent: "var(--noor)",
+      icon: "🔥",
+      eyebrow: "Istiqāmah",
+      title: `${celebration.count} days of showing up`,
+      sub: "The most beloved deeds to Allah are the constant ones, even if few.",
+      actionLabel: "Open ›",
+    };
+  }
   return null;
 }
 

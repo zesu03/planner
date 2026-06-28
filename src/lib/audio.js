@@ -59,6 +59,20 @@ export function playTimerSound(kind = "focusEnd") {
         { freq: 880.00, start: 0.00, dur: 0.45 },
         { freq: 587.33, start: 0.22, dur: 0.6 },
       ], 0.4);
+    } else if (kind === "prayerMark") {
+      // Soft, warm two-note confirm for marking a prayer — a quiet "noted,"
+      // not a fanfare (this fires up to five times a day). D5 → A5, low gain.
+      playChime([
+        { freq: 587.33, start: 0.00, dur: 0.45 },
+        { freq: 880.00, start: 0.10, dur: 0.6 },
+      ], 0.3);
+    } else if (kind === "milestone") {
+      // Streak milestone — brighter, a touch longer than prayerMark.
+      playChime([
+        { freq: 659.25, start: 0.00, dur: 0.5 },
+        { freq: 987.77, start: 0.12, dur: 0.55 },
+        { freq: 1318.5, start: 0.26, dur: 0.8 },
+      ], 0.45);
     }
   } catch {}
 }

@@ -6,7 +6,7 @@
 // Maghrib (or 6pm fallback) onward. Midday in between renders both panels
 // with neither emphasised — the user is mid-flight; nothing to nudge.
 
-import { todayStr, localDateStr, addDays } from "./dates";
+import { todayStr, localDateStr, addDays, addDaysToStr } from "./dates";
 
 // Returns "morning" | "midday" | "evening". `prayerTimes` is optional — if
 // present we use Dhuhr / Maghrib as the real boundaries; otherwise we fall
@@ -113,6 +113,40 @@ export function minsUntil(targetHHMM, now = new Date()) {
   if (Number.isNaN(h) || Number.isNaN(m)) return null;
   const nowMins = now.getHours() * 60 + now.getMinutes();
   return h * 60 + m - nowMins;
+}
+
+// Istiqāmah (steadfastness) streak — the home-screen "don't break the chain"
+// number. A day counts as "shown up" if the user logged ANY prayer, OR has a
+// muhasaba entry, OR banked any focus minutes that day. Deliberately broad:
+// the streak rewards returning daily, not perfection, which is what habit
+// formation needs (and what the hadith on consistent deeds points at).
+//
+// Counts back from today. If today isn't active yet the streak still reflects
+// the run up to yesterday (intact but "at risk"); call `istiqamahActiveToday`
+// to drive the at-risk styling. Returns 0 when the most recent active day is
+// older than yesterday (the chain is broken).
+export function istiqamahActiveToday(prayerLog = {}, focusLog = [], muhasaba = {}, today = todayStr()) {
+  const prayed = Object.values(prayerLog || {}).some((days) => (days || []).includes(today));
+  const focused = (focusLog || []).some((l) => l.day === today);
+  const reflected = !!(muhasaba || {})[today];
+  return prayed || focused || reflected;
+}
+
+export function istiqamahStreak(prayerLog = {}, focusLog = [], muhasaba = {}, today = todayStr()) {
+  const prayedDays = new Set();
+  for (const days of Object.values(prayerLog || {})) for (const d of (days || [])) prayedDays.add(d);
+  const focusDays = new Set((focusLog || []).map((l) => l.day));
+  const muhDays = new Set(Object.keys(muhasaba || {}));
+  const active = (d) => prayedDays.has(d) || focusDays.has(d) || muhDays.has(d);
+
+  // Start at today if active, else yesterday (chain intact but at risk today).
+  let cursor = active(today) ? today : addDaysToStr(today, -1);
+  let streak = 0;
+  while (active(cursor)) {
+    streak++;
+    cursor = addDaysToStr(cursor, -1);
+  }
+  return streak;
 }
 
 // localDateStr re-exported so panels don't reach into ../dates separately —

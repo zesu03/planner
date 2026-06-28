@@ -17,8 +17,9 @@ import { isGoalDone, pct } from "./lib/goals";
 import { emptyMuhasabaEntry, isMuhasabaFilled, muhasabaStreak } from "./lib/muhasaba";
 import { emptyQaza, computeQazaOwed, QAZA_PRAYERS } from "./lib/qaza";
 import { nextPrayer as computeNextPrayer, prayerDayFor as computePrayerDayFor } from "./lib/prayer";
-import { dayPhase, prayersToday, focusToday, muhasabaState, yesterdayDua, firstOpenTask } from "./lib/daily";
+import { dayPhase, prayersToday, focusToday, muhasabaState, yesterdayDua, firstOpenTask, istiqamahStreak, istiqamahActiveToday } from "./lib/daily";
 import { fmtTime, focusStreakDays, STREAK_MILESTONES } from "./lib/focus";
+import { rewardMilestone } from "./lib/feedback";
 import { goldA, S } from "./lib/styles";
 import { attachForegroundHandler } from "./lib/notifications";
 import { buildReportPayload as buildReportPayloadLib } from "./lib/reportPayload";
@@ -101,7 +102,7 @@ export default function Planner({ user }) {
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     try { localStorage.setItem("aakhirah_theme", theme); } catch { /* private mode */ }
-    const color = theme === "light" ? "#ede2c5" : "#0f120f";
+    const color = theme === "light" ? "#ece3c8" : "#0d1024";
     // Find any existing theme-color meta (with or without media) and
     // either update it, or insert a fresh one if there's none plain.
     const metas = document.head.querySelectorAll('meta[name="theme-color"]');
@@ -116,6 +117,17 @@ export default function Planner({ user }) {
     }
     plain.setAttribute("content", color);
   }, [theme]);
+
+  // Time-of-day ambient: reflect the day phase on <html> so the body glow
+  // can warm at dawn and cool toward night (see the [data-phase] rules in
+  // index.css). Re-evaluated every 5 min so it shifts while the app is open.
+  useEffect(() => {
+    const apply = () => document.documentElement.setAttribute("data-phase", dayPhase(prayerTimes));
+    apply();
+    const id = setInterval(apply, 5 * 60 * 1000);
+    return () => clearInterval(id);
+  }, [prayerTimes]);
+
   // Persist the user's theme choice when AuthWrapper's bar toggles it.
   // AuthWrapper owns the UI + the data-theme attribute mutation; this
   // listener forwards the change into Firestore so the choice survives
@@ -169,6 +181,7 @@ export default function Planner({ user }) {
       const prevG = prev.find((p) => p.id === g.id);
       if (prevG && !prevG.completedAt) {
         setCelebration({ kind: "goal", goal: g });
+        rewardMilestone();
         break;
       }
     }
@@ -195,8 +208,25 @@ export default function Planner({ user }) {
     if (prev === null) return;
     if (newStreak > prev && STREAK_MILESTONES.includes(newStreak)) {
       setCelebration({ kind: "muhasabaStreak", count: newStreak });
+      rewardMilestone();
     }
   }, [muhasaba]);
+
+  // Istiqāmah streak crossings — the home-screen "don't break the chain"
+  // number. Changes when any of prayer / focus / muhasaba does, so it watches
+  // all three. (Focus-session completion has its own chime, so we don't fire
+  // an extra milestone sound for the focusStreak source above.)
+  const prevIstiqamahStreakRef = useRef(null);
+  useEffect(() => {
+    const newStreak = istiqamahStreak(prayerLog, focusLog, muhasaba);
+    const prev = prevIstiqamahStreakRef.current;
+    prevIstiqamahStreakRef.current = newStreak;
+    if (prev === null) return;
+    if (newStreak > prev && STREAK_MILESTONES.includes(newStreak)) {
+      setCelebration({ kind: "istiqamahStreak", count: newStreak });
+      rewardMilestone();
+    }
+  }, [prayerLog, focusLog, muhasaba]);
 
   // Auto-dismiss after 12s. The timer resets if a new celebration replaces
   // the current one (because the dep changes).
@@ -737,6 +767,8 @@ export default function Planner({ user }) {
   const qazaOwedTotal = QAZA_PRAYERS.reduce((s, p) => s + (qazaOwedMap[p] || 0), 0);
   const prayersTodaySummary = prayersToday(prayerLog);
   const focusTodaySummary = focusToday(focusLog, dailyFocusGoalMins);
+  const istiqamah = istiqamahStreak(prayerLog, focusLog, muhasaba);
+  const istiqamahToday = istiqamahActiveToday(prayerLog, focusLog, muhasaba);
   const muhasabaStateValue = muhasabaState(muhasaba[todayStr()], isMuhasabaFilled);
   // Yesterday's AI mirror "tomorrow" → today's commitment. Closes the loop
   // so the mentor's action survives across days instead of dying in
@@ -772,6 +804,8 @@ export default function Planner({ user }) {
     } else if (celebration.kind === "muhasabaStreak") {
       setMuhasabaDay(todayStr());
       setView("muhasaba");
+    } else if (celebration.kind === "istiqamahStreak") {
+      setView("prayer");
     }
     setCelebration(null);
   };
@@ -874,6 +908,8 @@ export default function Planner({ user }) {
           focusTodaySummary={focusTodaySummary}
           muhasabaStateValue={muhasabaStateValue}
           startTaskTimer={startTaskTimer}
+          streak={istiqamah}
+          todayActive={istiqamahToday}
         />
       )}
 

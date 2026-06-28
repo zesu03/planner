@@ -9,6 +9,7 @@ import { goldA, S } from "../lib/styles";
 import GoalCard from "../components/GoalCard";
 import EmptyState from "../components/EmptyState";
 import Modal from "../components/Modal";
+import NowCard from "../components/NowCard";
 import { MorningPanel, EveningPanel } from "../components/DailyPanels";
 
 // Dashboard / daily-loop view. Reads aggregate state from Planner; does not
@@ -45,6 +46,8 @@ export default function Dashboard({
   focusTodaySummary,
   muhasabaStateValue,
   startTaskTimer,
+  streak,
+  todayActive,
 }) {
   // Saved-verses modal + transient "copied" pill state.
   const [versesOpen, setVersesOpen] = useState(false);
@@ -104,6 +107,28 @@ export default function Dashboard({
 
   return (
     <div className="view-content">
+      {/* Hero — the single time-aware focal point: what to do right now,
+          glanceable prayer/focus progress, one primary action, and the
+          istiqāmah streak. The detailed Morning/Evening rhythm follows below. */}
+      <NowCard
+        dayPhase={dayPhase}
+        prayerTimesSet={!!prayerTimes}
+        nextPrayer={nextPrayer}
+        prayerCity={prayerCity}
+        prayersTodaySummary={prayersTodaySummary}
+        focusTodaySummary={focusTodaySummary}
+        firstTask={firstTask}
+        muhasabaStateValue={muhasabaStateValue}
+        streak={streak}
+        todayActive={todayActive}
+        onOpenPrayer={() => setView("prayer")}
+        onOpenAddPrayer={() => setView("prayer")}
+        onStartTask={(gId, tId) => startTaskTimer(gId, tId)}
+        onOpenFocus={() => setView("pomodoro")}
+        onOpenMuhasaba={() => { setMuhasabaDay(todayStr()); setView("muhasaba"); }}
+        onOpenGoals={() => setView("add")}
+      />
+
       {/* Daily loop — Morning + Evening panels. Time-of-day emphasises one;
           both stay visible so the user sees the rhythm at a glance. */}
       <div style={{

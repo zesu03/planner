@@ -4,6 +4,7 @@ import { localDateStr } from "../lib/dates";
 import { QAZA_PRAYERS } from "../lib/qaza";
 import { currentPrayerWindow } from "../lib/prayer";
 import { S } from "../lib/styles";
+import { rewardPrayerMark } from "../lib/feedback";
 import {
   currentPermission,
   isIosNeedsInstall,
@@ -57,6 +58,20 @@ export default function Prayer({
     if (prayerTimes) setEditingCity(false);
   }, [prayerTimes]);
   const showCityForm = !prayerTimes || editingCity;
+
+  // Reward the moment a prayer is *newly* marked (not on unmark): a soft
+  // chime + haptic + a brief burst on the row. `burstKey` drives the
+  // animation; it auto-clears so the row settles back.
+  const [burstKey, setBurstKey] = useState(null);
+  function markPrayer(p) {
+    const wasDone = prayerDoneToday ? prayerDoneToday(p) : false;
+    togglePrayerLog(p);
+    if (!wasDone) {
+      rewardPrayerMark();
+      setBurstKey(p);
+      setTimeout(() => setBurstKey((k) => (k === p ? null : k)), 650);
+    }
+  }
   return (
     <div className="view-content">
       {hijriDate && (
@@ -144,7 +159,7 @@ export default function Prayer({
                   <div style={{ fontSize: 15, color: "var(--color-text-secondary)" }}>{nextPrayer.time}</div>
                 </div>
                 {due && (
-                  <button onClick={() => togglePrayerLog(nextPrayer.name)}
+                  <button onClick={() => markPrayer(nextPrayer.name)}
                     style={{
                       fontSize: 14,
                       padding: "6px 14px",
@@ -170,7 +185,7 @@ export default function Prayer({
               const pColor = PRAYER_COLORS[p];
               const isCurrent = p === currentPrayerName && !isSunrise && !done;
               return (
-                <div key={p} className="tile-hover"
+                <div key={p} className={`tile-hover${burstKey === p ? " mark-burst" : ""}`}
                   style={{
                     ...S.card,
                     position: "relative",
@@ -224,7 +239,7 @@ export default function Prayer({
                     const canMark = canMarkPrayer ? canMarkPrayer(p) : true;
                     const disabled = !done && !canMark;
                     return (
-                      <button onClick={() => !disabled && togglePrayerLog(p)}
+                      <button onClick={() => !disabled && markPrayer(p)}
                         disabled={disabled}
                         title={disabled ? `${p} time hasn't started yet (${prayerTimes[p]})` : undefined}
                         style={{
@@ -285,7 +300,7 @@ export default function Prayer({
                     const canMark = canMarkPrayer ? canMarkPrayer(vp) : true;
                     const disabled = !done && !canMark;
                     return (
-                      <button onClick={() => !disabled && togglePrayerLog(vp)}
+                      <button onClick={() => !disabled && markPrayer(vp)}
                         disabled={disabled}
                         title={disabled ? `${vp} can be prayed after Isha (${prayerTimes?.Isha || "tonight"})` : undefined}
                         style={{
