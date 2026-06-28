@@ -81,7 +81,10 @@ export default function NowCard({
     const t = parseHHMM(nextPrayer.time);
     if (t != null) {
       let diff = t - (now.getHours() * 60 + now.getMinutes());
-      if (diff < 0) diff += 1440;
+      // Only tomorrow's first prayer wraps past midnight. A today prayer
+      // whose minute just passed stays <=0 so fmtCountdown reads "now"
+      // (instead of flipping to "in 23h 59m" before the prop recomputes).
+      if (diff < 0 && nextPrayer.tomorrow) diff += 1440;
       countdown = diff;
     }
   }
@@ -100,7 +103,6 @@ export default function NowCard({
     if (!prayerTimesSet) return { label: "Set your prayer times", onClick: onOpenAddPrayer };
     if (nextPrayer?.due) return { label: `Mark ${nextPrayer.name} prayed`, onClick: onOpenPrayer };
     if (muhasabaStateValue !== "filled") return { label: "Open tonight's muhasaba", onClick: onOpenMuhasaba };
-    if (onOpenGoals && !firstTask && doneCount > 0) return { label: "Start a focus block", onClick: onOpenFocus };
     return { label: "Start a focus block", onClick: onOpenFocus };
   })();
 

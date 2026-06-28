@@ -214,8 +214,7 @@ export default function Planner({ user }) {
 
   // Istiqāmah streak crossings — the home-screen "don't break the chain"
   // number. Changes when any of prayer / focus / muhasaba does, so it watches
-  // all three. (Focus-session completion has its own chime, so we don't fire
-  // an extra milestone sound for the focusStreak source above.)
+  // all three.
   const prevIstiqamahStreakRef = useRef(null);
   useEffect(() => {
     const newStreak = istiqamahStreak(prayerLog, focusLog, muhasaba);
@@ -223,8 +222,12 @@ export default function Planner({ user }) {
     prevIstiqamahStreakRef.current = newStreak;
     if (prev === null) return;
     if (newStreak > prev && STREAK_MILESTONES.includes(newStreak)) {
+      // Toast only — no rewardMilestone() here. This effect shares the
+      // `muhasaba` dep with the muhasaba-streak effect (which already plays
+      // the chime), and an istiqāmah crossing is always triggered by an
+      // action that makes its own sound (prayer mark, focus-end, muhasaba).
+      // Firing here too would double the chime on the same commit.
       setCelebration({ kind: "istiqamahStreak", count: newStreak });
-      rewardMilestone();
     }
   }, [prayerLog, focusLog, muhasaba]);
 

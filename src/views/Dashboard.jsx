@@ -13,8 +13,8 @@ import NowCard from "../components/NowCard";
 import ContinuityStrip from "../components/ContinuityStrip";
 
 // Dashboard / daily-loop view. Reads aggregate state from Planner; does not
-// own any. Morning + Evening panels at the top scaffold the day; the rest
-// is supporting context (stats, upcoming goals, AI preview, verse).
+// own any. The NowCard hero leads, then the continuity thread; the rest is
+// supporting context (upcoming goals, AI preview, verse).
 export default function Dashboard({
   goals,
   muhasaba,

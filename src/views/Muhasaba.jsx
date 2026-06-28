@@ -412,6 +412,7 @@ export default function Muhasaba({
         const verdictLabel = dc.status ? STATUSES.find((s) => s.value === dc.status)?.label : null;
         return (
           <Collapsible
+            key={`dua-${day}`}
             title="Yesterday's du'a"
             accent="#7BB6C7"
             cardStyle={{ background: "rgba(63,140,160,0.08)", borderColor: "rgba(63,140,160,0.32)" }}
@@ -464,6 +465,7 @@ export default function Muhasaba({
         const answered = activeGoals.filter((g) => checks[g.id]).length;
         return (
           <Collapsible
+            key={`goals-${day}`}
             title="Tonight's goal check"
             accent="#9B92F2"
             cardStyle={{ background: "rgba(127,119,221,0.05)", borderColor: "rgba(127,119,221,0.28)" }}

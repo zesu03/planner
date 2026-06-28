@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CAT_COLORS } from "../lib/constants";
-import { todayStr, addDays, localDateStr } from "../lib/dates";
+import { todayStr, localDateStr } from "../lib/dates";
 import { fmtTime, fmtMins, getFocusSeconds, focusStreakDays } from "../lib/focus";
 import { isGoalDone, pct, isRecurring, isScheduledOn, isDoneOn } from "../lib/goals";
 import { getAudioCtx } from "../lib/audio";
@@ -358,7 +358,6 @@ export default function Pomodoro({
     .slice(0, 5);
 
   const today = todayStr();
-  const yKey = addDays(-1);
   // Live in-progress minutes from the current session. `total - pomSeconds`
   // is the elapsed seconds while running AND holds the paused value when
   // the user pauses (because the interval clears but pomSeconds keeps its
@@ -368,7 +367,6 @@ export default function Pomodoro({
   const liveSessionMins = Math.floor(Math.max(0, total - pomSeconds) / 60);
   const todayLoggedMins = minsForDay(focusLog, today);
   const todayMins = todayLoggedMins + liveSessionMins;
-  const yesterdayMins = minsForDay(focusLog, yKey);
   // Streak still uses focusLog only — a streak is about completed sessions
   // hitting the goal, not in-progress work. A 59/60 min session in progress
   // shouldn't claim the streak before it lands.

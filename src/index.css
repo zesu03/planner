@@ -333,23 +333,6 @@ select:focus-visible {
   }
 }
 
-/* Goal detail metrics tiles — 3 wide on desktop. On narrow phones
-   (<400px) the 22px-font values inside 80px tiles wrap awkwardly; below
-   that breakpoint we drop to a single column so each tile gets its
-   natural width. The middle breakpoint keeps a 2+1 grid for 400-500px
-   widths where 3 still fits but feels cramped. */
-.goal-metrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-  margin-bottom: 14px;
-}
-@media (max-width: 400px) {
-  .goal-metrics {
-    grid-template-columns: 1fr;
-  }
-}
-
 /* Stats > Prayer Health — per-prayer row. Desktop is a flat 3-column
    strip: [name 76px | 30-cell heatmap | rate %]. Mobile cramps that to
    ~5px cells which read as a smear, so the heatmap lifts to its own
