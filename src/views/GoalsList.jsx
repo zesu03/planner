@@ -1,4 +1,4 @@
-import { goldA, S } from "../lib/styles";
+import { S } from "../lib/styles";
 import GoalCard from "../components/GoalCard";
 import EmptyState from "../components/EmptyState";
 
@@ -31,54 +31,29 @@ export default function GoalsList({
     { v: "completed", label: "Completed",   countKey: "completed" },
   ];
 
-  // Portfolio header — quick-triage metrics, each also acting as a one-click
-  // filter shortcut. The numbers come from goalCounts (computed in Planner
-  // off the unfiltered goals array) so the header doesn't shift around as
-  // the user narrows the view.
-  const headerStats = [
-    { key: "active",  label: "active",       value: goalCounts?.active   ?? 0, color: "var(--color-text-primary)",   filter: "active" },
-    { key: "overdue", label: "overdue",      value: goalCounts?.overdue  ?? 0, color: "var(--color-text-danger)",    filter: "overdue" },
-    { key: "week",    label: "due this week",value: goalCounts?.week     ?? 0, color: "var(--color-text-warning)",   filter: "week" },
-  ];
+  // Slim triage line — at-a-glance "where do I stand" without duplicating the
+  // filter chips below (which already carry every filter + a colour-coded
+  // count). Overdue / due-soon segments only appear when non-zero, so the
+  // line stays quiet when there's nothing pressing.
   const showHeader = (goalCounts?.total ?? 0) > 0;
 
   return (
     <div className="view-content" style={{ position: "relative" }}>
       {showHeader && (
-        <div role="group" aria-label="Goal portfolio summary"
-          style={{
-            display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14,
-          }}>
-          {headerStats.map((s) => {
-            const active = filter === s.filter;
-            const dim = s.value === 0;
-            return (
-              <button key={s.key}
-                onClick={() => setFilter(active ? "all" : s.filter)}
-                aria-pressed={active}
-                aria-label={`${s.value} goals ${s.label}${active ? ", currently filtered" : ""}`}
-                disabled={dim}
-                style={{
-                  flex: "1 1 110px",
-                  minWidth: 100,
-                  textAlign: "left",
-                  padding: "10px 12px",
-                  borderRadius: "var(--border-radius-md)",
-                  background: active ? goldA(15) : "var(--color-background-secondary)",
-                  border: `0.5px solid ${active ? "var(--gold)" : "var(--color-border-tertiary)"}`,
-                  cursor: dim ? "default" : "pointer",
-                  opacity: dim ? 0.55 : 1,
-                  transition: "border-color 0.15s, background 0.15s",
-                }}>
-                <div style={{ fontSize: 22, fontWeight: 600, color: s.value > 0 ? s.color : "var(--color-text-tertiary)", lineHeight: 1 }}>
-                  {s.value}
-                </div>
-                <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 4, textTransform: "lowercase", letterSpacing: "0.2px" }}>
-                  {s.label}
-                </div>
-              </button>
-            );
-          })}
+        <div role="status" aria-label="Goal portfolio summary"
+          style={{ marginBottom: 14, fontSize: 14, color: "var(--color-text-secondary)", display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+          <span>
+            <strong style={{ color: "var(--color-text-primary)", fontWeight: 600 }}>{goalCounts.active ?? 0}</strong> active
+          </span>
+          {(goalCounts.overdue ?? 0) > 0 && (
+            <span style={{ color: "var(--color-text-danger)" }}>· {goalCounts.overdue} overdue</span>
+          )}
+          {(goalCounts.week ?? 0) > 0 && (
+            <span style={{ color: "var(--color-text-warning)" }}>· {goalCounts.week} due this week</span>
+          )}
+          {(goalCounts.completed ?? 0) > 0 && (
+            <span style={{ color: "var(--color-text-tertiary)" }}>· {goalCounts.completed} completed</span>
+          )}
         </div>
       )}
 
