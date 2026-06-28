@@ -37,25 +37,16 @@ export default function GoalCard({ g, lastActivityDay, onSelect }) {
     ? "Due today"
     : `${dl}d left`;
 
-  // Recency line — only render when it carries signal. Three tiers of
-  // colour escalation so the user gets a soft nudge before a full warning:
-  //  0d           — success green ("active today")
-  //  1–6d         — muted ("active Nd ago")
-  //  7–13d        — warning yellow ("quiet for Nd") — early nudge
-  //  14d+         — warning yellow w/ ⚠ ("stale · Nd inactive") — stronger
+  // Recency — show only the two signals worth a line on a compact card: a
+  // positive "active today", and the quiet/stale nudges. The in-between
+  // ("yesterday", "Nd ago", "no focus yet") was noise on every card.
   let recencyText = null;
   let recencyColor = "var(--color-text-tertiary)";
-  if (!done) {
-    if (lastActivityDay) {
-      const lastDays = Math.floor((new Date(todayStr()) - new Date(lastActivityDay)) / 86400000);
-      if (lastDays === 0) { recencyText = "active today"; recencyColor = "var(--color-text-success)"; }
-      else if (lastDays === 1) recencyText = "active yesterday";
-      else if (lastDays < 7) recencyText = `active ${lastDays}d ago`;
-      else if (lastDays < 14) { recencyText = `quiet for ${lastDays}d`; recencyColor = "var(--color-text-warning)"; }
-      else { recencyText = `⚠ stale · ${lastDays}d inactive`; recencyColor = "var(--color-text-warning)"; }
-    } else if (g.tasks?.length > 0) {
-      recencyText = "no focus logged yet";
-    }
+  if (!done && lastActivityDay) {
+    const lastDays = Math.floor((new Date(todayStr()) - new Date(lastActivityDay)) / 86400000);
+    if (lastDays === 0) { recencyText = "active today"; recencyColor = "var(--color-text-success)"; }
+    else if (lastDays >= 14) { recencyText = `⚠ stale · ${lastDays}d inactive`; recencyColor = "var(--color-text-warning)"; }
+    else if (lastDays >= 7) { recencyText = `quiet for ${lastDays}d`; recencyColor = "var(--color-text-warning)"; }
   }
 
   return (
@@ -90,12 +81,13 @@ export default function GoalCard({ g, lastActivityDay, onSelect }) {
     >
       {/* category accent edge */}
       <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: catColor, opacity: done ? 0.5 : 1 }} />
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 9 }}>
         <span
           style={{
             flex: 1,
-            fontWeight: 500,
+            fontWeight: 600,
             fontSize: 16,
+            lineHeight: 1.3,
             textDecoration: done ? "line-through" : "none",
             textDecorationColor: done ? "var(--color-text-tertiary)" : "transparent",
           }}
@@ -104,37 +96,38 @@ export default function GoalCard({ g, lastActivityDay, onSelect }) {
         </span>
         <span style={S.pill(catColor + "22", catColor)}>{g.category}</span>
       </div>
-      <ProgressBar val={p} color={catColor} />
-      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 7, fontSize: 14, color: "var(--color-text-secondary)", gap: 8, flexWrap: "wrap" }}>
-        <span>
+      {/* progress bar + inline % — the numeric signal that used to live in a
+          separate "Overall progress" card, folded onto the bar itself */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <ProgressBar val={p} color={catColor} />
+        </div>
+        <span style={{ fontSize: 12, fontWeight: 600, color: catColor, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
+          {p}%
+        </span>
+      </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 8, fontSize: 13, gap: 8, flexWrap: "wrap" }}>
+        <span style={{ color: "var(--color-text-tertiary)" }}>
           {(() => {
-            const oneShots = g.tasks.filter((t) => !isRecurring(t));
-            const habits = g.tasks.filter((t) => isRecurring(t));
+            const tasks = g.tasks || [];
+            const oneShots = tasks.filter((t) => !isRecurring(t));
+            const habits = tasks.filter((t) => isRecurring(t));
             const oneShotPart = oneShots.length > 0
               ? `${oneShots.filter((t) => t.done).length}/${oneShots.length} tasks`
               : null;
             const habitPart = habits.length > 0
               ? `${habits.length} habit${habits.length === 1 ? "" : "s"}`
               : null;
-            const parts = [oneShotPart, habitPart].filter(Boolean);
-            const lead = parts.length > 0 ? parts.join(" · ") : "no tasks yet";
-            return `${lead} · ${g.type === "short" ? "Short" : "Long"}-term`;
+            return [oneShotPart, habitPart].filter(Boolean).join(" · ") || "no tasks yet";
           })()}
-        </span>
-        <span style={{ color: statusColor, textAlign: "right" }}>
-          {statusText}
-          {done && (
-            <span style={{ color: "var(--color-text-tertiary)", marginLeft: 6, fontSize: 13 }}>
-              · was due {fmt(g.due)}
-            </span>
+          {recencyText && (
+            <span style={{ color: recencyColor, fontStyle: "italic" }}> · {recencyText}</span>
           )}
         </span>
+        <span style={{ color: statusColor, textAlign: "right", fontWeight: 500 }}>
+          {statusText}
+        </span>
       </div>
-      {recencyText && (
-        <div style={{ marginTop: 5, fontSize: 12, color: recencyColor, fontStyle: "italic" }}>
-          {recencyText}
-        </div>
-      )}
     </div>
   );
 }
