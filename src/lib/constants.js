@@ -8,8 +8,8 @@ export const CAT_COLORS = {
   Learning: "#378ADD",
   Finance: "#BA7517",
   Personal: "#D85A30",
-  Deen: "#c9a84c",
-  Other: "#888780",
+  Deen: "#d4b65e",
+  Other: "#9a988f",
 };
 export const PRIORITIES = ["Low", "Medium", "High"];
 
@@ -22,15 +22,17 @@ export const VOLUNTARY_PRAYERS = ["Tahajjud"];
 export const PRAYER_ICONS = { Fajr: "🌙", Sunrise: "🌅", Dhuhr: "☀️", Asr: "🌤️", Maghrib: "🌇", Isha: "✨", Tahajjud: "🌃" };
 // Colours mirror the time of day each prayer falls in: deep indigo dawn,
 // rising amber, gold midday, warm afternoon, sunset red, indigo night.
-// Tahajjud sits in the deepest part of night — darker indigo than Isha.
+// Tahajjud sits in the deepest part of night. Brightened from the original
+// charcoal-era hues so the cool indigo/violet prayers (Fajr, Isha, Tahajjud)
+// stay legible on the Midnight Noor indigo base instead of sinking into it.
 export const PRAYER_COLORS = {
-  Fajr:    "#3a4ba0",
+  Fajr:    "#5163c9",
   Sunrise: "#e0894a",
-  Dhuhr:   "#c9a84c",
+  Dhuhr:   "#d4b65e",
   Asr:     "#d88e4a",
   Maghrib: "#c75a3a",
-  Isha:    "#5a4a8c",
-  Tahajjud: "#2d2a6e",
+  Isha:    "#7a66b8",
+  Tahajjud: "#4c4894",
 };
 
 // ── spiritual content ──

@@ -16,12 +16,15 @@
 // `gold` is preserved for the rare case where a JS-side hex string is
 // genuinely needed (e.g. SVG stroke attribute). Prefer `goldA(N)` or
 // `"var(--gold)"` for everything else.
-export const gold = "#c9a84c";
+export const gold = "#d4b65e";
 // General-purpose opacity tint for ANY colour (hex, named, CSS var,
 // color-mix). Replaces both the `gold + "55"` and the `pColor + "33"`
 // patterns with a single helper that works for theme-aware tokens too.
 export const tintA = (color, percent) => `color-mix(in srgb, ${color} ${percent}%, transparent)`;
 export const goldA = (percent) => tintA("var(--gold)", percent);
+// Noor — the cyan "light" accent (Midnight Noor palette). Theme-aware via
+// the --noor token (deep teal in light mode). Use for secondary highlights.
+export const noorA = (percent) => tintA("var(--noor)", percent);
 export const goldLight = goldA(12);
 // Convenience for the two-stop gradient used as a soft gold wash. Kept
 // here so call sites stop hard-coding `rgba(201,168,76,...)` literals.
