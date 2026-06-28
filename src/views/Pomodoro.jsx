@@ -144,21 +144,16 @@ function SessionBanner({ lastSession, goals, dismissLastSession, updateLastSessi
 // Daily progress: today's mins toward the goal, yesterday's total, streak,
 // and a 7-day mini bar chart so the user sees the week at a glance.
 // Designed to sit beside the timer dial as a sibling block.
-function DailyProgress({ focusLog, todayMins, yesterdayMins, streak, goalMins, onEditGoal, style, liveSessionMins = 0 }) {
+// Slim "Today" strip — replaces the old competing 156px ring. A compact
+// horizontal readout (today's minutes vs an editable daily goal + streak),
+// a thin progress bar, and a 7-day bar row. Keeps the timer dial as the
+// page's single hero.
+function TodayStrip({ focusLog, todayMins, streak, goalMins, onEditGoal, style, liveSessionMins = 0 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(String(goalMins));
 
-  const pct = Math.min(1, todayMins / Math.max(1, goalMins));
-  const RING = 156;
-  const R = 70;
-  const C = 2 * Math.PI * R;
-  const goalH = Math.floor(goalMins / 60);
-  const goalM = goalMins % 60;
-  const goalSplit = goalH && !goalM
-    ? { value: String(goalH), unit: goalH === 1 ? "hour" : "hours" }
-    : goalH
-      ? { value: `${goalH}:${String(goalM).padStart(2, "0")}`, unit: "h" }
-      : { value: String(goalM), unit: "min" };
+  const pct = Math.min(100, Math.round((todayMins / Math.max(1, goalMins)) * 100));
+  const met = todayMins >= goalMins && goalMins > 0;
 
   const commit = () => {
     const v = Math.max(1, Math.min(720, Number(draft) || goalMins));
@@ -166,204 +161,106 @@ function DailyProgress({ focusLog, todayMins, yesterdayMins, streak, goalMins, o
     setEditing(false);
   };
 
+  const DAYS = 7;
+  const days = [];
+  for (let i = DAYS - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    const k = localDateStr(d);
+    const isToday = i === 0;
+    days.push({
+      key: k,
+      mins: minsForDay(focusLog, k) + (isToday ? liveSessionMins : 0),
+      label: d.toLocaleDateString("en", { weekday: "narrow" }),
+      isToday,
+    });
+  }
+  const max = Math.max(goalMins, ...days.map((d) => d.mins), 1);
+
   return (
-    <div style={{ ...S.card, display: "flex", flexDirection: "column", justifyContent: "center", ...style }}>
-      <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-text-primary)" }}>Daily progress</div>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", alignItems: "center", gap: 14 }}>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 11, color: "var(--color-text-tertiary)", letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: 4 }}>
-            Yesterday
-          </div>
-          <div style={{ fontSize: 26, fontWeight: 500, color: "var(--color-text-primary)", lineHeight: 1 }}>
-            {yesterdayMins}
-          </div>
-          <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginTop: 4 }}>
-            minutes
-          </div>
-        </div>
-
-        <div style={{ position: "relative", width: RING, height: RING, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <svg width={RING} height={RING} viewBox={`0 0 ${RING} ${RING}`} style={{ position: "absolute", inset: 0 }}>
-            <circle cx={RING / 2} cy={RING / 2} r={R} fill="none" stroke="var(--color-background-secondary)" strokeWidth="10" />
-            <circle cx={RING / 2} cy={RING / 2} r={R} fill="none"
-              stroke="var(--gold)"
-              strokeWidth="10"
-              strokeDasharray={C}
-              strokeDashoffset={C * (1 - pct)}
-              strokeLinecap="round"
-              transform={`rotate(-90 ${RING / 2} ${RING / 2})`}
-              style={{ transition: "stroke-dashoffset 0.5s" }} />
-          </svg>
-          <div style={{ position: "relative", textAlign: "center" }}>
-            <div style={{ fontSize: 11, color: "var(--color-text-tertiary)", letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: 2 }}>
-              Daily goal
-            </div>
+    <div style={{ ...S.card, ...style }}>
+      {/* Header: today total · editable goal · streak */}
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase", color: "var(--color-text-tertiary)" }}>Today</span>
+          <span style={{ fontSize: 22, fontWeight: 600, color: met ? "var(--color-text-success)" : "var(--color-text-primary)", fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+            {fmtMins(todayMins)}
+          </span>
+          <span style={{ fontSize: 13, color: "var(--color-text-tertiary)" }}>
+            /{" "}
             {editing ? (
-              <input
-                type="number"
-                min="1"
-                max="720"
-                value={draft}
+              <input type="number" min="1" max="720" value={draft} autoFocus
                 onChange={(e) => setDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") commit();
-                  else if (e.key === "Escape") setEditing(false);
-                }}
+                onKeyDown={(e) => { if (e.key === "Enter") commit(); else if (e.key === "Escape") setEditing(false); }}
                 onBlur={() => draft && commit()}
-                autoFocus
-                style={{
-                  width: 72,
-                  fontSize: 26,
-                  fontWeight: 500,
-                  color: "var(--gold)",
-                  textAlign: "center",
-                  padding: "0 4px",
-                  background: "transparent",
-                  border: "none",
-                  borderBottom: "2px solid var(--gold)",
-                  outline: "none",
-                  fontFamily: "inherit",
-                }}
-              />
+                style={{ width: 56, fontSize: 14, padding: "1px 4px", textAlign: "center", background: "transparent", color: "var(--gold)", border: "none", borderBottom: "1.5px solid var(--gold)", outline: "none" }} />
             ) : (
-              <button
-                onClick={() => { setDraft(String(goalMins)); setEditing(true); }}
-                title="Click to set daily goal"
-                style={{
-                  fontSize: 30,
-                  fontWeight: 500,
-                  color: "var(--gold)",
-                  lineHeight: 1,
-                  background: "transparent",
-                  border: "none",
-                  padding: "0 2px",
-                  cursor: "pointer",
-                  fontFamily: "inherit",
-                  borderBottom: "1px dashed transparent",
-                  transition: "border-color 0.15s",
-                }}
+              <button onClick={() => { setDraft(String(goalMins)); setEditing(true); }} title="Set daily goal"
+                style={{ fontSize: 13, color: "var(--gold)", background: "transparent", border: "none", borderBottom: "1px dashed transparent", padding: 0, cursor: "pointer", fontFamily: "inherit" }}
                 onMouseEnter={(e) => { e.currentTarget.style.borderBottomColor = goldA(50); }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderBottomColor = "transparent"; }}
-              >
-                {goalSplit.value}
+                onMouseLeave={(e) => { e.currentTarget.style.borderBottomColor = "transparent"; }}>
+                {fmtMins(goalMins)}
               </button>
-            )}
-            <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginTop: 4 }}>
-              {editing ? "minutes" : goalSplit.unit}
-            </div>
-          </div>
+            )}{" "}
+            goal
+          </span>
         </div>
-
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 11, color: "var(--color-text-tertiary)", letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: 4 }}>
-            Streak
-          </div>
-          <div style={{ fontSize: 26, fontWeight: 500, color: streak > 0 ? "var(--gold)" : "var(--color-text-primary)", lineHeight: 1 }}>
-            {streak}
-          </div>
-          <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginTop: 4 }}>
-            {streak === 1 ? "day" : "days"}
-          </div>
-        </div>
+        {streak > 0 && (
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--gold)" }}>🔥 {streak}-day streak</span>
+        )}
       </div>
 
+      {/* Thin progress bar */}
+      <div style={{ height: 6, background: "var(--color-background-secondary)", borderRadius: 99, overflow: "hidden", marginBottom: 14 }}>
+        <div style={{ height: "100%", width: `${pct}%`, background: met ? "var(--color-text-success)" : "var(--gold)", borderRadius: 99, transition: "width 0.4s ease" }} />
+      </div>
+
+      {/* Goal presets — only while editing */}
       {editing && (() => {
         const GOAL_PRESETS = [30, 60, 90, 120, 240];
         const apply = (m) => { onEditGoal(m); setEditing(false); };
         return (
-          <div style={{ marginTop: 12, paddingTop: 10, borderTop: "0.5px dashed var(--color-border-tertiary)" }}>
-            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "center", alignItems: "center" }}>
-              <span style={{ fontSize: 11, color: "var(--color-text-tertiary)", letterSpacing: "0.4px", textTransform: "uppercase", marginRight: 4 }}>
-                quick set
-              </span>
-              {GOAL_PRESETS.map((m) => {
-                const active = m === goalMins;
-                const label = m >= 60 && m % 60 === 0 ? `${m / 60}h` : `${m}m`;
-                return (
-                  <button key={m} onClick={() => apply(m)}
-                    title={`${m} minutes daily goal`}
-                    style={{
-                      fontSize: 13,
-                      padding: "4px 10px",
-                      borderRadius: 99,
-                      background: active ? "var(--gold)" : "var(--color-background-secondary)",
-                      border: `0.5px solid ${active ? "var(--gold)" : "var(--color-border-tertiary)"}`,
-                      color: active ? "#fff" : "var(--color-text-primary)",
-                      cursor: "pointer",
-                      fontWeight: active ? 600 : 500,
-                    }}>
-                    {label}
-                  </button>
-                );
-              })}
-              <button onClick={() => setEditing(false)}
-                title="Close editor"
-                style={{ fontSize: 13, padding: "4px 10px", marginLeft: 4 }}>
-                Close
-              </button>
-            </div>
+          <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center", marginBottom: 14 }}>
+            <span style={{ fontSize: 11, color: "var(--color-text-tertiary)", letterSpacing: "0.4px", textTransform: "uppercase", marginRight: 4 }}>quick set</span>
+            {GOAL_PRESETS.map((m) => {
+              const active = m === goalMins;
+              const label = m >= 60 && m % 60 === 0 ? `${m / 60}h` : `${m}m`;
+              return (
+                <button key={m} onClick={() => apply(m)} title={`${m} minutes daily goal`}
+                  style={{ fontSize: 13, padding: "4px 10px", borderRadius: 99, background: active ? "var(--gold)" : "var(--color-background-secondary)", border: `0.5px solid ${active ? "var(--gold)" : "var(--color-border-tertiary)"}`, color: active ? "#0f0f0f" : "var(--color-text-primary)", cursor: "pointer", fontWeight: active ? 600 : 500 }}>
+                  {label}
+                </button>
+              );
+            })}
+            <button onClick={() => setEditing(false)} style={{ fontSize: 13, padding: "4px 10px", marginLeft: 4 }}>Close</button>
           </div>
         );
       })()}
 
-      <div style={{ textAlign: "center", marginTop: 16, fontSize: 13, color: todayMins >= goalMins ? "var(--color-text-success)" : "var(--color-text-secondary)" }}>
-        {todayMins >= goalMins
-          ? `Goal reached · ${todayMins} minute${todayMins === 1 ? "" : "s"} today`
-          : `Today: ${todayMins} minute${todayMins === 1 ? "" : "s"} completed`}
+      {/* 7-day bars */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 6, height: 46 }}>
+        {days.map((d) => {
+          const h = (d.mins / max) * 100;
+          const hit = d.mins >= goalMins && goalMins > 0;
+          return (
+            <div key={d.key} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }} title={`${d.key} · ${d.mins}m`}>
+              <div style={{ width: "100%", height: 32, display: "flex", alignItems: "flex-end" }}>
+                <div style={{
+                  width: "100%",
+                  height: `${Math.max(2, h)}%`,
+                  background: hit ? "var(--gold)" : "var(--color-background-secondary)",
+                  border: d.isToday ? `1px solid ${hit ? "var(--gold)" : "var(--color-border-secondary)"}` : "none",
+                  borderRadius: 3,
+                  transition: "height 0.4s ease",
+                }} />
+              </div>
+              <div style={{ fontSize: 10, color: d.isToday ? "var(--gold)" : "var(--color-text-tertiary)", fontWeight: d.isToday ? 600 : 400 }}>
+                {d.label}
+              </div>
+            </div>
+          );
+        })}
       </div>
-
-      {/* 7-day mini bar chart — last 7 days oldest→newest, today on the right.
-          Bar height is mins / max-of-(window or goal). Bars at or above goal
-          are gold; below are muted. */}
-      {(() => {
-        const DAYS = 7;
-        const days = [];
-        for (let i = DAYS - 1; i >= 0; i--) {
-          const d = new Date();
-          d.setDate(d.getDate() - i);
-          const k = localDateStr(d);
-          // Today's bar adds liveSessionMins so it matches the ring + the
-          // "Today: X of Y" text. Other days are completed-only.
-          const isTodayBar = i === 0;
-          days.push({
-            key: k,
-            mins: minsForDay(focusLog, k) + (isTodayBar ? liveSessionMins : 0),
-            label: d.toLocaleDateString("en", { weekday: "narrow" }),
-            isToday: isTodayBar,
-          });
-        }
-        const max = Math.max(goalMins, ...days.map(d => d.mins), 1);
-        return (
-          <div style={{ marginTop: 14, paddingTop: 14, borderTop: "0.5px dashed var(--color-border-tertiary)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 6, height: 56 }}>
-              {days.map((d) => {
-                const h = (d.mins / max) * 100;
-                const hit = d.mins >= goalMins && goalMins > 0;
-                return (
-                  <div key={d.key} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }} title={`${d.key} · ${d.mins}m`}>
-                    <div style={{ width: "100%", height: 40, display: "flex", alignItems: "flex-end" }}>
-                      <div style={{
-                        width: "100%",
-                        height: `${Math.max(2, h)}%`,
-                        background: hit ? "var(--gold)" : "var(--color-background-secondary)",
-                        border: d.isToday ? `1px solid ${hit ? "var(--gold)" : "var(--color-border-secondary)"}` : "none",
-                        borderRadius: 3,
-                        transition: "height 0.4s ease",
-                      }} />
-                    </div>
-                    <div style={{ fontSize: 10, color: d.isToday ? "var(--gold)" : "var(--color-text-tertiary)", fontWeight: d.isToday ? 600 : 400 }}>
-                      {d.label}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
     </div>
   );
 }
@@ -531,10 +428,20 @@ export default function Pomodoro({
         Make your intention before you begin — this effort is for Allah.
       </div>
 
-      {/* Dial + Daily progress side-by-side; stack on narrow screens. */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 16, marginBottom: 16, alignItems: "stretch" }}>
-        {/* Focus block */}
-        <div style={{ ...S.card, flex: "1 1 360px", display: "flex", flexDirection: "column", alignItems: "center", padding: "20px 16px" }}>
+      {/* Hero — the dial is the single focal point, centered with breathing
+          room. Daily progress moved below the controls as a slim strip so
+          nothing competes with the timer. */}
+      <div style={{
+        ...S.card,
+        maxWidth: 460,
+        margin: "0 auto 16px",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        padding: "28px 20px",
+        background: "radial-gradient(120% 75% at 50% 0%, color-mix(in srgb, var(--gold) 6%, transparent) 0%, transparent 58%), var(--color-background-primary)",
+        boxShadow: "var(--shadow-card)",
+      }}>
           {(() => {
             // Dial is directly click-to-edit when idle and no task is linked.
             // Running / paused / linked-task states show the live countdown
@@ -559,10 +466,10 @@ export default function Pomodoro({
                     height: DIAL + 60,
                     transform: "translate(-50%, -50%)",
                     borderRadius: "50%",
-                    background: `radial-gradient(circle, ${goldA(18)} 0%, transparent 65%)`,
-                    opacity: pomRunning ? 0.7 : 0.25,
+                    background: `radial-gradient(circle, color-mix(in srgb, ${ringColor} 22%, transparent) 0%, transparent 65%)`,
+                    opacity: pomRunning ? 0.8 : 0.3,
                     pointerEvents: "none",
-                    transition: "opacity 0.4s ease",
+                    transition: "opacity 0.4s ease, background 0.3s ease",
                   }}
                 />
                 <svg width={DIAL} height={DIAL} viewBox={`0 0 ${DIAL} ${DIAL}`}
@@ -571,26 +478,45 @@ export default function Pomodoro({
                     ? `Focus timer paused: ${fmtTime(elapsedSecs)} elapsed, ${fmtTime(pomSeconds)} remaining`
                     : `Focus timer ${pomRunning ? "running" : "ready"}: ${fmtTime(pomSeconds)} remaining`}
                   style={{ position: "relative" }}>
+                  <defs>
+                    {/* Glossy arc: the ring colour brightening into a lit
+                        highlight along its length — reads premium vs a flat
+                        solid stroke. */}
+                    <linearGradient id="dialGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor={ringColor} />
+                      <stop offset="100%" stopColor={`color-mix(in srgb, ${ringColor} 55%, #ffffff)`} />
+                    </linearGradient>
+                    {/* Soft halo around the progress arc. */}
+                    <filter id="dialGlow" x="-40%" y="-40%" width="180%" height="180%">
+                      <feGaussianBlur stdDeviation="3.5" result="blur" />
+                      <feMerge>
+                        <feMergeNode in="blur" />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+                  </defs>
                   <circle cx={DIAL / 2} cy={DIAL / 2} r={DIAL_R}
-                    fill="none" stroke="var(--color-background-secondary)" strokeWidth="12" />
+                    fill="none" stroke="var(--color-background-secondary)" strokeWidth="13" opacity="0.7" />
                   <circle cx={DIAL / 2} cy={DIAL / 2} r={DIAL_R}
                     fill="none"
-                    stroke={ringColor}
-                    strokeWidth="12"
+                    stroke="url(#dialGrad)"
+                    strokeWidth="13"
                     strokeDasharray={DIAL_C}
                     strokeDashoffset={DIAL_C * (1 - prog)}
                     strokeLinecap="round"
                     transform={`rotate(-90 ${DIAL / 2} ${DIAL / 2})`}
-                    opacity={paused ? 0.45 : 1}
-                    style={{ transition: "stroke-dashoffset 0.5s, stroke 0.3s, opacity 0.3s" }} />
+                    opacity={paused ? 0.5 : 1}
+                    filter="url(#dialGlow)"
+                    style={{ transition: "stroke-dashoffset 0.5s, opacity 0.3s" }} />
                   {!editingFocus && (
                     <text x={DIAL / 2} y={DIAL / 2 - 6} textAnchor="middle"
                       onClick={canEditDial ? enterDialEdit : undefined}
                       opacity={paused ? 0.85 : 1}
                       style={{
-                        fontSize: 52, fontWeight: 500,
+                        fontSize: 56, fontWeight: 600,
                         fill: paused ? "var(--gold)" : "var(--color-text-primary)",
-                        fontFamily: "monospace",
+                        fontVariantNumeric: "tabular-nums",
+                        letterSpacing: "-1px",
                         transition: "opacity 0.3s, fill 0.3s",
                         cursor: canEditDial ? "pointer" : "default",
                       }}>
@@ -634,7 +560,7 @@ export default function Pomodoro({
                         fontWeight: 500,
                         textAlign: "center",
                         padding: "2px 4px",
-                        fontFamily: "monospace",
+                        fontVariantNumeric: "tabular-nums",
                         background: "transparent",
                         color: "var(--color-text-primary)",
                         border: "none",
@@ -642,7 +568,7 @@ export default function Pomodoro({
                         outline: "none",
                       }}
                     />
-                    <span style={{ fontSize: 18, color: "var(--color-text-tertiary)", fontFamily: "monospace" }}>m</span>
+                    <span style={{ fontSize: 18, color: "var(--color-text-tertiary)" }}>m</span>
                   </div>
                 )}
               </div>
@@ -778,22 +704,9 @@ export default function Pomodoro({
               No task linked · general focus block
             </div>
           )}
-        </div>
-
-        {/* Daily progress block */}
-        <DailyProgress
-          focusLog={focusLog}
-          todayMins={todayMins}
-          liveSessionMins={liveSessionMins}
-          yesterdayMins={yesterdayMins}
-          streak={streak}
-          goalMins={dailyFocusGoalMins}
-          onEditGoal={updateDailyFocusGoal}
-          style={{ flex: "1 1 360px" }}
-        />
       </div>
 
-      {/* primary controls — full width below both blocks */}
+      {/* primary controls — directly under the dial */}
       <div style={{ display: "flex", justifyContent: "center", gap: 10, marginBottom: 22, flexWrap: "wrap" }}>
         <button onClick={handleStart} className="btn-primary" style={{ padding: "11px 36px" }}>
           {pomRunning ? "Pause" : paused ? "Resume" : "Bismillah — Start"}
@@ -827,6 +740,17 @@ export default function Pomodoro({
           Focus mode ⛶
         </button>
       </div>
+
+      {/* Today — slim progress strip (no competing ring) */}
+      <TodayStrip
+        focusLog={focusLog}
+        todayMins={todayMins}
+        liveSessionMins={liveSessionMins}
+        streak={streak}
+        goalMins={dailyFocusGoalMins}
+        onEditGoal={updateDailyFocusGoal}
+        style={{ maxWidth: 560, margin: "0 auto 16px" }}
+      />
 
       {/* Up next */}
       {upcoming.length > 0 && (
