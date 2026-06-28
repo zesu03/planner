@@ -125,12 +125,12 @@ export default function Planner({ user }) {
     const onThemeToggle = (e) => {
       const next = e.detail?.theme === "light" ? "light" : "dark";
       if (next !== theme) {
-        updateSettings({ ...userSettings, theme: next });
+        updateSettings((prev) => ({ ...prev, theme: next }));
       }
     };
     window.addEventListener("aakhirah:theme-toggle", onThemeToggle);
     return () => window.removeEventListener("aakhirah:theme-toggle", onThemeToggle);
-  }, [theme, userSettings, updateSettings]);
+  }, [theme, updateSettings]);
 
   // Daily focus goal (minutes). Drives the Daily progress ring on the Focus
   // tab and the streak count. Persisted in settings; defaults to 60.
@@ -140,7 +140,7 @@ export default function Planner({ user }) {
   const dailyFocusGoalMins = Number(userSettings.dailyFocusGoalMins) || 60;
   function updateDailyFocusGoal(mins) {
     const v = Math.max(1, Math.min(720, Number(mins) || 60));
-    updateSettings({ ...userSettings, dailyFocusGoalMins: v });
+    updateSettings((prev) => ({ ...prev, dailyFocusGoalMins: v }));
   }
 
   // Celebration toast — single slot, latest wins. Three sources:
@@ -433,7 +433,7 @@ export default function Planner({ user }) {
       const alreadyIn = prev.includes(day);
       const next = alreadyIn
         ? prev.filter((d) => d !== day)
-        : [day, ...prev.slice(0, 29)];
+        : [day, ...prev];
       return { ...log, [prayer]: next };
     });
   }
@@ -643,7 +643,7 @@ export default function Planner({ user }) {
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const matchesSearch = (g) => {
     if (!normalizedSearch) return true;
-    const hay = [g.title,g.category,g.notes,g.intention,...g.tasks.map(t=>t.text)].filter(Boolean).join(" ").toLowerCase();
+    const hay = [g.title,g.category,g.notes,g.intention,...(g.tasks||[]).map(t=>t.text)].filter(Boolean).join(" ").toLowerCase();
     return hay.includes(normalizedSearch);
   };
   const visibleGoals = goals.filter(g=>{
@@ -669,10 +669,15 @@ export default function Planner({ user }) {
       const db = isGoalDone(b) ? 1 : 0;
       if (da !== db) return da - db;
     }
-    if (goalSort==="due") return new Date(a.due)-new Date(b.due);
+    if (goalSort==="due") {
+      // Goals without a due date sort to the bottom rather than producing a
+      // NaN comparator (Invalid Date), which yields an unstable order.
+      const ta = +new Date(a.due); const tb = +new Date(b.due);
+      return (Number.isNaN(ta) ? Infinity : ta) - (Number.isNaN(tb) ? Infinity : tb);
+    }
     if (goalSort==="progress") return pct(b)-pct(a);
-    if (goalSort==="category") return a.category.localeCompare(b.category);
-    if (goalSort==="name") return a.title.localeCompare(b.title);
+    if (goalSort==="category") return (a.category||"").localeCompare(b.category||"");
+    if (goalSort==="name") return (a.title||"").localeCompare(b.title||"");
     return 0;
   });
   const dashboardGoals = normalizedSearch ? goals.filter(matchesSearch) : goals;

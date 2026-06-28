@@ -7,7 +7,7 @@ import {
   SIN_TAGS,
   NIYYAH_LABELS,
 } from "../lib/constants";
-import { fmt, todayStr, addDays, localDateStr, TIMEZONE } from "../lib/dates";
+import { fmt, todayStr, addDays, addDaysToStr } from "../lib/dates";
 import { fmtMins } from "../lib/focus";
 import {
   emptyMuhasabaEntry,
@@ -277,18 +277,19 @@ export default function Muhasaba({
   const stripDays = [];
   for (let i = 13; i >= 0; i--) stripDays.push(addDays(-i));
 
-  // Render labels using the device's local timezone so weekday/day numerals
-  // match the YYYY-MM-DD key. UTC-anchored Date + matching timezone format.
-  const dInfo = new Date(`${day}T00:00:00Z`);
+  // Render labels by anchoring the calendar date at NOON UTC and formatting
+  // in UTC (the codebase's weekdayOf convention). A midnight-UTC anchor
+  // formatted in the device timezone renders the *previous* calendar day for
+  // any viewer west of UTC — an off-by-one on the date label. Noon-UTC + UTC
+  // formatting keeps the weekday/numerals identical to the YYYY-MM-DD key for
+  // every viewer.
+  const dInfo = new Date(`${day}T12:00:00Z`);
   const dayLabel = dInfo.toLocaleDateString("en-GB", {
     weekday: "long", day: "numeric", month: "long", year: "numeric",
-    timeZone: TIMEZONE,
+    timeZone: "UTC",
   });
-  const yesterdayDuaKey = (() => {
-    const d = new Date(`${day}T00:00:00Z`);
-    d.setUTCDate(d.getUTCDate() - 1);
-    return localDateStr(d);
-  })();
+  // Pure string math — tz-independent, no Date round-trip to drift.
+  const yesterdayDuaKey = addDaysToStr(day, -1);
   const yesterdayDua = muhasaba[yesterdayDuaKey]?.duaTomorrow;
 
   const filled = isMuhasabaFilled(entry);
@@ -324,11 +325,11 @@ export default function Muhasaba({
         {stripDays.map((d) => {
           const isFilled = isMuhasabaFilled(muhasaba[d]);
           const active = d === day;
-          // Anchor at UTC midnight + format in device-local timezone so the
-          // visible weekday/day-numeral labels stay consistent with the
-          // YYYY-MM-DD key (which is itself a local-zone date).
-          const dt = new Date(`${d}T00:00:00Z`);
-          const weekday = dt.toLocaleDateString("en-GB", { weekday: "short", timeZone: TIMEZONE });
+          // Noon-UTC anchor + UTC formatting so the weekday label matches the
+          // YYYY-MM-DD key for every viewer (a midnight-UTC anchor formatted
+          // in a west-of-UTC timezone shows the previous day).
+          const dt = new Date(`${d}T12:00:00Z`);
+          const weekday = dt.toLocaleDateString("en-GB", { weekday: "short", timeZone: "UTC" });
           const dayNum = Number(d.split("-")[2]);
           return (
             <button key={d} onClick={() => setMuhasabaDay(d)}

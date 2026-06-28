@@ -232,7 +232,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
   // section, and Recent sessions already convey the same information.)
   const focusByTask = focusLog.reduce((acc, l) => {
     const g = goals.find((x) => x.id === l.goalId);
-    const t = g?.tasks.find((x) => x.id === l.taskId);
+    const t = g?.tasks?.find((x) => x.id === l.taskId);
     const label = t?.text || "General focus";
     acc[label] = (acc[label] || 0) + (l.mins || 0);
     return acc;
@@ -1045,7 +1045,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {(showAllSessions ? focusLog : focusLog.slice(0, 10)).map((l) => {
               const g = goals.find((x) => x.id === l.goalId);
-              const t = g?.tasks.find((x) => x.id === l.taskId);
+              const t = g?.tasks?.find((x) => x.id === l.taskId);
               return (
                 <div key={l.id} style={{
                   padding: "8px 10px",

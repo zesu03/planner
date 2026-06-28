@@ -64,19 +64,25 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings, notifi
   const [prayerError, setPrayerError] = useState("");
   const [hijriDate, setHijriDate] = useState("");
   const settingsAppliedRef = useRef(false);
+  // Monotonic token so a slower earlier fetch (e.g. a city lookup the user
+  // then abandons by tapping "use my location") can't overwrite the newer
+  // result. Each fetch path bumps it and ignores its own response if stale.
+  const fetchSeqRef = useRef(0);
 
   // Silent restore. Used by the settings-restore effect; doesn't surface
   // network errors because the user didn't ask for this fetch.
   const fetchPrayersFromSettings = useCallback(async (city, country) => {
+    const mySeq = ++fetchSeqRef.current;
     try {
       const ts = Math.floor(Date.now() / 1000);
       const res = await fetch(`${ALADHAN_BASE}/timingsByCity/${ts}?city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}&${METHOD_SCHOOL}`);
       const data = await res.json();
+      if (mySeq !== fetchSeqRef.current) return;   // superseded by a newer fetch
       if (data.code === 200) {
         setPrayerTimes(data.data.timings);
         setPrayerCity(`${city}, ${country}`);
-        const h = data.data.date.hijri;
-        setHijriDate(`${h.day} ${h.month.en} ${h.year} AH`);
+        const h = data.data?.date?.hijri;
+        if (h) setHijriDate(`${h.day} ${h.month.en} ${h.year} AH`);
       }
     } catch { /* silent — restore is best-effort */ }
   }, []);
@@ -88,31 +94,34 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings, notifi
     const safeCity = city.trim();
     const safeCountry = country.trim();
     if (!safeCity || !safeCountry) return;
+    const mySeq = ++fetchSeqRef.current;
     setPrayerLoading(true); setPrayerError("");
     try {
       const ts = Math.floor(Date.now() / 1000);
       const res = await fetch(`${ALADHAN_BASE}/timingsByCity/${ts}?city=${encodeURIComponent(safeCity)}&country=${encodeURIComponent(safeCountry)}&${METHOD_SCHOOL}`);
       const data = await res.json();
+      if (mySeq !== fetchSeqRef.current) return;   // superseded by a newer fetch
       if (data.code === 200) {
         setPrayerTimes(data.data.timings);
         setPrayerCity(`${safeCity}, ${safeCountry}`);
-        const h = data.data.date.hijri;
-        setHijriDate(`${h.day} ${h.month.en} ${h.year} AH`);
-        updateSettings({
-          ...userSettings,
+        const h = data.data?.date?.hijri;
+        if (h) setHijriDate(`${h.day} ${h.month.en} ${h.year} AH`);
+        updateSettings((prev) => ({
+          ...prev,
           prayerCity: safeCity,
           prayerCountry: safeCountry,
           prayerLat: null,
           prayerLng: null,
-        });
+        }));
       } else {
         setPrayerError("City not found. Try again.");
       }
     } catch {
+      if (mySeq !== fetchSeqRef.current) return;
       setPrayerError("Could not fetch. Check connection.");
     }
-    setPrayerLoading(false);
-  }, [userSettings, updateSettings]);
+    if (mySeq === fetchSeqRef.current) setPrayerLoading(false);
+  }, [updateSettings]);
 
   // Coordinate-based fetch. Two callers:
   //   • fetchByGeo (user-initiated) — persists lat/lng so reload restores.
@@ -130,6 +139,7 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings, notifi
   // restore. The active-location signal remains the presence of
   // prayerLat/prayerLng.
   const fetchByCoords = useCallback(async (lat, lng, { silent = false, persist = true } = {}) => {
+    const mySeq = ++fetchSeqRef.current;
     if (!silent) { setPrayerLoading(true); setPrayerError(""); }
     try {
       const ts = Math.floor(Date.now() / 1000);
@@ -138,6 +148,7 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings, notifi
         reverseGeocode(lat, lng),
       ]);
       const data = await prayerRes.json();
+      if (mySeq !== fetchSeqRef.current) return;   // superseded by a newer fetch
       if (data.code === 200) {
         setPrayerTimes(data.data.timings);
         let label;
@@ -150,23 +161,20 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings, notifi
           label = tzCity ? `${tzCity} · your location` : "Your location";
         }
         setPrayerCity(label);
-        const h = data.data.date.hijri;
-        setHijriDate(`${h.day} ${h.month.en} ${h.year} AH`);
+        const h = data.data?.date?.hijri;
+        if (h) setHijriDate(`${h.day} ${h.month.en} ${h.year} AH`);
         if (persist) {
-          updateSettings({
-            ...userSettings,
-            prayerLat: lat,
-            prayerLng: lng,
-          });
+          updateSettings((prev) => ({ ...prev, prayerLat: lat, prayerLng: lng }));
         }
       } else if (!silent) {
         setPrayerError("Could not get times for your location.");
       }
     } catch {
+      if (mySeq !== fetchSeqRef.current) return;
       if (!silent) setPrayerError("Failed to fetch.");
     }
-    if (!silent) setPrayerLoading(false);
-  }, [userSettings, updateSettings]);
+    if (!silent && mySeq === fetchSeqRef.current) setPrayerLoading(false);
+  }, [updateSettings]);
 
   // Geolocation prompt + fetch. Thin wrapper around fetchByCoords that
   // gathers the position from the browser. Returns a promise that resolves
@@ -189,11 +197,20 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings, notifi
             resolve();
           } catch (e) { reject(e); }
         },
-        () => {
-          setPrayerError("Location permission denied.");
+        (err) => {
+          // Covers permission denial AND the 15s timeout below — without the
+          // timeout option a device that never answers leaves the UI stuck
+          // on "Asking…" forever. err.code: 1=denied, 2=unavailable, 3=timeout.
+          const msg = err?.code === 1
+            ? "Location permission denied."
+            : err?.code === 3
+              ? "Location timed out. Try again or enter a city."
+              : "Couldn't get your location. Try entering a city.";
+          setPrayerError(msg);
           setPrayerLoading(false);
-          reject(new Error("Location permission denied."));
-        }
+          reject(new Error(msg));
+        },
+        { timeout: 15000, maximumAge: 0 }
       );
     });
   }, [fetchByCoords]);
@@ -260,7 +277,11 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings, notifi
       && existing?.times?.Maghrib === times.Maghrib
       && existing?.times?.Isha === times.Isha;
     if (unchanged) return;
-    updateNotifications({ ...notifications, prayerTimes: { date: today, times } });
+    // Functional updater (not a spread of the `notifications` snapshot) so a
+    // concurrent notifications write still in the debounce window — e.g. an
+    // FCM-token registration or a per-prayer toggle — isn't clobbered by a
+    // stale render value.
+    updateNotifications((prev) => ({ ...prev, prayerTimes: { date: today, times } }));
   }, [prayerTimes, notifications, updateNotifications]);
 
   return {

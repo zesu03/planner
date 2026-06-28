@@ -50,9 +50,14 @@ export function useUserData(userId) {
   // timer (null when nothing scheduled); pendingRef tracks whether the
   // refs have changes the snapshot hasn't reflected yet. userIdRef
   // mirrors the current userId so flushNow doesn't need it in deps.
+  // loadedRef gates save() — no writes until the first snapshot returns,
+  // so callers that fire before Firestore responds (e.g. geolocation
+  // callback during onboarding) don't overwrite existing data with the
+  // empty initial refs.
   const timerRef = useRef(null);
   const pendingRef = useRef(false);
   const userIdRef = useRef(userId);
+  const loadedRef = useRef(false);
   useEffect(() => { userIdRef.current = userId; }, [userId]);
 
   function buildPayload() {
@@ -85,8 +90,11 @@ export function useUserData(userId) {
   }, []);
 
   // Schedule a debounced write. Mutation hooks call this after updating
-  // their ref + state.
+  // their ref + state. Bails out silently if the initial snapshot hasn't
+  // returned yet — the refs still hold their empty defaults and writing
+  // them would overwrite real Firestore data with empty arrays/objects.
   const save = useCallback(() => {
+    if (!loadedRef.current) return;
     pendingRef.current = true;
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
@@ -127,6 +135,8 @@ export function useUserData(userId) {
         setQaza(nextQaza);
         setSavedVerses(nextSavedVerses);
         setNotifications(nextNotifications);
+        // Real data present — safe to allow writes.
+        loadedRef.current = true;
       } else {
         latestGoalsRef.current = [];
         latestPrayerRef.current = {};
@@ -144,6 +154,13 @@ export function useUserData(userId) {
         setQaza({});
         setSavedVerses([]);
         setNotifications({});
+        // Only open the write gate once the SERVER confirms the doc is
+        // absent (genuinely new user). With offline persistence enabled, a
+        // cold IndexedDB cache reports exists:false + fromCache:true on first
+        // load; opening the gate then would let a queued write persist these
+        // empty arrays/maps over real server data on reconnect — the exact
+        // data-wipe loadedRef exists to prevent.
+        if (!snap.metadata.fromCache) loadedRef.current = true;
       }
       setLoading(false);
     });

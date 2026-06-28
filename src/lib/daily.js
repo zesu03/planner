@@ -89,12 +89,16 @@ function isOpenToday(t) {
   return !t.done;
 }
 export function firstOpenTask(goals) {
+  // Goals without a due date sort last instead of poisoning the comparator
+  // with NaN (Invalid Date), which would make the "earliest-due" pick
+  // non-deterministic.
+  const dueTime = (g) => { const t = +new Date(g.due); return Number.isNaN(t) ? Infinity : t; };
   const candidates = (goals || [])
     .filter((g) => !g.completedAt)
     .filter((g) => (g.tasks || []).some(isOpenToday))
-    .sort((a, b) => new Date(a.due) - new Date(b.due));
+    .sort((a, b) => dueTime(a) - dueTime(b));
   for (const g of candidates) {
-    const t = g.tasks.find(isOpenToday);
+    const t = (g.tasks || []).find(isOpenToday);
     if (t) return { goal: g, task: t };
   }
   return null;

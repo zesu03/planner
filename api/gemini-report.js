@@ -182,12 +182,10 @@ export default async function handler(req, res) {
     const decoded = await getAdmin().auth().verifyIdToken(m[1]);
     uid = decoded.uid;
   } catch (e) {
+    // Log the detail server-side; don't return firebase-admin internals
+    // (token expiry reasons, project mismatch, etc.) to the caller.
     console.error("verifyIdToken failed:", e?.code, e?.message);
-    return res.status(401).json({
-      error: "Invalid token",
-      detail: e?.message || String(e),
-      code: e?.code,
-    });
+    return res.status(401).json({ error: "Invalid token" });
   }
 
   const { day, payload } = req.body || {};

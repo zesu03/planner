@@ -9,7 +9,7 @@
 // read from cache. `refresh()` clears the cache and re-fetches so the user
 // can intentionally pull a new verse.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { FALLBACK_VERSE } from "../lib/constants";
 import { todayStr } from "../lib/dates";
 
@@ -19,6 +19,10 @@ const REQUEST_TIMEOUT_MS = 8000;
 export function useVerse() {
   const [verseOfDay, setVerseOfDay] = useState(null);
   const [verseError, setVerseError] = useState("");
+  // Monotonic token so an older in-flight fetch (e.g. the mount fetch when
+  // the user immediately taps refresh) can't overwrite a newer one's result
+  // or clobber the freshly-cached payload.
+  const fetchSeqRef = useRef(0);
 
   // Tiny localStorage wrappers so quota / private-mode throws don't bubble
   // up and replace verseOfDay with undefined mid-set. Safari private mode
@@ -35,6 +39,8 @@ export function useVerse() {
 
   const fetchVerse = useCallback(async () => {
     const today = todayStr();
+    const mySeq = ++fetchSeqRef.current;
+    const isStale = () => mySeq !== fetchSeqRef.current;
     setVerseError("");
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -45,6 +51,7 @@ export function useVerse() {
       );
       if (!res.ok) throw new Error("Quran API request failed");
       const json = await res.json();
+      if (isStale()) return;   // a newer fetch superseded this one
       const v = json?.verse;
       const verseKey = v?.verse_key || FALLBACK_VERSE.verseKey;
       const arabic = v?.text_uthmani || "";
@@ -62,6 +69,7 @@ export function useVerse() {
       setVerseOfDay(payload);
       lsWrite(STORAGE_KEY, JSON.stringify(payload));
     } catch {
+      if (isStale()) return;
       // Same "show but don't cache" rule for network failures.
       setVerseOfDay({ ...FALLBACK_VERSE, day: today });
       setVerseError("Using a fallback verse. Please refresh to try again.");

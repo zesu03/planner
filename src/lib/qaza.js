@@ -25,8 +25,9 @@ export const emptyQaza = () => ({
 // prayers are counted only once their window has closed (e.g. Fajr counts
 // after Sunrise). `prayerTimes` is optional — without it, today is skipped
 // entirely (the pre-window-awareness behaviour).
-export function computeQazaOwed(prayerLog, qaza, prayerTimes = null, now = new Date()) {
+export function computeQazaOwed(prayerLog = {}, qaza, prayerTimes = null, now = new Date()) {
   const owed = { Fajr: 0, Dhuhr: 0, Asr: 0, Maghrib: 0, Isha: 0 };
+  prayerLog = prayerLog || {};
   if (!qaza?.startDate) return owed;
   const today = todayStr();
   if (qaza.startDate < today) {
@@ -53,6 +54,7 @@ export function computeQazaOwed(prayerLog, qaza, prayerTimes = null, now = new D
 // can show "you missed Fajr on May 12, May 15…". Not adjusted by paid (paid
 // is just a count — we can't tell *which* day was made up).
 export function missedDaysForPrayer(prayerLog, qaza, prayer) {
+  prayerLog = prayerLog || {};
   if (!qaza?.startDate) return [];
   const today = todayStr();
   if (qaza.startDate >= today) return [];

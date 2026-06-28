@@ -258,10 +258,14 @@ export function useFocusTimer({
   const endFocusEarly = useCallback(() => {
     // Allow ending from either running OR paused state — both have real
     // elapsed time worth crediting. Bail only when nothing has actually
-    // elapsed yet (idle dial / fresh reset). stopTimer() first so the
-    // active-run delta is banked into accumulated before we read it.
+    // elapsed yet (idle dial / fresh reset). Read elapsed LIVE via
+    // currentElapsedSec() (which sums accumulated + the active run from
+    // startedAtRef) *before* stopTimer(): stopTimer banks the active run
+    // through a setState updater that React defers past this synchronous
+    // code, so reading accumulatedSecRef afterwards would miss the whole
+    // running delta and under-credit (often to 0) a never-paused session.
+    const elapsedSec = currentElapsedSec();
     stopTimer();
-    const elapsedSec = accumulatedSecRef.current;
     if (elapsedSec <= 0) return;
     const mins = Math.max(1, Math.round(elapsedSec / 60));
     const at = new Date();
@@ -305,7 +309,7 @@ export function useFocusTimer({
     const nextVal = Math.max(1, Number(value) || 1);
     const nextDurations = { ...pomDurations, [field]: nextVal };
     setPomDurations(nextDurations);
-    updateSettings({ ...userSettings, pomDurations: nextDurations });
+    updateSettings((prev) => ({ ...prev, pomDurations: nextDurations }));
     if (!pomRunning && !pomTaskId && field === "defaultFocus") {
       setPomFocusTargetMins(nextVal);
       const nextSecs = getFocusSeconds(nextVal, nextDurations);
@@ -314,7 +318,7 @@ export function useFocusTimer({
       accumulatedSecRef.current = 0;
       startedAtRef.current = null;
     }
-  }, [pomDurations, pomRunning, pomTaskId, userSettings, updateSettings]);
+  }, [pomDurations, pomRunning, pomTaskId, updateSettings]);
 
   const activeTask = pomGoalId && pomTaskId
     ? goals.find((g) => g.id === pomGoalId)?.tasks.find((t) => t.id === pomTaskId)

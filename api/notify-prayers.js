@@ -20,18 +20,25 @@
 //
 // Why a 2-minute match window: cron-job.org occasionally skips a tick or
 // runs ±30s late. Matching "current minute OR the previous minute" makes
-// us resilient. The lastSentAt dedupe key prevents the overlap from
-// double-sending.
+// us resilient — but that means two consecutive ticks can both match the
+// same prayer, and genuinely overlapping invocations (a Vercel retry, or a
+// slow run spilling past 60s) can run in the same minute.
+//
+// Dedupe is therefore a TRANSACTIONAL claim, not a plain read-then-write:
+// each candidate prayer's lastSentAt key is read and set inside a Firestore
+// transaction, so only one invocation can win the claim before sending. A
+// total send failure releases the claim (FieldValue.delete) so a later tick
+// retries — a transient FCM blip shouldn't silently eat the day's reminder.
 //
 // Concurrency: per-user work runs through Promise.all so the function's
 // wall-clock latency is roughly max(per-user) rather than sum(per-user).
 // Without that, a serial loop hits the Vercel 10s Hobby timeout around
 // 50 active users and starts skipping prayers entirely.
 //
-// Firestore writes use dotted-path .update() so we only persist the two
-// fields that actually change (fcmTokens, lastSentAt) — not the whole
-// notifications blob. Matters because notifications.prayerTimes and the
-// rest is the dominant byte count and rewriting it every tick is waste.
+// Firestore writes use dotted-path .update() targeting individual keys
+// (notifications.lastSentAt.<key>, notifications.fcmTokens) so a write never
+// clobbers a key a concurrent invocation just set, and we never rewrite the
+// dominant-byte-count notifications.prayerTimes blob.
 
 import admin from "firebase-admin";
 
@@ -102,7 +109,7 @@ function buildPayload(prayer, time) {
 // Per-user processing. Returns counters so the handler can aggregate.
 // No exceptions escape — any failure for one user shouldn't sink the
 // whole tick.
-async function processUser(userDoc, now, messaging) {
+async function processUser(userDoc, now, messaging, db) {
   try {
     const data = userDoc.data();
     const n = data.notifications || {};
@@ -122,29 +129,60 @@ async function processUser(userDoc, now, messaging) {
     if (!Number.isFinite(nowMin)) return { dispatched: 0, deadTokens: 0 };
 
     const perPrayer = n.prayer?.perPrayer || {};
-    const lastSent = n.lastSentAt || {};
-    const updatedLastSent = { ...lastSent };
-    const tokenSet = new Set(tokens);
-    let sentThisUser = false;
-    let dispatched = 0;
-    let deadTokens = 0;
 
+    // Which prayers are in the [exact, +1min] send window right now?
+    const candidates = [];
     for (const prayer of PRAYERS) {
-      // After token pruning a previous prayer may have wiped every token
-      // for this user. sendEachForMulticast throws on an empty list, so
-      // bail before we even try.
-      if (tokenSet.size === 0) break;
       if (perPrayer[prayer] === false) continue;
       const t = pt.times[prayer];
       const tMin = toMinutes(t);
       if (!Number.isFinite(tMin)) continue;
       const diff = nowMin - tMin;
-      if (diff < 0 || diff > 1) continue;        // not in [exact, +1min] window
+      if (diff < 0 || diff > 1) continue;
+      candidates.push({ prayer, time: t });
+    }
+    if (candidates.length === 0) return { dispatched: 0, deadTokens: 0 };
 
-      const dedupeKey = `${local.date}_${prayer}`;
-      if (updatedLastSent[dedupeKey]) continue;  // already pushed today
+    // Atomically CLAIM the dedupe keys before sending so a concurrent
+    // invocation in the same minute can't also send. The transaction also
+    // GCs stale-day keys so lastSentAt stays bounded. Only the keys we win
+    // are returned for sending.
+    const ref = userDoc.ref;
+    const FieldValue = admin.firestore.FieldValue;
+    const claimed = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      const cur = snap.data()?.notifications?.lastSentAt || {};
+      const updates = {};
+      // GC: drop keys from earlier days.
+      for (const key of Object.keys(cur)) {
+        if (!key.startsWith(local.date + "_")) {
+          updates[`notifications.lastSentAt.${key}`] = FieldValue.delete();
+        }
+      }
+      const won = [];
+      for (const c of candidates) {
+        const key = `${local.date}_${c.prayer}`;
+        if (cur[key]) continue;            // already sent (this tick or a concurrent one)
+        won.push({ ...c, key });
+        updates[`notifications.lastSentAt.${key}`] = now.toISOString();
+      }
+      if (Object.keys(updates).length) tx.update(ref, updates);
+      return won;
+    });
+    if (claimed.length === 0) return { dispatched: 0, deadTokens: 0 };
 
-      const message = buildPayload(prayer, t);
+    // Send the claimed prayers. tokenSet shrinks as dead tokens are pruned.
+    const tokenSet = new Set(tokens);
+    let dispatched = 0;
+    let deadTokens = 0;
+    const releaseKeys = [];   // claims to release so a later tick retries
+
+    for (const { prayer, time, key } of claimed) {
+      // After token pruning a previous prayer may have wiped every token.
+      // sendEachForMulticast throws on an empty list — release the rest of
+      // the claims so they retry once a live token reappears.
+      if (tokenSet.size === 0) { releaseKeys.push(key); continue; }
+      const message = buildPayload(prayer, time);
       try {
         const tokenList = Array.from(tokenSet);
         const result = await messaging.sendEachForMulticast({
@@ -164,33 +202,30 @@ async function processUser(userDoc, now, messaging) {
             deadTokens++;
           }
         });
-        updatedLastSent[dedupeKey] = now.toISOString();
-        sentThisUser = true;
-        dispatched += result.successCount;
+        if (result.successCount > 0) {
+          dispatched += result.successCount;
+        } else {
+          // Nothing actually delivered (transient error / all tokens dead).
+          // Release the claim so a later tick can retry today.
+          releaseKeys.push(key);
+        }
       } catch (e) {
         console.error("FCM send failed for user", userDoc.id, prayer, e?.message || e);
+        releaseKeys.push(key);
       }
     }
 
-    // Persist only what changed. Dotted-path .update() touches just the
-    // two fields rather than rewriting the whole notifications object.
-    if (sentThisUser) {
-      // GC lastSentAt to today's keys so the map can't grow unbounded.
-      const trimmed = {};
-      for (const [k, v] of Object.entries(updatedLastSent)) {
-        if (k.startsWith(local.date + "_")) trimmed[k] = v;
-      }
-      await userDoc.ref.update({
-        "notifications.fcmTokens": Array.from(tokenSet),
-        "notifications.lastSentAt": trimmed,
-      });
-    } else if (tokenSet.size !== tokens.length) {
-      // No new push this tick, but pruning removed some tokens — persist
-      // so we don't keep retrying dead ones.
-      await userDoc.ref.update({
-        "notifications.fcmTokens": Array.from(tokenSet),
-      });
+    // Persist only the keys that changed: prune dead tokens, release any
+    // failed claims. Per-key dotted paths so we don't clobber a concurrent
+    // invocation's writes.
+    const updates = {};
+    if (tokenSet.size !== tokens.length) {
+      updates["notifications.fcmTokens"] = Array.from(tokenSet);
     }
+    for (const key of releaseKeys) {
+      updates[`notifications.lastSentAt.${key}`] = admin.firestore.FieldValue.delete();
+    }
+    if (Object.keys(updates).length) await ref.update(updates);
 
     return { dispatched, deadTokens };
   } catch (e) {
@@ -207,29 +242,36 @@ export default async function handler(req, res) {
   const provided = req.query?.secret || "";
   if (provided !== expected) return res.status(401).json({ error: "Unauthorized" });
 
-  const db = getAdmin().firestore();
-  const messaging = getAdmin().messaging();
-  const now = new Date();
+  try {
+    const db = getAdmin().firestore();
+    const messaging = getAdmin().messaging();
+    const now = new Date();
 
-  // Single query filtered to opted-in users only. Pre-filtering server-side
-  // keeps Firestore reads proportional to who could plausibly receive a
-  // push, not total user count.
-  const snap = await db.collection("users")
-    .where("notifications.prayer.enabled", "==", true)
-    .get();
+    // Single query filtered to opted-in users only. Pre-filtering server-side
+    // keeps Firestore reads proportional to who could plausibly receive a
+    // push, not total user count.
+    const snap = await db.collection("users")
+      .where("notifications.prayer.enabled", "==", true)
+      .get();
 
-  // Parallel — each user is independent. Promise.all is fine through
-  // several hundred users; firebase-admin pools connections internally.
-  // At 500+ users, chunk this into batches of ~50 to stay polite to FCM.
-  const results = await Promise.all(snap.docs.map((d) => processUser(d, now, messaging)));
-  const dispatched = results.reduce((s, r) => s + r.dispatched, 0);
-  const deadTokensRemoved = results.reduce((s, r) => s + r.deadTokens, 0);
+    // Parallel — each user is independent. Promise.all is fine through
+    // several hundred users; firebase-admin pools connections internally.
+    // At 500+ users, chunk this into batches of ~50 to stay polite to FCM.
+    const results = await Promise.all(snap.docs.map((d) => processUser(d, now, messaging, db)));
+    const dispatched = results.reduce((s, r) => s + r.dispatched, 0);
+    const deadTokensRemoved = results.reduce((s, r) => s + r.deadTokens, 0);
 
-  return res.status(200).json({
-    ok: true,
-    scanned: snap.size,
-    dispatched,
-    deadTokensRemoved,
-    at: now.toISOString(),
-  });
+    return res.status(200).json({
+      ok: true,
+      scanned: snap.size,
+      dispatched,
+      deadTokensRemoved,
+      at: now.toISOString(),
+    });
+  } catch (e) {
+    // getAdmin() (bad/missing service account) or the query can throw —
+    // return a clean 500 instead of an unhandled rejection.
+    console.error("notify-prayers handler failed", e?.message || e);
+    return res.status(500).json({ error: "Internal error" });
+  }
 }

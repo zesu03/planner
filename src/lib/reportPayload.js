@@ -89,7 +89,7 @@ export function buildReportPayload(day, { goals, prayerLog, focusLog, muhasaba, 
     .filter((l) => l.note && l.note.trim())
     .map((l) => {
       const g = goals.find((x) => x.id === l.goalId);
-      const t = g?.tasks.find((x) => x.id === l.taskId);
+      const t = (g?.tasks || []).find((x) => x.id === l.taskId);
       return {
         mins: l.mins,
         at: l.at,
