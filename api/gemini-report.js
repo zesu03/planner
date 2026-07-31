@@ -12,8 +12,19 @@
 import admin from "firebase-admin";
 import { GoogleGenerativeAI, SchemaType } from "@google/generative-ai";
 import { initServerMonitoring, captureServerError } from "./_monitoring.js";
+import { rateLimitDecision } from "./_ratelimit.js";
 
 initServerMonitoring();
+
+// Reject a promise if it doesn't settle within `ms`, so a hung upstream call
+// returns a clean error instead of riding up to the platform's function limit.
+function withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
 
 let _adminInited = false;
 function getAdmin() {
@@ -204,6 +215,32 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: "Missing day or payload" });
   }
 
+  // Server-side rate limit (defense-in-depth — the client's 30s cooldown is
+  // bypassable with a replayed ID token). State lives in an admin-only
+  // collection the client can't reset; the transaction stops two concurrent
+  // calls both slipping through. Fails OPEN on a limiter error so a transient
+  // Firestore hiccup never hard-blocks the owner's own reflection.
+  try {
+    const db = getAdmin().firestore();
+    const rlRef = db.collection("aiRateLimits").doc(uid);
+    const rlDay = new Date().toISOString().slice(0, 10);
+    const decision = await db.runTransaction(async (tx) => {
+      const snap = await tx.get(rlRef);
+      const d = rateLimitDecision(snap.exists ? snap.data() : null, Date.now(), { day: rlDay });
+      if (d.allowed) tx.set(rlRef, d.nextState);
+      return d;
+    });
+    if (!decision.allowed) {
+      return res.status(429).json({
+        error: decision.reason === "cooldown"
+          ? "Please wait a few seconds before generating again."
+          : "Daily reflection limit reached — try again tomorrow.",
+      });
+    }
+  } catch (e) {
+    console.error("rate-limit check failed (proceeding):", e?.message || e);
+  }
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return res.status(500).json({ error: "GEMINI_API_KEY not set" });
   // Default keeps us on the always-free Flash tier. User can override via env
@@ -232,7 +269,11 @@ export default async function handler(req, res) {
       },
     });
 
-    const result = await model.generateContent({ contents: buildUserPrompt(payload) });
+    const result = await withTimeout(
+      model.generateContent({ contents: buildUserPrompt(payload) }),
+      25000,
+      "Gemini"
+    );
     const text = result?.response?.text?.() || "";
     const finishReason = result?.response?.candidates?.[0]?.finishReason || null;
 

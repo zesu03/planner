@@ -37,7 +37,7 @@ Status legend: `TODO` · `IN PROGRESS` · `DONE` · `DEFERRED` · `WON'T DO (now
 | R4 | Recovery: complete `exportData` + automated encrypted backups | **H** | M | L | R2 | **DONE** |
 | R5 | Data integrity: runtime validation + rules-level type checks + `schemaVersion` + migration runner | **H** | H | M | R2 | **PARTIAL** |
 | R6 | Sync-engine integration tests (mock-based) + write retry/backoff | M–H | M–H | L–M | R2 | **DONE** |
-| R7 | Serverless hardening: server-side rate-limit `gemini-report`, Gemini timeout/retry, cron alerting + fan-out batching, Aladhan fallback cache | M | M | L–M | 2 | TODO |
+| R7 | Serverless hardening: rate-limit `gemini-report` + Gemini timeout (cron alerting = ops; batching/Aladhan N/A) | M | M | L–M | 2 | **DONE** |
 | R8 | Type safety via JSDoc typedefs + `checkJs` (non-invasive, no TS migration) | M | M–H | L | — | STRETCH |
 
 ---
@@ -249,7 +249,7 @@ because it hardens the foundation the feature work sits on.
   tested ✅ (mock-based). Deferred within R2: write-boundary validation + rules
   checks + `schemaVersion`/migration-runner (R5), and the real emulator suite (R6).
 
-### Phase 2 — Feature reliability  *(in progress)*
+### Phase 2 — Feature reliability  ✅ DONE
 - **K ✅:** `notify-prayers` computes prayer times server-side — prefers the doc's
   cached times, else fetches from Aladhan via the stored location (coords, else
   city/country), caches back onto the doc, and memoises the fetch per-location
@@ -257,12 +257,19 @@ because it hardens the foundation the feature work sits on.
   in the function). Reminders are now self-healing — no longer dependent on the
   app being opened that day. Skips only when neither fresh times nor a location
   exist. Client mirror retained as the fast path/fallback.
-- **R7 (todo):** serverless hardening — server-side rate-limit on `gemini-report`,
-  Gemini timeout/retry, cron liveness alerting + fan-out batching, Aladhan fallback
-  cache.
+- **R7 ✅:** `gemini-report` now has a **server-side rate limit** (`api/_ratelimit.js`,
+  tested — 5s floor + 40/day/uid, in a transaction on the admin-only
+  `aiRateLimits/{uid}` collection the client can't reset; fails open on a limiter
+  error) and a **25s timeout guard** (`withTimeout`) so a hung Gemini call returns a
+  clean error. *Not code:* cron **liveness alerting** is inherently external (the
+  function can't alert when it isn't running) — use cron-job.org's built-in failure
+  notifications, or add a healthchecks.io dead-man's-switch ping. *Skipped:* fan-out
+  **batching** (premature at current scale) and an **Aladhan fallback cache** (K's
+  per-day write-back already caches today's times, so a later Aladhan outage is a
+  non-issue; a cold-start outage just retries next tick).
 - **Exit criteria:** a user who hasn't opened the app still receives correct,
   timezone-accurate reminders ✅; `gemini-report` can't be spammed past a per-uid
-  server limit ⏳ (R7).
+  server limit ✅.
 
 ### Phase 3 — Delivery / performance
 - **J:** code-split views + dynamic messaging import; measure the cold-start /
@@ -286,12 +293,12 @@ because it hardens the foundation the feature work sits on.
 
 ## 4. Suggested immediate next step
 
-Phases 0, R1, 1 are done; **R2's core is done** (R4 backups, R5 read-coercion,
-R6 mock-based hook tests) with a few deliberately-deferred sub-items (R5 write
-validation / rules / `schemaVersion`; the real emulator suite). Next is **Phase 2**
-— bundles **K** (server-side prayer times, so reminders don't silently stop) +
-**R7** (serverless hardening: rate-limit `gemini-report`, timeouts, cron alerting,
-Aladhan fallback). That's the next fully-in-repo, user-facing-reliability chunk.
+Phases 0, R1, 1, **R2 core**, and **Phase 2** (K + R7) are done. The remaining
+scheduled work is **Phase 3 — delivery/performance** (J: code-split views +
+dynamic `firebase/messaging`; L optional SW update toast) and **Phase 4 — scaling**
+(C: windowed subcollection reads; B: shard `goals`), both do-when-it-matters.
+Deferred within R2: R5 write-boundary validation / rules checks / `schemaVersion`
++ migration-runner, and the real Firestore-emulator suite (needs Java locally).
 
 Still worth doing when convenient (carried over): a live-account run-through of the
 muhasaba/focusLog migrations, and a follow-up test batch for `lib/daily.js` +
