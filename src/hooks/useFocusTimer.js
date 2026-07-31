@@ -35,8 +35,6 @@ import { getFocusSeconds } from "../lib/focus";
 import { getAudioCtx, playTimerSound } from "../lib/audio";
 import { haptic } from "../lib/feedback";
 
-const FOCUS_LOG_CAP = 100;
-
 export function useFocusTimer({
   goals,
   applyGoalsUpdate,
@@ -126,8 +124,12 @@ export function useFocusTimer({
       mins,
       at: at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       day: localDateStr(at),
+      // Sort key for the sharded focusLog subcollection — the entry docs come
+      // back unordered, so this reconstructs newest-first on load. Displayed
+      // time still comes from `at`/`day`.
+      createdAt: at.getTime(),
     };
-    applyFocusLogUpdate((l) => [entry, ...l].slice(0, FOCUS_LOG_CAP));
+    applyFocusLogUpdate((l) => [entry, ...l]);
     if (pomGoalId && pomTaskId) {
       applyGoalsUpdate((gs) => gs.map((g) =>
         g.id !== pomGoalId ? g : {
@@ -278,8 +280,12 @@ export function useFocusTimer({
       mins,
       at: at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       day: localDateStr(at),
+      // Sort key for the sharded focusLog subcollection — the entry docs come
+      // back unordered, so this reconstructs newest-first on load. Displayed
+      // time still comes from `at`/`day`.
+      createdAt: at.getTime(),
     };
-    applyFocusLogUpdate((l) => [entry, ...l].slice(0, FOCUS_LOG_CAP));
+    applyFocusLogUpdate((l) => [entry, ...l]);
     if (pomGoalId && pomTaskId) {
       applyGoalsUpdate((gs) => gs.map((g) =>
         g.id !== pomGoalId ? g : {

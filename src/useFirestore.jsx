@@ -1,10 +1,13 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { db } from "./firebase";
 import {
-  doc, setDoc, onSnapshot
+  doc, setDoc, deleteDoc, onSnapshot, collection
 } from "firebase/firestore";
 
-// Single doc-per-user persistence with debounced writes + flush-on-unload.
+// Per-user persistence with debounced writes + flush-on-unload. Storage is a
+// main document at users/{uid} (goals, prayerLog, settings, qaza, savedVerses,
+// notifications) plus two subcollections — muhasaba/{day} and focusLog/{id} —
+// each with its own snapshot listener, load gate, and debounced flush.
 //
 // Why a manual timer + ref instead of a closed-over debounce helper:
 //   1. We need to flush imperatively on tab close / sign-out, which means
@@ -26,6 +29,15 @@ import {
 // Writes are fire-and-forget during unload — we can't await a promise
 // while the page is teardown — but kicking off setDoc gives the request
 // a chance to complete via the SDK's outgoing connection.
+//
+// Writes are FIELD-SCOPED. Each flush sends only the top-level fields that
+// were actually edited (see dirtyRef + buildDirtyPayload), relying on
+// setDoc(..., { merge: true }) writing exactly the keys present. This is
+// what makes concurrent multi-device editing safe: a device that only
+// touched `goals` no longer rewrites `prayerLog`/`focusLog`/etc. with its
+// own (possibly stale) copies, so it can't stomp another device's edit to a
+// different field. merge (not updateDoc) is deliberate — it also creates the
+// doc lazily for a brand-new user whose document doesn't exist yet.
 
 export function useUserData(userId) {
   const [goals, setGoals] = useState(null);
@@ -58,19 +70,49 @@ export function useUserData(userId) {
   const pendingRef = useRef(false);
   const userIdRef = useRef(userId);
   const loadedRef = useRef(false);
+  // Per-field "unflushed local edit" flags. A field goes dirty when its
+  // update* setter runs, and clears when the debounced setDoc flushes it OR
+  // when a snapshot is accepted for it. The onSnapshot handler consults this
+  // so an incoming snapshot — from another tab/device, or an older in-flight
+  // server read — can't clobber a local edit the SDK doesn't know about yet:
+  // during the debounce window setDoc hasn't been called, so Firestore's
+  // latency compensation can't protect the pending change. This is the
+  // multi-tab / multi-device data-loss fix.
+  const dirtyRef = useRef({});
+  // ── muhasaba lives in a subcollection (users/{uid}/muhasaba/{day}), not on
+  // the main doc, so dense daily entries can't push the user doc toward the
+  // 1MB ceiling. It has its own load gate, its own set of pending (dirty)
+  // day-keys, and its own debounce timer — the main-doc write machinery above
+  // (dirtyRef / buildDirtyPayload / flushNow) never touches it.
+  const muhasabaLoadedRef = useRef(false);
+  const pendingMuhasabaDaysRef = useRef(new Set());
+  const muhasabaTimerRef = useRef(null);
+  const muhasabaMigratedRef = useRef(false);
+  // ── focusLog also lives in a subcollection (users/{uid}/focusLog/{entryId}),
+  // one doc per session. Same self-contained machinery as muhasaba, keyed by
+  // entry id instead of day. Sharding lets us drop the old `.slice(0, 100)` cap
+  // that silently deleted the user's oldest sessions.
+  const focusLoadedRef = useRef(false);
+  const pendingFocusIdsRef = useRef(new Set());
+  const focusTimerRef = useRef(null);
+  const focusMigratedRef = useRef(false);
   useEffect(() => { userIdRef.current = userId; }, [userId]);
 
-  function buildPayload() {
-    return {
-      goals: latestGoalsRef.current,
-      prayerLog: latestPrayerRef.current,
-      focusLog: latestFocusRef.current,
-      settings: latestSettingsRef.current,
-      muhasaba: latestMuhasabaRef.current,
-      qaza: latestQazaRef.current,
-      savedVerses: latestSavedVersesRef.current,
-      notifications: latestNotificationsRef.current,
-    };
+  // Build a write payload containing ONLY the fields with unflushed local
+  // edits. setDoc(..., { merge: true }) writes exactly the keys present and
+  // leaves every other field untouched on the server — so this is the whole
+  // of the field-scoped-write guarantee described at the top of the file.
+  // Returns null when nothing is dirty so callers can skip the round-trip.
+  function buildDirtyPayload() {
+    const d = dirtyRef.current;
+    const payload = {};
+    if (d.goals) payload.goals = latestGoalsRef.current;
+    if (d.prayerLog) payload.prayerLog = latestPrayerRef.current;
+    if (d.settings) payload.settings = latestSettingsRef.current;
+    if (d.qaza) payload.qaza = latestQazaRef.current;
+    if (d.savedVerses) payload.savedVerses = latestSavedVersesRef.current;
+    if (d.notifications) payload.notifications = latestNotificationsRef.current;
+    return Object.keys(payload).length ? payload : null;
   }
 
   // Flush whatever's pending immediately. Safe to call when nothing is
@@ -85,8 +127,62 @@ export function useUserData(userId) {
     const uid = userIdRef.current;
     if (!uid) return;
     pendingRef.current = false;
+    // Snapshot the dirty fields into a payload, THEN clear the flags. Once
+    // setDoc is called Firestore owns these mutations — latency compensation
+    // folds them into every subsequent snapshot, so accepting future
+    // snapshots for these fields is safe again.
+    const payload = buildDirtyPayload();
+    dirtyRef.current = {};
     // .catch silenced — page may be unloading; can't surface anything anyway.
-    setDoc(doc(db, "users", uid), buildPayload(), { merge: true }).catch(() => {});
+    if (payload) setDoc(doc(db, "users", uid), payload, { merge: true }).catch(() => {});
+  }, []);
+
+  // Flush pending muhasaba day-writes immediately. Each dirty day maps to one
+  // subcollection doc: write the current entry, or delete the doc if the day
+  // was removed from the map. Fire-and-forget, matching the main-doc flush.
+  const flushMuhasabaNow = useCallback(() => {
+    if (muhasabaTimerRef.current) {
+      clearTimeout(muhasabaTimerRef.current);
+      muhasabaTimerRef.current = null;
+    }
+    const days = pendingMuhasabaDaysRef.current;
+    if (days.size === 0) return;
+    const uid = userIdRef.current;
+    if (!uid) return;
+    const map = latestMuhasabaRef.current || {};
+    const toWrite = Array.from(days);
+    pendingMuhasabaDaysRef.current = new Set();
+    for (const day of toWrite) {
+      const ref = doc(db, "users", uid, "muhasaba", day);
+      const entry = map[day];
+      // A day doc holds one complete entry — overwrite (no merge) is correct;
+      // updaters always produce the full entry object for the touched day.
+      if (entry === undefined) deleteDoc(ref).catch(() => {});
+      else setDoc(ref, entry).catch(() => {});
+    }
+  }, []);
+
+  // Flush pending focusLog entry-writes immediately. Each dirty entry id maps
+  // to one subcollection doc: write the current entry, or delete the doc if the
+  // entry was removed from the array. Fire-and-forget, matching the others.
+  const flushFocusNow = useCallback(() => {
+    if (focusTimerRef.current) {
+      clearTimeout(focusTimerRef.current);
+      focusTimerRef.current = null;
+    }
+    const ids = pendingFocusIdsRef.current;
+    if (ids.size === 0) return;
+    const uid = userIdRef.current;
+    if (!uid) return;
+    const byId = new Map((latestFocusRef.current || []).map((e) => [e.id, e]));
+    const toWrite = Array.from(ids);
+    pendingFocusIdsRef.current = new Set();
+    for (const id of toWrite) {
+      const ref = doc(db, "users", uid, "focusLog", id);
+      const entry = byId.get(id);
+      if (entry === undefined) deleteDoc(ref).catch(() => {});
+      else setDoc(ref, entry).catch(() => {});
+    }
   }, []);
 
   // Schedule a debounced write. Mutation hooks call this after updating
@@ -109,80 +205,175 @@ export function useUserData(userId) {
     if (!userId) return;
     const ref = doc(db, "users", userId);
     const unsub = onSnapshot(ref, (snap) => {
-      if (snap.exists()) {
-        const data = snap.data();
-        const nextGoals = data.goals || [];
-        const nextPrayerLog = data.prayerLog || {};
-        const nextFocusLog = data.focusLog || [];
-        const nextSettings = data.settings || {};
-        const nextMuhasaba = data.muhasaba || {};
-        const nextQaza = data.qaza || {};
-        const nextSavedVerses = data.savedVerses || [];
-        const nextNotifications = data.notifications || {};
-        latestGoalsRef.current = nextGoals;
-        latestPrayerRef.current = nextPrayerLog;
-        latestFocusRef.current = nextFocusLog;
-        latestSettingsRef.current = nextSettings;
-        latestMuhasabaRef.current = nextMuhasaba;
-        latestQazaRef.current = nextQaza;
-        latestSavedVersesRef.current = nextSavedVerses;
-        latestNotificationsRef.current = nextNotifications;
-        setGoals(nextGoals);
-        setPrayerLog(nextPrayerLog);
-        setFocusLog(nextFocusLog);
-        setSettings(nextSettings);
-        setMuhasaba(nextMuhasaba);
-        setQaza(nextQaza);
-        setSavedVerses(nextSavedVerses);
-        setNotifications(nextNotifications);
-        // Real data present — safe to allow writes.
-        loadedRef.current = true;
-      } else {
-        latestGoalsRef.current = [];
-        latestPrayerRef.current = {};
-        latestFocusRef.current = [];
-        latestSettingsRef.current = {};
-        latestMuhasabaRef.current = {};
-        latestQazaRef.current = {};
-        latestSavedVersesRef.current = [];
-        latestNotificationsRef.current = {};
-        setGoals([]);
-        setPrayerLog({});
-        setFocusLog([]);
-        setSettings({});
-        setMuhasaba({});
-        setQaza({});
-        setSavedVerses([]);
-        setNotifications({});
-        // Only open the write gate once the SERVER confirms the doc is
-        // absent (genuinely new user). With offline persistence enabled, a
-        // cold IndexedDB cache reports exists:false + fromCache:true on first
-        // load; opening the gate then would let a queued write persist these
-        // empty arrays/maps over real server data on reconnect — the exact
-        // data-wipe loadedRef exists to prevent.
-        if (!snap.metadata.fromCache) loadedRef.current = true;
+      const exists = snap.exists();
+      const data = exists ? snap.data() : {};
+      // Accept a server field only when there's no unflushed local edit for
+      // it (see dirtyRef) — otherwise this snapshot would clobber a pending
+      // write the SDK doesn't know about yet. Two important nuances:
+      //   • Before the first snapshot loadedRef is false, so the server value
+      //     ALWAYS wins on cold load. This preserves the prior behaviour of
+      //     letting the server supersede a premature pre-load write (e.g. a
+      //     geolocation callback firing during onboarding).
+      //   • Accepting a field also clears its dirty flag: the snapshot is now
+      //     authoritative for it, so a later flush won't re-assert stale data.
+      const applyField = (key, nextVal, setter, fieldRef) => {
+        if (loadedRef.current && dirtyRef.current[key]) return;
+        fieldRef.current = nextVal;
+        setter(nextVal);
+        delete dirtyRef.current[key];
+      };
+      applyField("goals", data.goals || [], setGoals, latestGoalsRef);
+      applyField("prayerLog", data.prayerLog || {}, setPrayerLog, latestPrayerRef);
+      applyField("settings", data.settings || {}, setSettings, latestSettingsRef);
+      applyField("qaza", data.qaza || {}, setQaza, latestQazaRef);
+      applyField("savedVerses", data.savedVerses || [], setSavedVerses, latestSavedVersesRef);
+      applyField("notifications", data.notifications || {}, setNotifications, latestNotificationsRef);
+      // muhasaba is NOT read from the main doc anymore — it lives in the
+      // subcollection (see the separate subscription below). The only thing we
+      // do with a legacy inline copy is migrate it out, once, then clear it.
+      // Seed the in-memory map from inline immediately so history shows with no
+      // flash; write each day to its subcollection doc; THEN clear inline last,
+      // so a mid-migration failure leaves inline intact to retry next snapshot.
+      // Idempotent: once inline is empty this never runs again, and concurrent
+      // devices just write identical data (harmless).
+      const inlineMuhasaba = (data.muhasaba && typeof data.muhasaba === "object") ? data.muhasaba : {};
+      if (!muhasabaMigratedRef.current && Object.keys(inlineMuhasaba).length > 0) {
+        muhasabaMigratedRef.current = true;
+        const seeded = { ...inlineMuhasaba, ...latestMuhasabaRef.current }; // subcollection wins
+        latestMuhasabaRef.current = seeded;
+        setMuhasaba(seeded);
+        const uid = userId;
+        (async () => {
+          try {
+            await Promise.all(Object.keys(inlineMuhasaba).map((day) =>
+              setDoc(doc(db, "users", uid, "muhasaba", day), inlineMuhasaba[day], { merge: true })
+            ));
+            await setDoc(doc(db, "users", uid), { muhasaba: {} }, { merge: true });
+          } catch {
+            muhasabaMigratedRef.current = false; // allow a retry on a later snapshot
+          }
+        })();
       }
+
+      // Same one-time migration for legacy inline focusLog[] → subcollection.
+      // Backfill `createdAt` to preserve the existing newest-first order (index
+      // 0 is newest) so the sorted subcollection load reproduces it; displayed
+      // times come from entry.day/at, which are untouched. Seed → write → clear
+      // inline last; idempotent via focusMigratedRef.
+      const inlineFocus = Array.isArray(data.focusLog) ? data.focusLog : [];
+      if (!focusMigratedRef.current && inlineFocus.length > 0) {
+        focusMigratedRef.current = true;
+        const base = Date.now();
+        const stamped = inlineFocus.map((e, i) => ({ ...e, createdAt: e.createdAt || (base - i) }));
+        const byId = new Map((latestFocusRef.current || []).map((e) => [e.id, e]));
+        for (const e of stamped) if (!byId.has(e.id)) byId.set(e.id, e);
+        const seeded = Array.from(byId.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        latestFocusRef.current = seeded;
+        setFocusLog(seeded);
+        const uid = userId;
+        (async () => {
+          try {
+            await Promise.all(stamped.map((e) =>
+              setDoc(doc(db, "users", uid, "focusLog", e.id), e, { merge: true })
+            ));
+            await setDoc(doc(db, "users", uid), { focusLog: [] }, { merge: true });
+          } catch {
+            focusMigratedRef.current = false; // allow a retry on a later snapshot
+          }
+        })();
+      }
+      // Write gate. exists → real data present (a cached hit counts; it's
+      // genuine data persisted from a prior session), safe to allow writes.
+      // Absent → only open the gate once the SERVER confirms absence. With
+      // offline persistence a cold IndexedDB cache reports exists:false +
+      // fromCache:true on first load; opening the gate then would let a queued
+      // write persist empty defaults over real server data on reconnect — the
+      // exact data-wipe loadedRef exists to prevent.
+      if (exists) loadedRef.current = true;
+      else if (!snap.metadata.fromCache) loadedRef.current = true;
       setLoading(false);
     });
     return () => {
       // Critical: flush BEFORE unsubscribing so the old user's last
-      // write isn't abandoned. buildPayload reads from refs that still
+      // write isn't abandoned. buildDirtyPayload reads from refs that still
       // hold the old user's data at this point (no snapshot has fired
       // for the new userId yet).
       if (pendingRef.current && timerRef.current) {
         clearTimeout(timerRef.current);
         timerRef.current = null;
         pendingRef.current = false;
-        setDoc(doc(db, "users", userId), buildPayload(), { merge: true }).catch(() => {});
+        const payload = buildDirtyPayload();
+        dirtyRef.current = {};
+        if (payload) setDoc(doc(db, "users", userId), payload, { merge: true }).catch(() => {});
       }
       unsub();
     };
   }, [userId]);
 
+  // muhasaba subcollection subscription. Aggregates users/{uid}/muhasaba/{day}
+  // docs into the same day-keyed map the app has always consumed, so no view
+  // or lib code changes. Per-day reconciliation mirrors the main doc's dirty
+  // rule (a day with an unflushed local edit isn't clobbered by an incoming
+  // snapshot). We MERGE snapshot docs into the existing map rather than
+  // replacing it wholesale — that keeps inline days seeded during migration
+  // alive until their docs land, and never makes a day vanish (this app has no
+  // "delete a whole day" action).
+  useEffect(() => {
+    if (!userId) return;
+    const col = collection(db, "users", userId, "muhasaba");
+    const unsub = onSnapshot(col, (snap) => {
+      const merged = { ...latestMuhasabaRef.current };
+      const pending = pendingMuhasabaDaysRef.current;
+      snap.forEach((d) => {
+        if (muhasabaLoadedRef.current && pending.has(d.id)) return; // keep local pending edit
+        merged[d.id] = d.data();
+      });
+      latestMuhasabaRef.current = merged;
+      setMuhasaba(merged);
+      // Open the write gate once we have server truth (or any cached docs).
+      if (!snap.metadata.fromCache || !snap.empty) muhasabaLoadedRef.current = true;
+    });
+    return () => {
+      flushMuhasabaNow(); // persist the old user's pending days before detaching
+      unsub();
+    };
+  }, [userId, flushMuhasabaNow]);
+
+  // focusLog subcollection subscription. Rebuilds the newest-first array the
+  // app consumes from users/{uid}/focusLog/{entryId} docs, sorted by createdAt.
+  // Unlike muhasaba (which merges, since a day is never deleted) this REBUILDS
+  // from the snapshot each time so server-side deletes (deleteFocusEntry) are
+  // reflected — then overlays any unflushed local edits so a snapshot can't
+  // clobber a just-added / just-deleted entry the SDK hasn't seen yet.
+  useEffect(() => {
+    if (!userId) return;
+    const col = collection(db, "users", userId, "focusLog");
+    const unsub = onSnapshot(col, (snap) => {
+      const byId = new Map();
+      snap.forEach((d) => { byId.set(d.id, d.data()); });
+      if (focusLoadedRef.current) {
+        const prevById = new Map((latestFocusRef.current || []).map((e) => [e.id, e]));
+        for (const id of pendingFocusIdsRef.current) {
+          const local = prevById.get(id);
+          if (local === undefined) byId.delete(id); // pending delete
+          else byId.set(id, local);                 // pending add / change
+        }
+      }
+      const arr = Array.from(byId.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      latestFocusRef.current = arr;
+      setFocusLog(arr);
+      if (!snap.metadata.fromCache || !snap.empty) focusLoadedRef.current = true;
+    });
+    return () => {
+      flushFocusNow(); // persist the old user's pending entries before detaching
+      unsub();
+    };
+  }, [userId, flushFocusNow]);
+
   // Unload listeners — three signals, single handler. Mounted once.
   useEffect(() => {
-    const onUnload = () => flushNow();
-    const onVisibility = () => { if (document.visibilityState === "hidden") flushNow(); };
+    const onUnload = () => { flushNow(); flushMuhasabaNow(); flushFocusNow(); };
+    const onVisibility = () => { if (document.visibilityState === "hidden") { flushNow(); flushMuhasabaNow(); flushFocusNow(); } };
     window.addEventListener("beforeunload", onUnload);
     window.addEventListener("pagehide", onUnload);
     document.addEventListener("visibilitychange", onVisibility);
@@ -191,7 +382,7 @@ export function useUserData(userId) {
       window.removeEventListener("pagehide", onUnload);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [flushNow]);
+  }, [flushNow, flushMuhasabaNow, flushFocusNow]);
 
   // Each updater accepts either a new value OR a functional updater
   // (prev) => next. Functional updaters read from latest*Ref so rapid
@@ -204,6 +395,7 @@ export function useUserData(userId) {
       ? updaterOrValue(latestGoalsRef.current)
       : updaterOrValue;
     latestGoalsRef.current = next;
+    dirtyRef.current.goals = true;
     setGoals(next);
     save();
   }, [save]);
@@ -213,42 +405,84 @@ export function useUserData(userId) {
       ? updaterOrValue(latestPrayerRef.current)
       : updaterOrValue;
     latestPrayerRef.current = next;
+    dirtyRef.current.prayerLog = true;
     setPrayerLog(next);
     save();
   }, [save]);
 
+  // focusLog writes go to the subcollection, one doc per entry — NOT through
+  // save()/the main-doc payload. Diff the new array against the previous
+  // (keyed by entry id) to find which entries were added, changed, or removed,
+  // and queue just those ids for a debounced per-doc flush. Gated on
+  // focusLoadedRef, mirroring how save() gates on loadedRef.
   const updateFocusLog = useCallback((updaterOrValue) => {
-    const next = typeof updaterOrValue === "function"
-      ? updaterOrValue(latestFocusRef.current)
-      : updaterOrValue;
+    const prev = latestFocusRef.current || [];
+    const next = typeof updaterOrValue === "function" ? updaterOrValue(prev) : updaterOrValue;
+    const prevById = new Map(prev.map((e) => [e.id, e]));
+    const ids = pendingFocusIdsRef.current;
+    const seen = new Set();
+    for (const e of next) {
+      seen.add(e.id);
+      if (prevById.get(e.id) !== e) ids.add(e.id); // added or changed (ref inequality)
+    }
+    for (const id of prevById.keys()) {
+      if (!seen.has(id)) ids.add(id);              // removed → delete its doc
+    }
     latestFocusRef.current = next;
     setFocusLog(next);
-    save();
-  }, [save]);
+    if (focusLoadedRef.current) {
+      if (focusTimerRef.current) clearTimeout(focusTimerRef.current);
+      focusTimerRef.current = setTimeout(() => {
+        focusTimerRef.current = null;
+        flushFocusNow();
+      }, 1200);
+    }
+  }, [flushFocusNow]);
 
   const updateSettings = useCallback((updaterOrValue) => {
     const next = typeof updaterOrValue === "function"
       ? updaterOrValue(latestSettingsRef.current)
       : updaterOrValue;
     latestSettingsRef.current = next;
+    dirtyRef.current.settings = true;
     setSettings(next);
     save();
   }, [save]);
 
+  // muhasaba writes go to the subcollection, one doc per day — NOT through
+  // save()/the main-doc payload. Diff the new map against the previous to find
+  // which day(s) changed (updaters always build a fresh object for a touched
+  // day, so reference inequality is a reliable signal) and queue just those
+  // for a debounced per-day flush. Gated on muhasabaLoadedRef, mirroring how
+  // save() gates on loadedRef — no writes until the first subcollection
+  // snapshot has returned.
   const updateMuhasaba = useCallback((updaterOrValue) => {
-    const next = typeof updaterOrValue === "function"
-      ? updaterOrValue(latestMuhasabaRef.current)
-      : updaterOrValue;
+    const prev = latestMuhasabaRef.current || {};
+    const next = typeof updaterOrValue === "function" ? updaterOrValue(prev) : updaterOrValue;
+    const days = pendingMuhasabaDaysRef.current;
+    for (const day of Object.keys(next)) {
+      if (next[day] !== prev[day]) days.add(day);            // added or modified
+    }
+    for (const day of Object.keys(prev)) {
+      if (!(day in next)) days.add(day);                     // removed → delete its doc
+    }
     latestMuhasabaRef.current = next;
     setMuhasaba(next);
-    save();
-  }, [save]);
+    if (muhasabaLoadedRef.current) {
+      if (muhasabaTimerRef.current) clearTimeout(muhasabaTimerRef.current);
+      muhasabaTimerRef.current = setTimeout(() => {
+        muhasabaTimerRef.current = null;
+        flushMuhasabaNow();
+      }, 1200);
+    }
+  }, [flushMuhasabaNow]);
 
   const updateQaza = useCallback((updaterOrValue) => {
     const next = typeof updaterOrValue === "function"
       ? updaterOrValue(latestQazaRef.current)
       : updaterOrValue;
     latestQazaRef.current = next;
+    dirtyRef.current.qaza = true;
     setQaza(next);
     save();
   }, [save]);
@@ -258,6 +492,7 @@ export function useUserData(userId) {
       ? updaterOrValue(latestSavedVersesRef.current)
       : updaterOrValue;
     latestSavedVersesRef.current = next;
+    dirtyRef.current.savedVerses = true;
     setSavedVerses(next);
     save();
   }, [save]);
@@ -267,6 +502,7 @@ export function useUserData(userId) {
       ? updaterOrValue(latestNotificationsRef.current)
       : updaterOrValue;
     latestNotificationsRef.current = next;
+    dirtyRef.current.notifications = true;
     setNotifications(next);
     save();
   }, [save]);
