@@ -578,9 +578,24 @@ select:focus-visible {
   animation: fadeUp 0.28s ease-out;
 }
 
-/* Used on the "Completed" pill the moment a goal flips done. */
+/* Used on the "Completed" pill the moment a goal flips done, and on the
+   CelebrationToast when it appears. */
 .pop-in {
   animation: popIn 0.32s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Glow halo behind the CelebrationToast streak glyph. The --glow colour is set
+   inline and brightens with the milestone tier, so a 365-day streak glows
+   harder than a 7-day one. */
+@keyframes streakGlowPulse {
+  0%, 100% { box-shadow: 0 0 6px 0 var(--glow, transparent); }
+  50%      { box-shadow: 0 0 18px 3px var(--glow, transparent); }
+}
+.streak-glow { animation: streakGlowPulse 2.6s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pop-in { animation: none; }
+  .streak-glow { animation: none; box-shadow: 0 0 8px 0 var(--glow, transparent); }
 }
 
 /* Soft tile hover used on stat tiles, prayer chips, etc. */

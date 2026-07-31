@@ -1,58 +1,66 @@
 // Fixed-position top toast used by Planner for transient celebrations.
-// One slot — latest wins (new celebration replaces the previous). Three
-// kinds today, each with its own accent + copy:
+// One slot — latest wins (new celebration replaces the previous).
 //
 //   { kind: "goal", goal }            — a goal flipped to completed today
-//   { kind: "focusStreak", count }    — N consecutive days of meeting the daily focus goal
-//   { kind: "muhasabaStreak", count } — N consecutive days of muhasaba
+//   { kind: "focusStreak", count }    — N consecutive days meeting the focus goal
+//   { kind: "muhasabaStreak", count } — N consecutive nights of muhasaba
+//   { kind: "istiqamahStreak", count }— N consecutive days of showing up
 //
-// `onDismiss` clears the celebration state. `onOpen` is optional — fires
-// when the user taps the action button (routes to the relevant view).
+// Streak kinds get a "number-hero" layout: the count is a large gold numeral,
+// a crafted glyph sits in a badge whose glow intensifies with the milestone
+// (tier 1→4 across 7 / 30 / 100 / 365), and a "→ next N" nudge points at the
+// next milestone. Goal-complete keeps a title-first layout.
+//
+// `onDismiss` clears the celebration; `onOpen` (optional) routes to the view.
 
 import { CAT_COLORS } from "../lib/constants";
+import { STREAK_MILESTONES } from "../lib/focus";
+
+// Crafted glyphs (no emoji — consistent across platforms, on-tone with the
+// gold/dark aesthetic). Filled closed paths, tinted via currentColor.
+function Glyph({ name }) {
+  const paths = {
+    flame: "M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z",
+    moon: "M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z",
+    sparkle: "M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z",
+  };
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d={paths[name] || paths.sparkle} />
+    </svg>
+  );
+}
+
+// Smallest milestone strictly greater than `count` (null once maxed out).
+const nextMilestone = (count) => STREAK_MILESTONES.find((m) => m > count) ?? null;
+// Glow tier by milestone reached.
+const glowTier = (count) => (count >= 365 ? 4 : count >= 100 ? 3 : count >= 30 ? 2 : 1);
 
 function variantFor(celebration) {
   if (celebration.kind === "goal") {
     const g = celebration.goal;
-    const accent = CAT_COLORS[g.category] || "var(--gold)";
     return {
-      accent,
-      icon: "✨",
+      streak: false,
+      accent: CAT_COLORS[g.category] || "var(--gold)",
+      glyph: "sparkle",
       eyebrow: "Alhamdulillah · goal complete",
       title: g.title,
       sub: "May Allah accept it. One niyyah closer.",
       actionLabel: "Open ›",
     };
   }
+  const streakBase = { streak: true, count: celebration.count };
   if (celebration.kind === "focusStreak") {
-    return {
-      accent: "var(--gold)",
-      icon: "🔥",
-      eyebrow: "Focus streak",
-      title: `${celebration.count} days in a row`,
-      sub: "Consistency is louder than any single session. Keep going.",
-      actionLabel: "Open Focus ›",
-    };
+    return { ...streakBase, accent: "var(--gold)", glyph: "flame", unit: "days",
+      eyebrow: "Focus streak", sub: "Consistency over intensity.", actionLabel: "Open Focus ›" };
   }
   if (celebration.kind === "muhasabaStreak") {
-    return {
-      accent: "#7BB6C7",
-      icon: "🌙",
-      eyebrow: "Muhasaba streak",
-      title: `${celebration.count} nights of self-accounting`,
-      sub: "Accounting for yourself before you are brought to account. Don't break the chain tonight.",
-      actionLabel: "Open Muhasaba ›",
-    };
+    return { ...streakBase, accent: "#7BB6C7", glyph: "moon", unit: "nights",
+      eyebrow: "Muhasaba streak", sub: "Accounting for yourself before you're brought to account.", actionLabel: "Open Muhasaba ›" };
   }
   if (celebration.kind === "istiqamahStreak") {
-    return {
-      accent: "var(--noor)",
-      icon: "🔥",
-      eyebrow: "Istiqāmah",
-      title: `${celebration.count} days of showing up`,
-      sub: "The most beloved deeds to Allah are the constant ones, even if few.",
-      actionLabel: "Open ›",
-    };
+    return { ...streakBase, accent: "var(--noor)", glyph: "flame", unit: "days",
+      eyebrow: "Istiqāmah", sub: "The most beloved deeds to Allah are the constant ones.", actionLabel: "Open ›" };
   }
   return null;
 }
@@ -61,13 +69,18 @@ export default function CelebrationToast({ celebration, onDismiss, onOpen }) {
   if (!celebration) return null;
   const v = variantFor(celebration);
   if (!v) return null;
+
   const accent = v.accent;
   const isVarAccent = accent.startsWith("var(");
-  // Hex accents support hex+alpha concatenation; CSS-var accents need
-  // color-mix to tint. Both produce a translucent wash.
+  // Hex accents concat alpha; CSS-var accents tint via color-mix. Both wash.
   const tint = (pct) => isVarAccent
     ? `color-mix(in srgb, ${accent} ${pct}%, transparent)`
     : accent + Math.round(pct * 255 / 100).toString(16).padStart(2, "0");
+
+  const tier = v.streak ? glowTier(v.count) : 1;
+  const next = v.streak ? nextMilestone(v.count) : null;
+  const numberSize = tier >= 3 ? 46 : 40;
+
   return (
     <div
       role="status"
@@ -105,28 +118,65 @@ export default function CelebrationToast({ celebration, onDismiss, onOpen }) {
       >
         ✕
       </button>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <span style={{
-          width: 40, height: 40, borderRadius: 12,
-          background: tint(20),
-          border: `0.5px solid ${tint(33)}`,
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 20, flexShrink: 0,
-        }}>{v.icon}</span>
+
+      <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+        {/* Glyph badge — glow ring intensity scales with the milestone tier. */}
+        <span
+          className="streak-glow"
+          style={{
+            width: 46, height: 46, borderRadius: 14, flexShrink: 0,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: accent,
+            background: tint(18),
+            border: `0.5px solid ${tint(36)}`,
+            // Base ring + a pulsing halo (see .streak-glow keyframes); the var
+            // brightens with tier so bigger milestones glow harder.
+            ["--glow"]: tint(16 + tier * 12),
+          }}
+        >
+          <Glyph name={v.glyph} />
+        </span>
+
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{
-            fontSize: 11, fontWeight: 700,
-            color: accent, letterSpacing: "0.6px", textTransform: "uppercase", marginBottom: 3,
-          }}>{v.eyebrow}</div>
-          <div style={{
-            fontSize: 16, fontWeight: 600,
-            color: "var(--color-text-primary)", lineHeight: 1.3,
-            whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-          }}>{v.title}</div>
-          <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 3, lineHeight: 1.4 }}>
-            {v.sub}
+            fontSize: 11, fontWeight: 700, color: accent,
+            letterSpacing: "0.6px", textTransform: "uppercase", marginBottom: v.streak ? 1 : 3,
+          }}>
+            {v.eyebrow}
           </div>
+
+          {v.streak ? (
+            <>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ fontSize: numberSize, fontWeight: 800, color: accent, lineHeight: 1, letterSpacing: "-0.02em" }}>
+                  {v.count}
+                </span>
+                <span style={{ fontSize: 15, color: "var(--color-text-secondary)" }}>{v.unit}</span>
+                {next && (
+                  <span style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginLeft: "auto", whiteSpace: "nowrap" }}>
+                    → next {next}
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: 12.5, color: "var(--color-text-secondary)", marginTop: 5, lineHeight: 1.4 }}>
+                {v.sub}
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{
+                fontSize: 16, fontWeight: 600, color: "var(--color-text-primary)", lineHeight: 1.3,
+                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+              }}>
+                {v.title}
+              </div>
+              <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 3, lineHeight: 1.4 }}>
+                {v.sub}
+              </div>
+            </>
+          )}
         </div>
+
         {onOpen && (
           <button
             onClick={onOpen}
@@ -136,8 +186,8 @@ export default function CelebrationToast({ celebration, onDismiss, onOpen }) {
               background: "transparent",
               border: `0.5px solid ${tint(53)}`,
               color: accent,
-              cursor: "pointer", flexShrink: 0,
-              whiteSpace: "nowrap",
+              cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
+              alignSelf: "center",
             }}
           >
             {v.actionLabel}
