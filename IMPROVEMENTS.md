@@ -18,7 +18,7 @@ Status legend: `TODO` · `IN PROGRESS` · `DONE` · `DEFERRED` · `WON'T DO (now
 | F | Replace stray `window.confirm` with `ConfirmDialog` (3 sites) | M | L | L | 1 | **DONE** |
 | G | Shrink/harden the 1.2s debounce unload race | M | L | L | 1 | **DONE** |
 | K | Server-side prayer-time computation (reminders stop silently) | M | M | M | 2 | **DONE** |
-| J | Code-splitting (`React.lazy` per view + dynamic `firebase/messaging`) | M | M | M | 3 | TODO |
+| J | Code-splitting (`React.lazy` per view + dynamic `firebase/messaging`) | M | M | M | 3 | **DONE** |
 | L | In-app SW update toast | L | M | L | 3 | DEFERRED |
 | C | Windowed subcollection reads (`muhasaba`/`focusLog`) + lazy "load older" | M | H | M | 4 | DEFERRED |
 | B | Shard `goals` to a subcollection | L–M | H | M–H | 4 | DEFERRED |
@@ -271,11 +271,18 @@ because it hardens the foundation the feature work sits on.
   timezone-accurate reminders ✅; `gemini-report` can't be spammed past a per-uid
   server limit ✅.
 
-### Phase 3 — Delivery / performance
-- **J:** code-split views + dynamic messaging import; measure the cold-start /
-  bundle-size delta before and after.
-- **L (optional):** add an in-app "update available" toast if cheap here.
-- **Exit criteria:** initial JS payload materially reduced; offline boot + push still work.
+### Phase 3 — Delivery / performance  *(J done; L deferred)*
+- **J ✅:** views are `React.lazy` + a `<Suspense>` fallback in `Planner`; `firebase/messaging`
+  is dynamically imported (firebase.js + notifications.js), and the foreground handler
+  no-ops (no chunk load) unless push is granted on the device. **Main chunk 992 KB →
+  746 KB (~25% off).** View code moved to lazy chunks — GoalDetail 72 KB (carries
+  dnd-kit, loads on goal open), Stats 29 KB, Muhasaba 28 KB, Pomodoro 27 KB, Dashboard
+  19 KB, Prayer 15 KB; messaging 43 KB loads only for push users. Firebase auth/
+  firestore stay in main (needed at boot). All 128 tests green.
+- **L (deferred):** in-app "update available" toast. `autoUpdate` + skipWaiting/
+  clientsClaim already swap the SW on next load; a prompt is polish, not correctness.
+- **Exit criteria:** initial JS payload materially reduced ✅; offline boot + push
+  still work (verify on deploy — SW is build-only).
 
 ### Phase 4 — Scaling  *(only when data justifies)*
 - **C:** windowed subcollection reads with correct historical aggregates for streaks/heatmaps.
@@ -293,12 +300,13 @@ because it hardens the foundation the feature work sits on.
 
 ## 4. Suggested immediate next step
 
-Phases 0, R1, 1, **R2 core**, and **Phase 2** (K + R7) are done. The remaining
-scheduled work is **Phase 3 — delivery/performance** (J: code-split views +
-dynamic `firebase/messaging`; L optional SW update toast) and **Phase 4 — scaling**
-(C: windowed subcollection reads; B: shard `goals`), both do-when-it-matters.
-Deferred within R2: R5 write-boundary validation / rules checks / `schemaVersion`
-+ migration-runner, and the real Firestore-emulator suite (needs Java locally).
+Phases 0, R1, 1, **R2 core**, **Phase 2** (K + R7), and **Phase 3** (J) are done.
+The only remaining *scheduled* work is **Phase 4 — scaling** (C: windowed
+subcollection reads; B: shard `goals`) — explicitly **do-when-data-justifies**, not
+now. Deferred sub-items available if wanted: R5 write-boundary validation / rules
+checks / `schemaVersion` + migration-runner, the real Firestore-emulator suite
+(needs Java locally), and L (SW update toast). At this point the backlog is in
+good shape — most remaining items are "only if the triggering condition appears."
 
 Still worth doing when convenient (carried over): a live-account run-through of the
 muhasaba/focusLog migrations, and a follow-up test batch for `lib/daily.js` +

@@ -397,9 +397,10 @@ reminders are **best-effort** — if the user hasn't opened the app today,
   (see `IMPROVEMENTS.md` for the optional generation-log idea).
 
 **Delivery / ops**
-- **982 KB single JS chunk** (~254 KB gzip), Firebase-dominated. No code-splitting;
-  affects PWA cold start. Candidates: `React.lazy` per view, dynamic-import
-  `firebase/messaging` only when notifications are enabled, lazy Gemini path.
+- **Bundle:** code-split (Phase 3) — views are `React.lazy` + `<Suspense>`, and
+  `firebase/messaging` is dynamic-imported (loads only for push users). Main chunk
+  ~746 KB (was 992), the rest in per-view lazy chunks. Firebase auth/firestore stay
+  in main (needed at boot) — the remaining large, boot-critical dependency.
 - **Reminders depend on the client mirroring prayer times** — if the user doesn't
   open the app that day, reminders silently stop. Candidate: compute times
   server-side from stored lat/lng (Aladhan needs no key).

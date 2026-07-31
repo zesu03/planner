@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, lazy, Suspense } from "react";
 import { useUserData } from "./useFirestore";
 import { useVerse } from "./hooks/useVerse";
 import { usePrayer } from "./hooks/usePrayer";
@@ -30,14 +30,29 @@ import Onboarding from "./components/Onboarding";
 import { GoalDetailProvider } from "./contexts/GoalDetailContext";
 
 // View components (one per tab).
-import Dashboard from "./views/Dashboard";
-import Stats from "./views/Stats";
-import Pomodoro from "./views/Pomodoro";
-import Prayer from "./views/Prayer";
-import GoalsList from "./views/GoalsList";
-import GoalAdd from "./views/GoalAdd";
-import GoalDetail from "./views/GoalDetail";
-import Muhasaba from "./views/Muhasaba";
+// Views are code-split (Phase 3 / J): only the active tab's chunk loads on
+// first paint; the rest load on navigation. Firebase auth/firestore stay in the
+// main chunk (needed at boot), but view code + dnd-kit (GoalDetail) + Stats'
+// derivations move into lazy chunks. The <Suspense> around the view dispatch
+// shows a light fallback during a chunk fetch.
+const Dashboard = lazy(() => import("./views/Dashboard"));
+const Stats = lazy(() => import("./views/Stats"));
+const Pomodoro = lazy(() => import("./views/Pomodoro"));
+const Prayer = lazy(() => import("./views/Prayer"));
+const GoalsList = lazy(() => import("./views/GoalsList"));
+const GoalAdd = lazy(() => import("./views/GoalAdd"));
+const GoalDetail = lazy(() => import("./views/GoalDetail"));
+const Muhasaba = lazy(() => import("./views/Muhasaba"));
+
+// Fallback shown while a view chunk loads. Mirrors the app's loading style.
+function ViewFallback() {
+  return (
+    <div role="status" aria-label="Loading view"
+      style={{ display: "flex", justifyContent: "center", padding: "48px 0", color: "var(--text-secondary)" }}>
+      <div className="loading-dots" aria-hidden="true"><span /><span /><span /></div>
+    </div>
+  );
+}
 
 // ── main component ─────────────────────────────────────────────────────────
 export default function Planner({ user }) {
@@ -926,6 +941,8 @@ export default function Planner({ user }) {
         })}
       </nav>
 
+      <Suspense fallback={<ViewFallback />}>
+
       {/* ── DASHBOARD ── */}
       {view==="dashboard" && (
         <Dashboard
@@ -1106,6 +1123,8 @@ export default function Planner({ user }) {
           onExport={exportData}
         />
       )}
+
+      </Suspense>
 
       <ConfirmDialog
         open={!!confirmState}

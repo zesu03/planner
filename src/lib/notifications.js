@@ -21,7 +21,8 @@
 // string when adding, and the server endpoint prunes tokens that FCM reports
 // as unregistered.
 
-import { getToken, onMessage } from "firebase/messaging";
+// getToken/onMessage are dynamically imported where used (see below) so
+// firebase/messaging stays out of the main bundle (Phase 3 code-split).
 import { getMessagingIfSupported } from "../firebase";
 
 // iOS detection. The Notification API is missing entirely on iOS Safari
@@ -84,6 +85,7 @@ export async function requestPermissionAndToken() {
     ),
   ]);
   const messaging = await getMessagingIfSupported();
+  const { getToken } = await import("firebase/messaging");
   const token = await getToken(messaging, {
     vapidKey,
     serviceWorkerRegistration: swReg,
@@ -106,8 +108,13 @@ export async function requestPermissionAndToken() {
 // data fallbacks would let an attacker who only got hold of data-message
 // permissions craft display text.
 export async function attachForegroundHandler() {
+  // Skip entirely (and don't pull the messaging chunk) unless push is actually
+  // granted on THIS device — without a token here, no foreground message can
+  // arrive, so there's nothing to forward.
+  if (currentPermission() !== "granted") return () => {};
   const messaging = await getMessagingIfSupported();
   if (!messaging) return () => {};
+  const { onMessage } = await import("firebase/messaging");
   return onMessage(messaging, async (payload) => {
     try {
       const reg = await navigator.serviceWorker.ready;

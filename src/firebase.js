@@ -5,7 +5,9 @@ import {
   persistentLocalCache,
   persistentMultipleTabManager,
 } from "firebase/firestore";
-import { getMessaging, isSupported } from "firebase/messaging";
+// firebase/messaging is NOT imported statically — it's dynamically imported
+// inside getMessagingIfSupported (below) so it stays out of the main bundle
+// and only loads for users who actually use push (Phase 3 code-split).
 
 export const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -54,7 +56,10 @@ export const db = initializeFirestore(app, {
 let _messagingPromise = null;
 export function getMessagingIfSupported() {
   if (!_messagingPromise) {
-    _messagingPromise = isSupported().then((ok) => (ok ? getMessaging(app) : null)).catch(() => null);
+    _messagingPromise = import("firebase/messaging")
+      .then(({ getMessaging, isSupported }) =>
+        isSupported().then((ok) => (ok ? getMessaging(app) : null)))
+      .catch(() => null);
   }
   return _messagingPromise;
 }

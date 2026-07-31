@@ -142,7 +142,7 @@ into `src/sw.js`. See the PWA / service worker section below.)
 - **useFocusTimer** — dial state, tick interval, session bookkeeping
 - **useGoals** — pure goal/task write callbacks (no UI side-effects)
 
-**Views are pure presentation.** They receive data + callbacks as props and never reach into Firestore directly. When adding a new write path, prefer extending the relevant hook over growing Planner. The Planner-level functions for goals (`addGoal`, `addTask`, `removeTask`, `deleteGoal`, `saveNotes`, etc.) are thin wrappers that wire `useGoals` callbacks to local form state + confirms + navigation — keep that pattern.
+**Views are pure presentation.** They receive data + callbacks as props and never reach into Firestore directly. Each view is **`React.lazy`-loaded** (a single `<Suspense>` wraps the view dispatch in `Planner`), so a new view is code-split automatically — keep them default-exported. `firebase/messaging` is likewise dynamically imported (loads only for push users). When adding a new write path, prefer extending the relevant hook over growing Planner. The Planner-level functions for goals (`addGoal`, `addTask`, `removeTask`, `deleteGoal`, `saveNotes`, etc.) are thin wrappers that wire `useGoals` callbacks to local form state + confirms + navigation — keep that pattern.
 
 ### Firestore data shape
 
