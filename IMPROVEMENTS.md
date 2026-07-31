@@ -17,7 +17,7 @@ Status legend: `TODO` · `IN PROGRESS` · `DONE` · `DEFERRED` · `WON'T DO (now
 | D+E | Test harness (Vitest) + tests for `lib/` + sync-engine reducers | **H** | M | **L** | 0 | **DONE** |
 | F | Replace stray `window.confirm` with `ConfirmDialog` (3 sites) | M | L | L | 1 | **DONE** |
 | G | Shrink/harden the 1.2s debounce unload race | M | L | L | 1 | **DONE** |
-| K | Server-side prayer-time computation (reminders stop silently) | M | M | M | 2 | TODO |
+| K | Server-side prayer-time computation (reminders stop silently) | M | M | M | 2 | **DONE** |
 | J | Code-splitting (`React.lazy` per view + dynamic `firebase/messaging`) | M | M | M | 3 | TODO |
 | L | In-app SW update toast | L | M | L | 3 | DEFERRED |
 | C | Windowed subcollection reads (`muhasaba`/`focusLog`) + lazy "load older" | M | H | M | 4 | DEFERRED |
@@ -249,15 +249,20 @@ because it hardens the foundation the feature work sits on.
   tested ✅ (mock-based). Deferred within R2: write-boundary validation + rules
   checks + `schemaVersion`/migration-runner (R5), and the real emulator suite (R6).
 
-### Phase 2 — Feature reliability
-- **K:** compute prayer times server-side in `notify-prayers` from stored coords,
-  with a fallback for city-only users; reminders no longer depend on the app being
-  opened that day.
-- **R7:** serverless hardening — server-side rate-limit on `gemini-report`, Gemini
-  timeout/retry, cron liveness alerting + fan-out batching, Aladhan fallback cache.
+### Phase 2 — Feature reliability  *(in progress)*
+- **K ✅:** `notify-prayers` computes prayer times server-side — prefers the doc's
+  cached times, else fetches from Aladhan via the stored location (coords, else
+  city/country), caches back onto the doc, and memoises the fetch per-location
+  per-tick (`api/_prayer.js` pure helpers, tested; `getTimesForUser` + `fetchAladhanTimes`
+  in the function). Reminders are now self-healing — no longer dependent on the
+  app being opened that day. Skips only when neither fresh times nor a location
+  exist. Client mirror retained as the fast path/fallback.
+- **R7 (todo):** serverless hardening — server-side rate-limit on `gemini-report`,
+  Gemini timeout/retry, cron liveness alerting + fan-out batching, Aladhan fallback
+  cache.
 - **Exit criteria:** a user who hasn't opened the app still receives correct,
-  timezone-accurate reminders; stale-data skip path retained as a safety net;
-  `gemini-report` can't be spammed past a per-uid server limit.
+  timezone-accurate reminders ✅; `gemini-report` can't be spammed past a per-uid
+  server limit ⏳ (R7).
 
 ### Phase 3 — Delivery / performance
 - **J:** code-split views + dynamic messaging import; measure the cold-start /

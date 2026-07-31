@@ -9,7 +9,13 @@
 //   CRON_SECRET               shared secret; cron URL must include
 //                             ?secret=<value>
 //
-// Per-user shape this depends on (written by the client):
+// Prayer times are resolved server-side (getTimesForUser + _prayer.js): the
+// doc's cached times are used when fresh, otherwise fetched from Aladhan via
+// the user's stored location and written back — so reminders don't depend on
+// the app being opened that day.
+//
+// Per-user shape this depends on (notifications written by the client;
+// settings.prayer{Lat,Lng,City,Country} used server-side to compute times):
 //   users/{uid}.notifications = {
 //     prayer: { enabled, perPrayer: { Fajr, Dhuhr, Asr, Maghrib, Isha } },
 //     fcmTokens: ["token", ...],
@@ -42,8 +48,51 @@
 
 import admin from "firebase-admin";
 import { initServerMonitoring, captureServerException, flushMonitoring } from "./_monitoring.js";
+import { toAladhanDate, resolveLocation, aladhanUrl, extractTimes } from "./_prayer.js";
 
 initServerMonitoring();
+
+// Fetch today's five fard times for a resolved location from Aladhan. Returns
+// a bare-HH:MM map or null on any failure (network, bad response, no location).
+async function fetchAladhanTimes(location, ymdDate) {
+  const url = aladhanUrl(location, toAladhanDate(ymdDate));
+  if (!url) return null;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (data.code !== 200 || !data.data?.timings) return null;
+    return extractTimes(data.data.timings);
+  } catch {
+    return null;
+  }
+}
+
+// Resolve today's prayer times for a user. Prefers times already on the doc for
+// today (client mirror OR a prior server fetch); otherwise fetches from Aladhan
+// using the stored location and caches them back onto the doc so later ticks
+// today skip the call. `cache` memoises the fetch across users at the same
+// location within one invocation. This is what makes reminders self-healing —
+// they no longer require the user to have opened the app today.
+async function getTimesForUser(data, local, cache, ref) {
+  const pt = data.notifications?.prayerTimes;
+  if (pt && pt.date === local.date && pt.times) return pt.times;
+
+  const loc = resolveLocation(data.settings);
+  if (loc.kind === "none") return null;
+
+  const memoKey = `${loc.key}|${local.date}`;
+  if (!cache.has(memoKey)) cache.set(memoKey, fetchAladhanTimes(loc, local.date));
+  const times = await cache.get(memoKey);
+  if (!times) return null;
+
+  // Persist so subsequent ticks today reuse it. Dotted path leaves the other
+  // notifications.* keys (tokens, lastSentAt) untouched. Best-effort.
+  try {
+    await ref.update({ "notifications.prayerTimes": { date: local.date, times } });
+  } catch { /* a failed cache-back just means the next tick re-fetches */ }
+  return times;
+}
 
 let _adminInited = false;
 function getAdmin() {
@@ -112,7 +161,7 @@ function buildPayload(prayer, time) {
 // Per-user processing. Returns counters so the handler can aggregate.
 // No exceptions escape — any failure for one user shouldn't sink the
 // whole tick.
-async function processUser(userDoc, now, messaging, db) {
+async function processUser(userDoc, now, messaging, db, cache) {
   try {
     const data = userDoc.data();
     const n = data.notifications || {};
@@ -123,13 +172,14 @@ async function processUser(userDoc, now, messaging, db) {
     const local = userLocal(now, timezone);
     if (!local) return { dispatched: 0, deadTokens: 0 };
 
-    const pt = n.prayerTimes;
-    // Stale times → user hasn't opened the app today. Skip; we'd rather
-    // miss a reminder than push yesterday's Fajr time.
-    if (!pt || pt.date !== local.date || !pt.times) return { dispatched: 0, deadTokens: 0 };
-
     const nowMin = toMinutes(local.time);
     if (!Number.isFinite(nowMin)) return { dispatched: 0, deadTokens: 0 };
+
+    // Today's times — from the doc if fresh, else server-fetched from Aladhan
+    // via the stored location (and cached back). No location + no fresh times
+    // → skip (can't compute); better a missed reminder than a wrong-time push.
+    const times = await getTimesForUser(data, local, cache, userDoc.ref);
+    if (!times) return { dispatched: 0, deadTokens: 0 };
 
     const perPrayer = n.prayer?.perPrayer || {};
 
@@ -137,7 +187,7 @@ async function processUser(userDoc, now, messaging, db) {
     const candidates = [];
     for (const prayer of PRAYERS) {
       if (perPrayer[prayer] === false) continue;
-      const t = pt.times[prayer];
+      const t = times[prayer];
       const tMin = toMinutes(t);
       if (!Number.isFinite(tMin)) continue;
       const diff = nowMin - tMin;
@@ -264,7 +314,9 @@ export default async function handler(req, res) {
     // Parallel — each user is independent. Promise.all is fine through
     // several hundred users; firebase-admin pools connections internally.
     // At 500+ users, chunk this into batches of ~50 to stay polite to FCM.
-    const results = await Promise.all(snap.docs.map((d) => processUser(d, now, messaging, db)));
+    // `cache` memoises Aladhan fetches across users sharing a location this tick.
+    const cache = new Map();
+    const results = await Promise.all(snap.docs.map((d) => processUser(d, now, messaging, db, cache)));
     const dispatched = results.reduce((s, r) => s + r.dispatched, 0);
     const deadTokensRemoved = results.reduce((s, r) => s + r.deadTokens, 0);
 
