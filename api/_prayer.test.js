@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toAladhanDate, bareTime, resolveLocation, aladhanUrl, extractTimes } from "./_prayer.js";
+import { toAladhanDate, bareTime, resolveLocation, aladhanUrl, extractTimes, isFridayYMD, prayerDisplayName } from "./_prayer.js";
 
 describe("toAladhanDate", () => {
   it("reformats YYYY-MM-DD to DD-MM-YYYY", () => {
@@ -72,5 +72,18 @@ describe("extractTimes", () => {
     })).toEqual({
       Fajr: "05:23", Dhuhr: "12:10", Asr: "15:45", Maghrib: "18:47", Isha: "20:05",
     });
+  });
+});
+
+describe("isFridayYMD / prayerDisplayName", () => {
+  it("detects Friday (2026-08-07) tz-independently", () => {
+    expect(isFridayYMD("2026-08-07")).toBe(true);
+    expect(isFridayYMD("2026-08-06")).toBe(false);
+    expect(isFridayYMD("bad")).toBe(false);
+  });
+  it("relabels only Friday Dhuhr as Jumu'ah", () => {
+    expect(prayerDisplayName("Dhuhr", "2026-08-07")).toBe("Jumu'ah");
+    expect(prayerDisplayName("Dhuhr", "2026-08-06")).toBe("Dhuhr");
+    expect(prayerDisplayName("Fajr", "2026-08-07")).toBe("Fajr");
   });
 });

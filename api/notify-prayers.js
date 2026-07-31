@@ -48,7 +48,7 @@
 
 import admin from "firebase-admin";
 import { initServerMonitoring, captureServerException, flushMonitoring } from "./_monitoring.js";
-import { toAladhanDate, resolveLocation, aladhanUrl, extractTimes } from "./_prayer.js";
+import { toAladhanDate, resolveLocation, aladhanUrl, extractTimes, prayerDisplayName } from "./_prayer.js";
 
 initServerMonitoring();
 
@@ -143,11 +143,11 @@ function toMinutes(hhmm) {
 // Build the per-prayer push payload. Title carries the prayer name + icon
 // so it lands recognisable in the system tray; body restates the time for
 // users with multiple notifications stacked.
-function buildPayload(prayer, time) {
+function buildPayload(prayer, time, label = prayer) {
   return {
     notification: {
-      title: `${PRAYER_ICON[prayer]} ${prayer}`,
-      body: `It's time for ${prayer} (${time})`,
+      title: `${PRAYER_ICON[prayer]} ${label}`,
+      body: `It's time for ${label} (${time})`,
     },
     data: {
       tag: `prayer-${prayer}`,
@@ -235,7 +235,7 @@ async function processUser(userDoc, now, messaging, db, cache) {
       // sendEachForMulticast throws on an empty list — release the rest of
       // the claims so they retry once a live token reappears.
       if (tokenSet.size === 0) { releaseKeys.push(key); continue; }
-      const message = buildPayload(prayer, time);
+      const message = buildPayload(prayer, time, prayerDisplayName(prayer, local.date));
       try {
         const tokenList = Array.from(tokenSet);
         const result = await messaging.sendEachForMulticast({

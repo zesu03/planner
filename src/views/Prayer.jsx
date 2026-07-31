@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { PRAYERS, PRAYER_ICONS, PRAYER_COLORS, VOLUNTARY_PRAYERS } from "../lib/constants";
 import { localDateStr } from "../lib/dates";
 import { QAZA_PRAYERS } from "../lib/qaza";
-import { currentPrayerWindow } from "../lib/prayer";
+import { currentPrayerWindow, prayerDisplayName } from "../lib/prayer";
 import { S } from "../lib/styles";
 import { rewardPrayerMark } from "../lib/feedback";
 import {
@@ -155,7 +155,7 @@ export default function Prayer({
                 <span style={{ fontSize: 28 }}>{PRAYER_ICONS[nextPrayer.name]}</span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, color: due ? accent : "var(--color-text-secondary)", fontWeight: due ? 600 : 400 }}>{eyebrow}</div>
-                  <div style={{ fontSize: 21, fontWeight: 500, color: due ? accent : "var(--gold)" }}>{nextPrayer.name}</div>
+                  <div style={{ fontSize: 21, fontWeight: 500, color: due ? accent : "var(--gold)" }}>{prayerDisplayName(nextPrayer.name, localDateStr())}</div>
                   <div style={{ fontSize: 15, color: "var(--color-text-secondary)" }}>{nextPrayer.time}</div>
                 </div>
                 {due && (
@@ -217,7 +217,7 @@ export default function Prayer({
                   </span>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 500, fontSize: 16, color: pColor, display: "flex", alignItems: "center", gap: 8 }}>
-                      {p}
+                      {prayerDisplayName(p, localDateStr())}
                       {isCurrent && (
                         <span style={{
                           fontSize: 11,

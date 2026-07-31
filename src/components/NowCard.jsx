@@ -13,6 +13,8 @@
 
 import { useEffect, useState } from "react";
 import { PRAYER_ICONS, PRAYER_COLORS } from "../lib/constants";
+import { localDateStr } from "../lib/dates";
+import { prayerDisplayName } from "../lib/prayer";
 import { goldA, noorA, tintA } from "../lib/styles";
 
 const OBLIGATORY = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
@@ -101,7 +103,7 @@ export default function NowCard({
       return { label: `Start: ${firstTask.task.text}`, onClick: () => onStartTask?.(firstTask.goal.id, firstTask.task.id) };
     }
     if (!prayerTimesSet) return { label: "Set your prayer times", onClick: onOpenAddPrayer };
-    if (nextPrayer?.due) return { label: `Mark ${nextPrayer.name} prayed`, onClick: onOpenPrayer };
+    if (nextPrayer?.due) return { label: `Mark ${prayerDisplayName(nextPrayer.name, localDateStr())} prayed`, onClick: onOpenPrayer };
     if (muhasabaStateValue !== "filled") return { label: "Open tonight's muhasaba", onClick: onOpenMuhasaba };
     return { label: "Start a focus block", onClick: onOpenFocus };
   })();
@@ -111,13 +113,15 @@ export default function NowCard({
   if (!prayerTimesSet) {
     prayerEyebrow = "Prayer times"; prayerLabel = "Not set yet";
   } else if (nextPrayer?.due) {
+    const shown = prayerDisplayName(nextPrayer.name, localDateStr());
     prayerEyebrow = "Due now · not prayed";
-    prayerLabel = `${PRAYER_ICONS[nextPrayer.name] || "🕌"} ${nextPrayer.name}`;
+    prayerLabel = `${PRAYER_ICONS[nextPrayer.name] || "🕌"} ${shown}`;
     prayerColor = PRAYER_COLORS[nextPrayer.name] || "var(--gold)";
     urgent = true;
   } else if (nextPrayer) {
+    const shown = prayerDisplayName(nextPrayer.name, localDateStr());
     prayerEyebrow = nextPrayer.tomorrow ? "Tomorrow's first prayer" : "Next prayer";
-    prayerLabel = `${PRAYER_ICONS[nextPrayer.name] || "🕌"} ${nextPrayer.name} · ${fmtCountdown(countdown)}`;
+    prayerLabel = `${PRAYER_ICONS[nextPrayer.name] || "🕌"} ${shown} · ${fmtCountdown(countdown)}`;
     prayerColor = PRAYER_COLORS[nextPrayer.name] || "var(--gold)";
   }
 

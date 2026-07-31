@@ -30,6 +30,21 @@ const parseHHMM = (s) => {
   return h * 60 + m;
 };
 
+// Friday's Dhuhr is prayed as Jumu'ah. DISPLAY-ONLY: prayerLog storage stays
+// under "Dhuhr" (streaks / history / qaza unaffected); we only relabel it in
+// today-specific UI and the Friday push. Icon/colour lookups keep using the
+// real "Dhuhr" key — only the visible text changes.
+export function isFriday(dayStr) {
+  if (!dayStr) return false;
+  const [y, m, d] = String(dayStr).split("-").map(Number);
+  if (!y || !m || !d) return false;
+  return new Date(y, m - 1, d).getDay() === 5; // local weekday; 5 = Friday
+}
+
+export function prayerDisplayName(prayer, dayStr) {
+  return prayer === "Dhuhr" && isFriday(dayStr) ? "Jumu'ah" : prayer;
+}
+
 // The currently-active prayer window, or null if the user is between windows.
 // `prayerTimes` is the Aladhan timings object (HH:MM strings).
 export function currentPrayerWindow(prayerTimes, now = new Date()) {

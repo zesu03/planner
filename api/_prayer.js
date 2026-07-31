@@ -53,3 +53,16 @@ export function extractTimes(timings) {
   for (const p of ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"]) out[p] = bareTime(t[p]);
   return out;
 }
+
+// Is `ymd` ("YYYY-MM-DD") a Friday? UTC-based so it's tz-independent (a calendar
+// date's weekday is the same everywhere).
+export function isFridayYMD(ymd) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(ymd || "");
+  if (!m) return false;
+  return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3])).getUTCDay() === 5;
+}
+
+// Display name for a prayer on a given date — Friday's Dhuhr shows as Jumu'ah.
+export function prayerDisplayName(prayer, ymd) {
+  return prayer === "Dhuhr" && isFridayYMD(ymd) ? "Jumu'ah" : prayer;
+}
