@@ -357,6 +357,19 @@ export default function Planner({ user }) {
     applySavedVersesUpdate((arr) => arr.filter((v) => v.id !== id));
   }, [applySavedVersesUpdate]);
 
+  // Styled-confirm wrapper for the saved-verse remove action (passed to
+  // Dashboard so it doesn't reach for window.confirm).
+  const requestRemoveSavedVerse = (verse) => {
+    if (!verse) return;
+    requestConfirm({
+      title: "Remove saved verse?",
+      message: `${verse.verseKey || "This ayah"} will be removed from your bookmarks.`,
+      confirmLabel: "Remove",
+      tone: "danger",
+      onConfirm: () => removeSavedVerse(verse.id),
+    });
+  };
+
   const isVerseSaved = useCallback(
     (verseKey) => savedVerses.some((v) => v.verseKey === verseKey),
     [savedVerses]
@@ -541,13 +554,21 @@ export default function Planner({ user }) {
   // Trigger a client-side download of the user's full data as JSON. Useful
   // for backup or moving the data elsewhere — the entire user doc shape.
   function exportData() {
+    // Complete backup of the user's data — every top-level area plus the two
+    // sharded subcollections (which live in state here). Previously omitted
+    // qaza / savedVerses / notifications, making the "export" a silent partial
+    // backup. schemaVersion tags the shape for a future import/restore path.
     const payload = {
+      schemaVersion: 1,
       exportedAt: new Date().toISOString(),
       uid: user.uid,
       goals,
       prayerLog,
       focusLog,
       muhasaba,
+      qaza,
+      savedVerses,
+      notifications,
       settings: userSettings,
     };
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -566,21 +587,28 @@ export default function Planner({ user }) {
   function deleteFocusEntry(entryId) {
     const entry = focusLog.find((l) => l.id === entryId);
     if (!entry) return;
-    if (!window.confirm(`Delete this ${entry.mins}-minute session?`)) return;
-    applyFocusLogUpdate((log) => log.filter((l) => l.id !== entryId));
-    if (entry.goalId && entry.taskId) {
-      applyGoalsUpdate((gs) => gs.map((g) => {
-        if (g.id !== entry.goalId) return g;
-        return {
-          ...g,
-          tasks: g.tasks.map((t) => t.id !== entry.taskId ? t : {
-            ...t,
-            sessions: Math.max(0, (t.sessions || 0) - 1),
-            totalTime: Math.max(0, (t.totalTime || 0) - (entry.mins || 0)),
-          }),
-        };
-      }));
-    }
+    requestConfirm({
+      title: "Delete session?",
+      message: `This ${entry.mins}-minute focus session will be removed from your history. Task totals will be adjusted.`,
+      confirmLabel: "Delete",
+      tone: "danger",
+      onConfirm: () => {
+        applyFocusLogUpdate((log) => log.filter((l) => l.id !== entryId));
+        if (entry.goalId && entry.taskId) {
+          applyGoalsUpdate((gs) => gs.map((g) => {
+            if (g.id !== entry.goalId) return g;
+            return {
+              ...g,
+              tasks: g.tasks.map((t) => t.id !== entry.taskId ? t : {
+                ...t,
+                sessions: Math.max(0, (t.sessions || 0) - 1),
+                totalTime: Math.max(0, (t.totalTime || 0) - (entry.mins || 0)),
+              }),
+            };
+          }));
+        }
+      },
+    });
   }
 
   // Thin UI wrappers around useGoals. The hook is data-only; here we wire
@@ -912,7 +940,7 @@ export default function Planner({ user }) {
           refreshVerse={refreshVerse}
           savedVerses={savedVerses}
           saveVerse={saveVerse}
-          removeSavedVerse={removeSavedVerse}
+          onRemoveSavedVerse={requestRemoveSavedVerse}
           isVerseSaved={isVerseSaved}
           lastActivityByGoal={lastActivityByGoal}
           setView={setView}

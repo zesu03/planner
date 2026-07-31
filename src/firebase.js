@@ -39,7 +39,7 @@ export const provider = new GoogleAuthProvider();
 //   • setDoc writes made offline queue in IndexedDB and replay
 //     automatically once back online (covers the useFirestore debounced
 //     writes including the unload flush).
-//   • The 1.2-second debounce continues to work — pending writes that the
+//   • The debounced writes continue to work — pending writes that the
 //     debounce flushes after going offline simply queue instead of fail.
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({

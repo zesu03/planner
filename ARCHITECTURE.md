@@ -180,7 +180,7 @@ A hand-rolled optimistic-sync layer. One hook, three listeners, three write path
    mark dirtyRef[field]               diff changed days      diff changed ids
         │                                    │                     │
         ▼                                    ▼                     ▼
-   save() → 1.2s debounce             own 1.2s debounce      own 1.2s debounce
+   save() → 500ms debounce            own 500ms debounce     own 500ms debounce
         │                                    │                     │
         ▼                                    ▼                     ▼
    flushNow(): setDoc(merge)          flushMuhasabaNow():    flushFocusNow():
@@ -205,7 +205,7 @@ A hand-rolled optimistic-sync layer. One hook, three listeners, three write path
   main-doc gate opens on server-confirmed data only (never a cold `fromCache` miss).
 - **Flush-on-teardown.** `beforeunload` + `pagehide` + `visibilitychange:hidden`
   all flush all three paths, and the userId-change cleanup flushes the old user's
-  pending writes before unsubscribing — so a change made within the 1.2s debounce
+  pending writes before unsubscribing — so a change made within the 500ms debounce
   window isn't lost to tab close, backgrounding, or sign-out.
 - **One-time migrations.** Legacy inline `muhasaba`/`focusLog` are migrated to
   their subcollections idempotently: seed in-memory first (no flash) → write
@@ -383,7 +383,7 @@ reminders are **best-effort** — if the user hasn't opened the app today,
   unit-testable; the sync engine and reducers are the risk surface.
 - A few `window.confirm` calls remain instead of the styled `ConfirmDialog`
   (`Planner.deleteFocusEntry`, `Dashboard` saved-verse remove, `AuthWrapper` sign-out).
-- The debounce window (1.2s) is a small residual unload-race surface on mobile.
+- The debounce window (500ms, was 1.2s) is a small residual unload-race surface on mobile.
 
 **AI mentor**
 - `scriptureAnchor` policy is **decided: leave as-is** — prompt-guarded (no

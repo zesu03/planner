@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
 import { auth, provider } from "./firebase";
 import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
+import ConfirmDialog from "./components/ConfirmDialog";
 
 export default function AuthWrapper({ children }) {
   const [user, setUser] = useState(undefined); // undefined = loading
+  const [confirmSignOut, setConfirmSignOut] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => setUser(u || null));
@@ -15,7 +17,7 @@ export default function AuthWrapper({ children }) {
   // source of truth is <html data-theme="…">. Persistence is layered:
   //   • localStorage — synchronous, survives reload immediately. Read by
   //     the inline pre-mount script in index.html so there's no FOUC.
-  //   • Firestore   — debounced async (1.2s in useFirestore). Survives
+  //   • Firestore   — debounced async (~0.5s in useFirestore). Survives
   //     across devices but can be missed if the user reloads quickly.
   // Planner handles the Firestore side; this component handles the
   // localStorage + DOM side and dispatches an event for Planner to pick
@@ -173,12 +175,10 @@ export default function AuthWrapper({ children }) {
             {theme === "dark" ? "☀" : "☾"}
           </button>
           <button
-            onClick={() => {
-              // Small confirm so a stray tap doesn't drop the user out — the
-              // sign-out itself is harmless (data is on Firestore, nothing
-              // is lost) but the friction is high enough to be annoying.
-              if (window.confirm("Sign out of Aakhirah Planner?")) signOut(auth);
-            }}
+            // Styled confirm so a stray tap doesn't drop the user out. Sign-out
+            // itself is harmless (data lives on Firestore) — the friction is
+            // just to prevent an accidental tap.
+            onClick={() => setConfirmSignOut(true)}
             style={{ fontSize: 12, padding: "4px 12px" }}
           >
             Sign out
@@ -186,6 +186,15 @@ export default function AuthWrapper({ children }) {
         </div>
       </div>
       {children(user)}
+
+      <ConfirmDialog
+        open={confirmSignOut}
+        title="Sign out?"
+        message="You'll need to sign in again to access your planner. Your data stays saved to your account."
+        confirmLabel="Sign out"
+        onConfirm={() => signOut(auth)}
+        onClose={() => setConfirmSignOut(false)}
+      />
     </div>
   );
 }

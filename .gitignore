@@ -4,3 +4,6 @@ dist
 .env.local
 .vercel
 .env*.local
+
+# Plaintext backup artifact — only the encrypted .gpg is ever committed
+_backup.json

@@ -10,6 +10,14 @@ import {
   diffFocusIds, reconcileFocusSnapshot, stampFocusForMigration, seedFocusMerge,
 } from "./lib/sync";
 import { captureError } from "./lib/monitoring";
+import { asArray, asObject } from "./lib/validate";
+
+// Debounce window for all three write paths (main doc, muhasaba, focusLog).
+// Kept short (was 1200ms) to narrow the mobile unload race: a change made just
+// before the OS kills a backgrounded tab has less time to be lost before the
+// flush's IndexedDB write commits. Still long enough to batch a burst of rapid
+// edits (typing, multi-tap) into one write.
+const WRITE_DEBOUNCE_MS = 500;
 
 // Per-user persistence with debounced writes + flush-on-unload. Storage is a
 // main document at users/{uid} (goals, prayerLog, settings, qaza, savedVerses,
@@ -20,8 +28,9 @@ import { captureError } from "./lib/monitoring";
 //   1. We need to flush imperatively on tab close / sign-out, which means
 //      access to the pending-timer handle from outside the schedule
 //      function. A closure can't expose that.
-//   2. Without flush, any state change made within ~1.2s of the user
-//      closing the tab silently disappears (the timer is cancelled by
+//   2. Without flush, any state change made within the debounce window
+//      (WRITE_DEBOUNCE_MS) of the user closing the tab silently disappears
+//      (the timer is cancelled by
 //      browser teardown before it fires). For a daily-log app where a
 //      single tap = a meaningful entry, that's data loss the user can't
 //      see or recover.
@@ -235,7 +244,7 @@ export function useUserData(userId) {
     timerRef.current = setTimeout(() => {
       timerRef.current = null;
       flushNow();
-    }, 1200);
+    }, WRITE_DEBOUNCE_MS);
   }, [flushNow]);
 
   // Snapshot subscription. Cleanup flushes pending writes for the OLD
@@ -261,12 +270,14 @@ export function useUserData(userId) {
         setter(nextVal);
         delete dirtyRef.current[key];
       };
-      applyField("goals", data.goals || [], setGoals, latestGoalsRef);
-      applyField("prayerLog", data.prayerLog || {}, setPrayerLog, latestPrayerRef);
-      applyField("settings", data.settings || {}, setSettings, latestSettingsRef);
-      applyField("qaza", data.qaza || {}, setQaza, latestQazaRef);
-      applyField("savedVerses", data.savedVerses || [], setSavedVerses, latestSavedVersesRef);
-      applyField("notifications", data.notifications || {}, setNotifications, latestNotificationsRef);
+      // asArray/asObject coerce a corrupt/wrong-typed field to its expected
+      // container so a bad doc can't crash downstream .filter/.map/Object.keys.
+      applyField("goals", asArray(data.goals), setGoals, latestGoalsRef);
+      applyField("prayerLog", asObject(data.prayerLog), setPrayerLog, latestPrayerRef);
+      applyField("settings", asObject(data.settings), setSettings, latestSettingsRef);
+      applyField("qaza", asObject(data.qaza), setQaza, latestQazaRef);
+      applyField("savedVerses", asArray(data.savedVerses), setSavedVerses, latestSavedVersesRef);
+      applyField("notifications", asObject(data.notifications), setNotifications, latestNotificationsRef);
       // muhasaba is NOT read from the main doc anymore — it lives in the
       // subcollection (see the separate subscription below). The only thing we
       // do with a legacy inline copy is migrate it out, once, then clear it.
@@ -455,7 +466,7 @@ export function useUserData(userId) {
       focusTimerRef.current = setTimeout(() => {
         focusTimerRef.current = null;
         flushFocusNow();
-      }, 1200);
+      }, WRITE_DEBOUNCE_MS);
     }
   }, [flushFocusNow]);
 
@@ -488,7 +499,7 @@ export function useUserData(userId) {
       muhasabaTimerRef.current = setTimeout(() => {
         muhasabaTimerRef.current = null;
         flushMuhasabaNow();
-      }, 1200);
+      }, WRITE_DEBOUNCE_MS);
     }
   }, [flushMuhasabaNow]);
 

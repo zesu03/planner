@@ -15,8 +15,8 @@ Status legend: `TODO` · `IN PROGRESS` · `DONE` · `DEFERRED` · `WON'T DO (now
 | # | Candidate | Impact | Effort | Change-Risk | Phase | Status |
 |---|---|:--:|:--:|:--:|:--:|:--:|
 | D+E | Test harness (Vitest) + tests for `lib/` + sync-engine reducers | **H** | M | **L** | 0 | **DONE** |
-| F | Replace stray `window.confirm` with `ConfirmDialog` (3 sites) | M | L | L | 1 | TODO |
-| G | Shrink/harden the 1.2s debounce unload race | M | L | L | 1 | TODO |
+| F | Replace stray `window.confirm` with `ConfirmDialog` (3 sites) | M | L | L | 1 | **DONE** |
+| G | Shrink/harden the 1.2s debounce unload race | M | L | L | 1 | **DONE** |
 | K | Server-side prayer-time computation (reminders stop silently) | M | M | M | 2 | TODO |
 | J | Code-splitting (`React.lazy` per view + dynamic `firebase/messaging`) | M | M | M | 3 | TODO |
 | L | In-app SW update toast | L | M | L | 3 | DEFERRED |
@@ -34,8 +34,8 @@ Status legend: `TODO` · `IN PROGRESS` · `DONE` · `DEFERRED` · `WON'T DO (now
 | R1 | CI: run `npm test` + `npm run build` on push/PR | **H** | L | L | R1 | **DONE** |
 | R2 | Observability: error tracking + sync-status indicator + structured serverless logs | **H** | M | L | R1 | **DONE** |
 | R3 | Client resilience: React `ErrorBoundary` around the view dispatch | M–H | L | L | R1 | **DONE** |
-| R4 | Recovery: complete + verify `exportData`, then scheduled Firestore backups | **H** | M | L | R2 | TODO |
-| R5 | Data integrity: runtime validation + rules-level type checks + `schemaVersion` + migration runner | **H** | H | M | R2 | TODO |
+| R4 | Recovery: complete `exportData` + automated encrypted backups | **H** | M | L | R2 | **DONE** |
+| R5 | Data integrity: runtime validation + rules-level type checks + `schemaVersion` + migration runner | **H** | H | M | R2 | **PARTIAL** |
 | R6 | Sync-engine integration tests (emulator) + write retry/backoff | M–H | M–H | L–M | R2 | TODO |
 | R7 | Serverless hardening: server-side rate-limit `gemini-report`, Gemini timeout/retry, cron alerting + fan-out batching, Aladhan fallback cache | M | M | L–M | 2 | TODO |
 | R8 | Type safety via JSDoc typedefs + `checkJs` (non-invasive, no TS migration) | M | M–H | L | — | STRETCH |
@@ -206,21 +206,42 @@ because it hardens the foundation the feature work sits on.
   (Vercel) — see `CLAUDE.md`. Structured serverless *logs* beyond error capture
   remain a nice-to-have, not done.
 
-### Phase 1 — Quick correctness wins  *(low effort, low risk)*
-- **F:** route the three destructive actions through `ConfirmDialog`.
-- **G:** reduce the debounce to ~500ms (or make it adaptive) and re-verify the flush paths.
-- **Exit criteria:** no `window.confirm` remains for destructive actions; a
-  background-then-kill within the old window no longer drops the last edit in manual testing.
+### Phase 1 — Quick correctness wins  ✅ DONE
+- **F ✅:** the three destructive actions now use the styled `ConfirmDialog` —
+  `deleteFocusEntry` (Planner `requestConfirm`), saved-verse remove (Planner
+  `requestRemoveSavedVerse` → Dashboard `onRemoveSavedVerse`), and sign-out
+  (AuthWrapper gained its own `ConfirmDialog` + state). No `window.confirm`
+  remains for destructive actions.
+- **G ✅:** all three write debounces share `WRITE_DEBOUNCE_MS` (500ms, was 1200)
+  in `useFirestore`; flush paths unchanged. Comments/docs updated.
+- **Exit criteria:** met (no `window.confirm`; debounce window halved-plus).
 
-### Phase R2 — Recovery & integrity
-- **R4:** complete + verify `exportData`; stand up scheduled Firestore backups.
-- **R5:** runtime validation at the `useFirestore` boundary + rules-level type
-  checks + `schemaVersion` and a versioned migration runner (retire the inline
-  migration refs).
-- **R6:** sync-engine integration tests (Firestore emulator) + write retry/backoff.
-- **Exit criteria:** a full, verified export exists + automated backups run;
-  malformed writes are rejected/repaired; the hook's lifecycle + migrations are
-  integration-tested; write failures retry rather than vanish.
+### Phase R2 — Recovery & integrity  *(in progress)*
+- **R4 ✅:** `exportData` **fixed** — complete backup (all 8 areas + `schemaVersion`;
+  previously dropped qaza/savedVerses/notifications). **Automated backups** done the
+  free/no-Blaze way: `scripts/backup.mjs` + `.github/workflows/backup.yml` run daily,
+  export Firestore, **gpg-encrypt on the runner, and commit only the ciphertext**
+  (`backups/backup.json.gpg`) — no readable data in the repo. Git history versions
+  every snapshot; a SHA guard skips no-change runs. *Setup (user):* add
+  `FIREBASE_SERVICE_ACCOUNT` + `BACKUP_PASSPHRASE` Actions secrets, set Workflow
+  permissions to read/write, and safeguard the passphrase. Restore + run docs in
+  `CLAUDE.md`. (Managed GCP backups remain an option if you ever move to Blaze.)
+- **R5 (partial):** **defensive read coercion done** — `lib/validate.js`
+  (`asArray`/`asObject`) coerces corrupt/wrong-typed top-level fields on read so a
+  bad doc can't crash a view (tested). *Remaining (needs decisions):*
+  (a) deeper runtime validation (zod at the write boundary) — adds a dependency;
+  (b) rules-level type/size checks in `firestore.rules` — **breakage risk** (too
+  strict → legit writes denied) + a `firebase deploy --only firestore:rules` step;
+  (c) `schemaVersion` field on the doc + a versioned migration runner to retire the
+  inline `muhasabaMigratedRef`/`focusMigratedRef` migrations — a deliberate refactor
+  of code we only just stabilized (do with integration tests, i.e. after R6).
+- **R6 (todo):** sync-engine integration tests (Firestore emulator + firebase-tools
+  + Java) and write retry/backoff. Emulator tooling is an external setup; retry has
+  limited value since the offline queue already handles network failures (rejections
+  we see are mostly permanent — rules/invalid).
+- **Exit criteria:** a full verified export ✅ + automated backups ⏳; malformed reads
+  can't crash the app ✅, write-boundary validation ⏳; hook lifecycle + migrations
+  integration-tested ⏳; retry ⏳.
 
 ### Phase 2 — Feature reliability
 - **K:** compute prayer times server-side in `notify-prayers` from stored coords,
@@ -254,13 +275,11 @@ because it hardens the foundation the feature work sits on.
 
 ## 4. Suggested immediate next step
 
-Phase R1 is **complete** (Sentry chosen and wired, DSN-gated). To actually receive
-events, set `VITE_SENTRY_DSN` + `SENTRY_DSN` when ready — the code is a no-op until
-then.
-
-Next is **Phase 1 — quick correctness wins** (F: `ConfirmDialog` for the three
-destructive actions; G: shrink/harden the debounce) — low-effort, low-risk, on top
-of the safety net + monitoring.
+Phases 0, R1, and 1 are all done. Next is **Phase R2 — recovery & integrity**
+(R4 export fix + backups, R5 validation + `schemaVersion` + migration runner,
+R6 sync-engine integration tests + write retry) — the larger, do-deliberately
+phase. After that, **Phase 2** bundles K (server-side prayer times) + R7
+(serverless hardening).
 
 Still worth doing when convenient (carried over): a live-account run-through of the
 muhasaba/focusLog migrations, and a follow-up test batch for `lib/daily.js` +

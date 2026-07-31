@@ -1,0 +1,68 @@
+name: Backup
+
+# Automated, encrypted Firestore backup (Phase R2 / R4b) — the free, no-Blaze
+# alternative to managed backups. Exports the data, gpg-encrypts it on the
+# runner, and commits ONLY the ciphertext (backups/backup.json.gpg) plus a
+# plaintext SHA used to skip no-change runs. Git history versions every backup.
+#
+# Requires two repo Actions secrets:
+#   FIREBASE_SERVICE_ACCOUNT  base64 service-account JSON (same as Vercel)
+#   BACKUP_PASSPHRASE         a long random passphrase — KEEP A COPY in a
+#                             password manager; without it the backups are
+#                             unrecoverable.
+# Also: Settings → Actions → General → Workflow permissions must be
+# "Read and write" (so the job can commit).
+
+on:
+  schedule:
+    - cron: "17 3 * * *"   # daily ~03:17 UTC (off-the-hour to dodge cron congestion)
+  workflow_dispatch: {}     # allow manual runs from the Actions tab
+
+permissions:
+  contents: write           # commit the encrypted snapshot
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Export Firestore to plaintext (runner only)
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node scripts/backup.mjs _backup.json
+
+      - name: Encrypt and commit if changed
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          mkdir -p backups
+          NEW_SUM=$(sha256sum _backup.json | awk '{print $1}')
+          OLD_SUM=$(cat backups/CHECKSUM 2>/dev/null || echo "")
+          if [ "$NEW_SUM" = "$OLD_SUM" ]; then
+            echo "No data change since last backup; nothing to commit."
+            rm -f _backup.json
+            exit 0
+          fi
+          gpg --batch --yes --pinentry-mode loopback \
+            --passphrase "$BACKUP_PASSPHRASE" \
+            --cipher-algo AES256 -c -o backups/backup.json.gpg _backup.json
+          echo "$NEW_SUM" > backups/CHECKSUM
+          rm -f _backup.json
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add backups/backup.json.gpg backups/CHECKSUM
+          git commit -m "chore(backup): encrypted Firestore snapshot $(date -u +%Y-%m-%d)"
+          git push

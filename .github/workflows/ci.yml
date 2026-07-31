@@ -7,6 +7,9 @@ name: CI
 on:
   push:
     branches: [main]
+    # Don't re-run tests+build for the automated backup commits.
+    paths-ignore:
+      - "backups/**"
   pull_request:
 
 jobs:

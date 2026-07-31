@@ -29,7 +29,7 @@ export default function Dashboard({
   onSelectGoal,
   savedVerses,
   saveVerse,
-  removeSavedVerse,
+  onRemoveSavedVerse,
   isVerseSaved,
   // Daily-loop props — see Planner.jsx for derivations.
   dayPhase,
@@ -428,11 +428,9 @@ export default function Dashboard({
                       style={{ fontSize: 12, padding: "4px 10px" }}>
                       {copiedKey === v.verseKey ? "✓ Copied" : "⧉ Copy"}
                     </button>
-                    {removeSavedVerse && (
+                    {onRemoveSavedVerse && (
                       <button
-                        onClick={() => {
-                          if (window.confirm("Remove this saved verse?")) removeSavedVerse(v.id);
-                        }}
+                        onClick={() => onRemoveSavedVerse(v)}
                         aria-label="Remove this saved verse"
                         style={{
                           fontSize: 12, padding: "4px 10px",
