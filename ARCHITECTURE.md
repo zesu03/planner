@@ -225,9 +225,13 @@ The sync engine's decision logic is extracted into **pure reducers**
 (`src/lib/sync.js`) — `buildDirtyPayload`, `shouldAcceptField`, the load-gate
 predicates, and the per-collection diff/reconcile/migration functions. The hook
 wires them into the live path (no parallel copy), so unit tests on `sync.js`
-exercise the *actual* write-safety behavior. Run with `npm test` (Vitest,
-`node` env, `TZ=UTC`); tests are co-located as `src/**/*.test.js` and also cover
-the pure `lib/` helpers. This is the safety net for the highest-risk code —
+exercise the *actual* write-safety behavior. The `useUserData` hook's
+orchestration (load gate, field-scoped flush, snapshot-clobber protection,
+migrations) is covered too — `useFirestore.test.jsx`, jsdom +
+`@testing-library/react` with the Firestore SDK mocked (a real-emulator suite is
+deferred pending Java/firebase-tools). Run with `npm test` (Vitest, `node` env
+default, `TZ=UTC`); tests are co-located as `src/**/*.test.{js,jsx}` and also
+cover the pure `lib/` helpers. This is the safety net for the highest-risk code —
 every bug here is a potential data-loss bug.
 
 ---

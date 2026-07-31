@@ -9,7 +9,7 @@ export default defineConfig({
   test: {
     environment: 'node',
     globals: false,
-    include: ['src/**/*.test.js'],
+    include: ['src/**/*.test.{js,jsx}'],
     env: { TZ: 'UTC' },
   },
 })

@@ -10,12 +10,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm test` — run the Vitest unit suite once (`npm run test:watch` for watch mode)
 - `vercel dev` — run Vite **and** the `api/` serverless functions together (port 3000). Required for testing the Gemini reflection endpoint locally; `npm run dev` will 404 on `/api/*`.
 
-**Testing:** Vitest (`vitest.config.js`, `node` env, `TZ=UTC` pinned, config kept
-separate from `vite.config.js` so the PWA plugin doesn't run in tests). Tests are
-co-located as `src/**/*.test.js` and cover the pure `lib/` helpers **and the sync
-engine's write-safety reducers** (`lib/sync.js` — extracted from `useFirestore` so
-the invariants are testable; the hook wires them into the live path, there is no
-parallel copy). When you change a `lib/` helper or a sync invariant, update its test.
+**Testing:** Vitest (`vitest.config.js`, `node` env default, `TZ=UTC` pinned, config
+kept separate from `vite.config.js` so the PWA plugin doesn't run in tests). Tests
+are co-located as `src/**/*.test.{js,jsx}` and cover: the pure `lib/` helpers, the
+sync engine's write-safety reducers (`lib/sync.js` — extracted from `useFirestore`
+so the invariants are testable; the hook wires them into the live path, no parallel
+copy), and the **`useUserData` hook orchestration** (`useFirestore.test.jsx` — jsdom
++ `@testing-library/react` with the Firestore SDK mocked: load gate, field-scoped
+flush, snapshot-clobber protection, migrations). The `.jsx` hook test opts into
+jsdom via a `// @vitest-environment jsdom` docblock. A real Firestore-emulator suite
+is deferred (needs Java + firebase-tools). When you change a `lib/` helper, a sync
+invariant, or the hook's write/subscribe behaviour, update its test.
 
 There is still no linter or type-checker configured. Don't add one without asking.
 

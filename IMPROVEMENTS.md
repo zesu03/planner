@@ -36,7 +36,7 @@ Status legend: `TODO` · `IN PROGRESS` · `DONE` · `DEFERRED` · `WON'T DO (now
 | R3 | Client resilience: React `ErrorBoundary` around the view dispatch | M–H | L | L | R1 | **DONE** |
 | R4 | Recovery: complete `exportData` + automated encrypted backups | **H** | M | L | R2 | **DONE** |
 | R5 | Data integrity: runtime validation + rules-level type checks + `schemaVersion` + migration runner | **H** | H | M | R2 | **PARTIAL** |
-| R6 | Sync-engine integration tests (emulator) + write retry/backoff | M–H | M–H | L–M | R2 | TODO |
+| R6 | Sync-engine integration tests (mock-based) + write retry/backoff | M–H | M–H | L–M | R2 | **DONE** |
 | R7 | Serverless hardening: server-side rate-limit `gemini-report`, Gemini timeout/retry, cron alerting + fan-out batching, Aladhan fallback cache | M | M | L–M | 2 | TODO |
 | R8 | Type safety via JSDoc typedefs + `checkJs` (non-invasive, no TS migration) | M | M–H | L | — | STRETCH |
 
@@ -216,7 +216,7 @@ because it hardens the foundation the feature work sits on.
   in `useFirestore`; flush paths unchanged. Comments/docs updated.
 - **Exit criteria:** met (no `window.confirm`; debounce window halved-plus).
 
-### Phase R2 — Recovery & integrity  *(in progress)*
+### Phase R2 — Recovery & integrity  *(core done; R5 deferred sub-items remain)*
 - **R4 ✅:** `exportData` **fixed** — complete backup (all 8 areas + `schemaVersion`;
   previously dropped qaza/savedVerses/notifications). **Automated backups** done the
   free/no-Blaze way: `scripts/backup.mjs` + `.github/workflows/backup.yml` run daily,
@@ -235,13 +235,19 @@ because it hardens the foundation the feature work sits on.
   (c) `schemaVersion` field on the doc + a versioned migration runner to retire the
   inline `muhasabaMigratedRef`/`focusMigratedRef` migrations — a deliberate refactor
   of code we only just stabilized (do with integration tests, i.e. after R6).
-- **R6 (todo):** sync-engine integration tests (Firestore emulator + firebase-tools
-  + Java) and write retry/backoff. Emulator tooling is an external setup; retry has
-  limited value since the offline queue already handles network failures (rejections
-  we see are mostly permanent — rules/invalid).
-- **Exit criteria:** a full verified export ✅ + automated backups ⏳; malformed reads
-  can't crash the app ✅, write-boundary validation ⏳; hook lifecycle + migrations
-  integration-tested ⏳; retry ⏳.
+- **R6 ✅ (mock-based):** `src/useFirestore.test.jsx` — jsdom + `@testing-library/react`
+  with the Firestore SDK mocked, covering the hook's orchestration (8 tests): load
+  gate (incl. cold-cache-miss guard), field-scoped flush, snapshot-clobber protection,
+  the muhasaba migration, and focusLog sort/write. This closes the "hook wiring +
+  migrations were untested" gap. *Deferred:* the real **emulator** suite (higher
+  fidelity, needs Java + firebase-tools — do when that tooling is available locally
+  for fast feedback). *Dropped:* write **retry/backoff** — the offline queue already
+  absorbs network failures, and the rejections we actually see are permanent
+  (rules/invalid), so retrying them just loops.
+- **Exit criteria:** full verified export ✅ + automated (encrypted) backups ✅;
+  malformed reads can't crash the app ✅; hook lifecycle + migrations integration-
+  tested ✅ (mock-based). Deferred within R2: write-boundary validation + rules
+  checks + `schemaVersion`/migration-runner (R5), and the real emulator suite (R6).
 
 ### Phase 2 — Feature reliability
 - **K:** compute prayer times server-side in `notify-prayers` from stored coords,
@@ -275,11 +281,12 @@ because it hardens the foundation the feature work sits on.
 
 ## 4. Suggested immediate next step
 
-Phases 0, R1, and 1 are all done. Next is **Phase R2 — recovery & integrity**
-(R4 export fix + backups, R5 validation + `schemaVersion` + migration runner,
-R6 sync-engine integration tests + write retry) — the larger, do-deliberately
-phase. After that, **Phase 2** bundles K (server-side prayer times) + R7
-(serverless hardening).
+Phases 0, R1, 1 are done; **R2's core is done** (R4 backups, R5 read-coercion,
+R6 mock-based hook tests) with a few deliberately-deferred sub-items (R5 write
+validation / rules / `schemaVersion`; the real emulator suite). Next is **Phase 2**
+— bundles **K** (server-side prayer times, so reminders don't silently stop) +
+**R7** (serverless hardening: rate-limit `gemini-report`, timeouts, cron alerting,
+Aladhan fallback). That's the next fully-in-repo, user-facing-reliability chunk.
 
 Still worth doing when convenient (carried over): a live-account run-through of the
 muhasaba/focusLog migrations, and a follow-up test batch for `lib/daily.js` +
