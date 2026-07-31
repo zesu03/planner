@@ -30,7 +30,7 @@ function MirrorContent({ report }) {
     return (
       <>
         {d.summary && (
-          <div style={{ fontSize: 15, color: "var(--color-text-primary)", lineHeight: 1.65, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+          <div style={{ fontSize: 15, color: "var(--text-primary)", lineHeight: 1.65, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
             {d.summary}
           </div>
         )}
@@ -49,7 +49,7 @@ function MirrorContent({ report }) {
             <span style={{ fontSize: 11, color: "var(--color-text-warning)", fontWeight: 700, letterSpacing: "0.6px", textTransform: "uppercase", flexShrink: 0, paddingTop: 2 }}>
               Look here →
             </span>
-            <span style={{ fontSize: 14, color: "var(--color-text-primary)", lineHeight: 1.5 }}>
+            <span style={{ fontSize: 14, color: "var(--text-primary)", lineHeight: 1.5 }}>
               {d.pushBack}
             </span>
           </div>
@@ -67,12 +67,12 @@ function MirrorContent({ report }) {
               {d.scriptureAnchor.ref || "Scripture"}
             </div>
             {d.scriptureAnchor.text && (
-              <div style={{ fontSize: 14, color: "var(--color-text-primary)", fontStyle: "italic", lineHeight: 1.55, marginBottom: 6 }}>
+              <div style={{ fontSize: 14, color: "var(--text-primary)", fontStyle: "italic", lineHeight: 1.55, marginBottom: 6 }}>
                 "{d.scriptureAnchor.text}"
               </div>
             )}
             {d.scriptureAnchor.why && (
-              <div style={{ fontSize: 13, color: "var(--color-text-secondary)", lineHeight: 1.5 }}>
+              <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5 }}>
                 {d.scriptureAnchor.why}
               </div>
             )}
@@ -93,7 +93,7 @@ function MirrorContent({ report }) {
             <span style={{ fontSize: 11, color: "var(--gold)", fontWeight: 700, letterSpacing: "0.6px", textTransform: "uppercase", flexShrink: 0, paddingTop: 2 }}>
               Tomorrow →
             </span>
-            <span style={{ fontSize: 14, color: "var(--color-text-primary)", lineHeight: 1.5, fontWeight: 500 }}>
+            <span style={{ fontSize: 14, color: "var(--text-primary)", lineHeight: 1.5, fontWeight: 500 }}>
               {d.tomorrow}
             </span>
           </div>
@@ -101,14 +101,14 @@ function MirrorContent({ report }) {
 
         {Array.isArray(d.patterns) && d.patterns.length > 0 && (
           <div style={{ marginTop: 14, paddingTop: 12, borderTop: "0.5px dashed var(--color-border-tertiary)" }}>
-            <div style={{ fontSize: 11, color: "var(--color-text-tertiary)", fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 8 }}>
+            <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 8 }}>
               Patterns observed
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {d.patterns.map((p, i) => (
                 <div key={i} style={{
                   fontSize: 13,
-                  color: "var(--color-text-secondary)",
+                  color: "var(--text-secondary)",
                   lineHeight: 1.45,
                   padding: "6px 10px",
                   background: "var(--color-background-secondary)",
@@ -134,7 +134,7 @@ function MirrorContent({ report }) {
     const tomorrow = m ? m[2].trim() : null;
     return (
       <>
-        <div style={{ fontSize: 15, color: "var(--color-text-primary)", lineHeight: 1.65, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
+        <div style={{ fontSize: 15, color: "var(--text-primary)", lineHeight: 1.65, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>
           {body}
         </div>
         {tomorrow && (
@@ -151,7 +151,7 @@ function MirrorContent({ report }) {
             <span style={{ fontSize: 11, color: "var(--gold)", fontWeight: 700, letterSpacing: "0.6px", textTransform: "uppercase", flexShrink: 0, paddingTop: 2 }}>
               Tomorrow →
             </span>
-            <span style={{ fontSize: 14, color: "var(--color-text-primary)", lineHeight: 1.5, fontWeight: 500 }}>
+            <span style={{ fontSize: 14, color: "var(--text-primary)", lineHeight: 1.5, fontWeight: 500 }}>
               {tomorrow}
             </span>
           </div>
@@ -199,7 +199,7 @@ function Section({ n, title, hint, children, accent = "var(--gold)" }) {
         </div>
         <div style={{ fontSize: 16, fontWeight: 500 }}>{title}</div>
       </div>
-      {hint && <div style={{ fontSize: 13, color: "var(--color-text-tertiary)", marginBottom: 12 }}>{hint}</div>}
+      {hint && <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 12 }}>{hint}</div>}
       <div>{children}</div>
     </div>
   );
@@ -225,12 +225,12 @@ function Collapsible({ title, accent = "var(--gold)", cardStyle, defaultOpen = f
             {title}
           </span>
           {!open && summary && (
-            <span style={{ fontSize: 12, color: "var(--color-text-tertiary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: 12, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {summary}
             </span>
           )}
         </span>
-        <span aria-hidden style={{ fontSize: 18, color: "var(--color-text-tertiary)", lineHeight: 1, flexShrink: 0, transition: "transform 0.15s ease", transform: open ? "rotate(45deg)" : "none" }}>
+        <span aria-hidden style={{ fontSize: 18, color: "var(--text-muted)", lineHeight: 1, flexShrink: 0, transition: "transform 0.15s ease", transform: open ? "rotate(45deg)" : "none" }}>
           +
         </span>
       </button>
@@ -340,16 +340,16 @@ export default function Muhasaba({
             <div style={{ fontSize: 13, color: "var(--gold)", fontWeight: 600, letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: 4 }}>
               محاسبة النفس · Muhasaba
             </div>
-            <div style={{ fontSize: 18, fontWeight: 600, color: "var(--color-text-primary)" }}>
+            <div style={{ fontSize: 18, fontWeight: 600, color: "var(--text-primary)" }}>
               {isToday ? "Tonight's reckoning" : dayLabel}
             </div>
-            <div style={{ fontSize: 13, color: "var(--color-text-secondary)", marginTop: 3, fontStyle: "italic" }}>
+            <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 3, fontStyle: "italic" }}>
               "Hold yourselves accountable before you are held accountable." — ʿUmar ibn al-Khattab
             </div>
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ fontSize: 24, fontWeight: 600, color: "var(--gold)" }}>{streak}</div>
-            <div style={{ fontSize: 12, color: "var(--color-text-secondary)" }}>day streak</div>
+            <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>day streak</div>
           </div>
         </div>
       </div>
@@ -374,14 +374,14 @@ export default function Muhasaba({
                 borderRadius: "var(--border-radius-md)",
                 background: active ? goldA(18) : "var(--color-background-secondary)",
                 border: `0.5px solid ${active ? goldA(60) : "var(--color-border-tertiary)"}`,
-                color: active ? "var(--color-text-primary)" : "var(--color-text-secondary)",
+                color: active ? "var(--text-primary)" : "var(--text-secondary)",
                 cursor: "pointer",
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 gap: 3,
               }}>
-              <span style={{ fontSize: 11, letterSpacing: "0.4px", textTransform: "uppercase", color: "var(--color-text-tertiary)" }}>
+              <span style={{ fontSize: 11, letterSpacing: "0.4px", textTransform: "uppercase", color: "var(--text-muted)" }}>
                 {weekday}
               </span>
               <span style={{ fontSize: 15, fontWeight: active ? 600 : 500 }}>{dayNum}</span>
@@ -419,7 +419,7 @@ export default function Muhasaba({
             defaultOpen={!!dc.status}
             summary={verdictLabel || "today is its test"}
           >
-            <div style={{ fontSize: 15, color: "var(--color-text-primary)", fontStyle: "italic", marginBottom: 12 }}>
+            <div style={{ fontSize: 15, color: "var(--text-primary)", fontStyle: "italic", marginBottom: 12 }}>
               "{yesterdayDua}"
             </div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: dc.status ? 10 : 0 }}>
@@ -432,7 +432,7 @@ export default function Muhasaba({
                       fontSize: 13, padding: "5px 12px", borderRadius: 99, cursor: "pointer",
                       background: active ? s.bg : "var(--color-background-secondary)",
                       border: `0.5px solid ${active ? s.color : "var(--color-border-tertiary)"}`,
-                      color: active ? s.color : "var(--color-text-secondary)",
+                      color: active ? s.color : "var(--text-secondary)",
                       fontWeight: active ? 600 : 400,
                     }}>
                     {s.label}
@@ -472,7 +472,7 @@ export default function Muhasaba({
             defaultOpen={answered > 0}
             summary={answered > 0 ? `${answered}/${activeGoals.length} answered` : `${activeGoals.length} ${activeGoals.length === 1 ? "goal" : "goals"} to review`}
           >
-            <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginBottom: 12, fontStyle: "italic", lineHeight: 1.5 }}>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12, fontStyle: "italic", lineHeight: 1.5 }}>
               Did the day move your stated niyyahs forward? Be honest — drift is harder to repair the longer you avoid naming it.
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -492,11 +492,11 @@ export default function Muhasaba({
                     flexWrap: "wrap",
                   }}>
                     <div style={{ flex: "1 1 200px", minWidth: 0 }}>
-                      <div style={{ fontSize: 14, fontWeight: 500, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {g.title}
                       </div>
                       {g.intention && (
-                        <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", fontStyle: "italic", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {g.intention}
                         </div>
                       )}
@@ -511,7 +511,7 @@ export default function Muhasaba({
                               fontSize: 12, padding: "4px 10px", borderRadius: 99, cursor: "pointer",
                               background: active ? s.bg : "transparent",
                               border: `0.5px solid ${active ? s.color : "var(--color-border-tertiary)"}`,
-                              color: active ? s.color : "var(--color-text-secondary)",
+                              color: active ? s.color : "var(--text-secondary)",
                               fontWeight: active ? 600 : 400,
                             }}>
                             {s.label}
@@ -535,7 +535,7 @@ export default function Muhasaba({
             const pColor = PRAYER_COLORS[p];
             return (
               <span key={p} style={{
-                ...S.pill(done ? pColor + "22" : "var(--color-background-secondary)", done ? pColor : "var(--color-text-tertiary)"),
+                ...S.pill(done ? pColor + "22" : "var(--color-background-secondary)", done ? pColor : "var(--text-muted)"),
                 border: `0.5px solid ${done ? pColor + "66" : "transparent"}`,
                 display: "inline-flex", alignItems: "center", gap: 5,
                 opacity: done ? 1 : 0.6,
@@ -550,13 +550,13 @@ export default function Muhasaba({
             line below the fard pills, so the user sees their voluntary
             effort alongside the obligations when reviewing the day. */}
         <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, marginBottom: 14, fontSize: 13 }}>
-          <span style={{ color: "var(--color-text-tertiary)", letterSpacing: "0.3px" }}>Voluntary:</span>
+          <span style={{ color: "var(--text-muted)", letterSpacing: "0.3px" }}>Voluntary:</span>
           {VOLUNTARY_PRAYERS.map((p) => {
             const done = dayVoluntaryDone.includes(p);
             const pColor = PRAYER_COLORS[p] || "var(--gold)";
             return (
               <span key={p} style={{
-                ...S.pill(done ? pColor + "22" : "transparent", done ? pColor : "var(--color-text-tertiary)"),
+                ...S.pill(done ? pColor + "22" : "transparent", done ? pColor : "var(--text-muted)"),
                 border: `0.5px solid ${done ? pColor + "66" : "var(--color-border-tertiary)"}`,
                 display: "inline-flex", alignItems: "center", gap: 5,
                 opacity: done ? 1 : 0.7,
@@ -566,21 +566,21 @@ export default function Muhasaba({
             );
           })}
           {dayVoluntaryDone.length === 0 && (
-            <span style={{ color: "var(--color-text-tertiary)", fontStyle: "italic" }}>
+            <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>
               none tonight — Tahajjud is in the last third of the night
             </span>
           )}
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "end", marginBottom: 10 }}>
           <div>
-            <label style={{ fontSize: 13, color: "var(--color-text-secondary)", display: "block", marginBottom: 4 }}>Quran today (pages / ayat)</label>
+            <label style={{ fontSize: 13, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Quran today (pages / ayat)</label>
             <input value={entry.quranPages} onChange={(e) => updateEntry({ quranPages: e.target.value })}
               placeholder="e.g. 2 pages, Surah Mulk v.1-10"
               style={{ width: "100%", boxSizing: "border-box" }} />
           </div>
           <label style={{
             display: "flex", alignItems: "center", gap: 7, fontSize: 14,
-            color: "var(--color-text-secondary)", cursor: "pointer",
+            color: "var(--text-secondary)", cursor: "pointer",
             padding: "10px 12px", background: "var(--color-background-secondary)",
             border: `0.5px solid ${entry.dhikr ? goldA(60) : "var(--color-border-tertiary)"}`,
             borderRadius: "var(--border-radius-md)",
@@ -591,7 +591,7 @@ export default function Muhasaba({
             Dhikr today
           </label>
         </div>
-        <label style={{ fontSize: 13, color: "var(--color-text-secondary)", display: "block", marginBottom: 4 }}>Did I miss anything? Make-up plan</label>
+        <label style={{ fontSize: 13, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Did I miss anything? Make-up plan</label>
         <textarea rows={2} value={entry.makeupNote}
           onChange={(e) => updateEntry({ makeupNote: e.target.value })}
           placeholder="e.g. missed Asr — qaza after Maghrib."
@@ -604,7 +604,7 @@ export default function Muhasaba({
           onChange={(e) => updateEntry({ repentText: e.target.value })}
           placeholder="What do I seek Allah's forgiveness for today?"
           style={{ width: "100%", resize: "vertical", boxSizing: "border-box", marginBottom: 10 }} />
-        <div style={{ fontSize: 13, color: "var(--color-text-tertiary)", marginBottom: 6 }}>Tag (optional):</div>
+        <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 6 }}>Tag (optional):</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 16 }}>
           {SIN_TAGS.map((tag) => {
             const active = (entry.sinTags || []).includes(tag);
@@ -614,7 +614,7 @@ export default function Muhasaba({
                   fontSize: 13, padding: "4px 11px", borderRadius: 99, cursor: "pointer",
                   background: active ? "rgba(216,90,48,0.18)" : "var(--color-background-secondary)",
                   border: `0.5px solid ${active ? "#D85A30" : "var(--color-border-tertiary)"}`,
-                  color: active ? "#E88B7C" : "var(--color-text-secondary)",
+                  color: active ? "#E88B7C" : "var(--text-secondary)",
                 }}>
                 {tag}
               </button>
@@ -630,10 +630,10 @@ export default function Muhasaba({
           marginTop: 4, paddingTop: 14,
           borderTop: "0.5px dashed var(--color-border-tertiary)",
         }}>
-          <div style={{ fontSize: 13, color: "var(--color-text-secondary)", fontWeight: 500, marginBottom: 4 }}>
+          <div style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500, marginBottom: 4 }}>
             Who did I owe today?
           </div>
-          <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginBottom: 8, fontStyle: "italic" }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8, fontStyle: "italic" }}>
             "Rights are two: rights of Allah, and rights of His creation." — name where to repair, then do it.
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
@@ -649,7 +649,7 @@ export default function Muhasaba({
                     fontSize: 13, padding: "4px 11px", borderRadius: 99, cursor: "pointer",
                     background: active ? activeBg : "var(--color-background-secondary)",
                     border: `0.5px solid ${active ? activeColor : "var(--color-border-tertiary)"}`,
-                    color: active ? activeColor : "var(--color-text-secondary)",
+                    color: active ? activeColor : "var(--text-secondary)",
                     fontWeight: active ? 600 : 400,
                   }}>
                   {r.label}
@@ -681,7 +681,7 @@ export default function Muhasaba({
                         isAllah ? "What did I owe Allah today, and what will I do tomorrow?" :
                                    "What specifically? What's my next step to repair?"
                       }
-                      style={{ width: "100%", resize: "vertical", boxSizing: "border-box", background: "var(--color-background-primary)" }} />
+                      style={{ width: "100%", resize: "vertical", boxSizing: "border-box", background: "var(--bg-card)" }} />
                   </div>
                 );
               })}
@@ -713,7 +713,7 @@ export default function Muhasaba({
               <div style={{ fontSize: 12, fontWeight: 700, color: "#D85A30", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 4 }}>
                 Tawbah · the four conditions
               </div>
-              <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginBottom: 12, fontStyle: "italic", lineHeight: 1.5 }}>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12, fontStyle: "italic", lineHeight: 1.5 }}>
                 "And turn to Allah in repentance, all of you, O believers, that you may succeed." — Quran 24:31
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -730,7 +730,7 @@ export default function Muhasaba({
                       <input type="checkbox" checked={checked}
                         onChange={(e) => setT(key, e.target.checked)}
                         style={{ width: 16, height: 16, marginTop: 3, cursor: "pointer", accentColor: "#D85A30", flexShrink: 0 }} />
-                      <span style={{ color: checked ? "var(--color-text-primary)" : "var(--color-text-secondary)", fontWeight: checked ? 500 : 400 }}>
+                      <span style={{ color: checked ? "var(--text-primary)" : "var(--text-secondary)", fontWeight: checked ? 500 : 400 }}>
                         {label}
                       </span>
                     </label>
@@ -746,7 +746,7 @@ export default function Muhasaba({
       <Section n="3" title="Ghaflah — Heedlessness & distractions" hint="Time spent in non-beneficial things." accent="#7F77DD">
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
           <span style={S.pill("rgba(127,119,221,0.18)", "#9B92F2")}>Focus today: {fmtMins(dayFocusMins)}</span>
-          <span style={{ fontSize: 13, color: "var(--color-text-tertiary)" }}>(auto from focus log)</span>
+          <span style={{ fontSize: 13, color: "var(--text-muted)" }}>(auto from focus log)</span>
         </div>
         <textarea rows={3} value={entry.ghaflahNote}
           onChange={(e) => updateEntry({ ghaflahNote: e.target.value })}
@@ -757,7 +757,7 @@ export default function Muhasaba({
       {/* 4. Niyyah */}
       <Section n="4" title="Niyyah — Intention" hint="Were today's actions for Allah, or for something else?" accent="var(--gold)">
         <div style={{ marginBottom: 14 }}>
-          <div style={{ fontSize: 13, color: "var(--color-text-secondary)", marginBottom: 8 }}>How sincere was today?</div>
+          <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 8 }}>How sincere was today?</div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
             {[1, 2, 3, 4, 5].map((n) => (
               <button key={n} type="button"
@@ -767,20 +767,20 @@ export default function Muhasaba({
                   cursor: "pointer", minWidth: 34,
                   background: entry.niyyahRating === n ? goldA(22) : "var(--color-background-secondary)",
                   border: `0.5px solid ${entry.niyyahRating === n ? "var(--gold)" : "var(--color-border-tertiary)"}`,
-                  color: entry.niyyahRating === n ? "var(--gold)" : "var(--color-text-secondary)",
+                  color: entry.niyyahRating === n ? "var(--gold)" : "var(--text-secondary)",
                   fontWeight: entry.niyyahRating === n ? 600 : 400,
                 }}>
                 {n}
               </button>
             ))}
             {entry.niyyahRating > 0 && (
-              <span style={{ fontSize: 13, color: "var(--color-text-tertiary)", alignSelf: "center", marginLeft: 6 }}>
+              <span style={{ fontSize: 13, color: "var(--text-muted)", alignSelf: "center", marginLeft: 6 }}>
                 {NIYYAH_LABELS[entry.niyyahRating]}
               </span>
             )}
           </div>
         </div>
-        <label style={{ fontSize: 13, color: "var(--color-text-secondary)", display: "block", marginBottom: 4 }}>Best deed today</label>
+        <label style={{ fontSize: 13, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Best deed today</label>
         <input value={entry.bestDeed}
           onChange={(e) => updateEntry({ bestDeed: e.target.value })}
           placeholder="The act I'm most hopeful Allah will accept."
@@ -818,10 +818,10 @@ export default function Muhasaba({
           borderColor: "var(--color-border-tertiary)",
         }}>
           <div style={{ fontSize: 30, marginBottom: 6, opacity: 0.7 }}>🪞</div>
-          <div style={{ fontSize: 14, color: "var(--color-text-secondary)", fontWeight: 500, marginBottom: 3 }}>
+          <div style={{ fontSize: 14, color: "var(--text-secondary)", fontWeight: 500, marginBottom: 3 }}>
             The mirror needs something to read
           </div>
-          <div style={{ fontSize: 13, color: "var(--color-text-tertiary)" }}>
+          <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
             Log a prayer, run a focus session, or fill any section above — then a candid mentor's note unlocks.
           </div>
         </div>
@@ -832,7 +832,7 @@ export default function Muhasaba({
               <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase" }}>
                 The mirror · candid reflection
               </div>
-              <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginTop: 3 }}>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3 }}>
                 {report
                   ? `Generated ${new Date(report.generatedAt).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}${report.model ? ` · ${report.model}` : ""}`
                   : filled
@@ -847,7 +847,7 @@ export default function Muhasaba({
             </button>
           </div>
           {generating && (
-            <div style={{ fontSize: 14, color: "var(--color-text-secondary)", fontStyle: "italic", padding: "6px 0" }}>
+            <div style={{ fontSize: 14, color: "var(--text-secondary)", fontStyle: "italic", padding: "6px 0" }}>
               Reading your day…
             </div>
           )}
@@ -878,7 +878,7 @@ export default function Muhasaba({
               <div style={{ fontSize: 13, color: "var(--gold)", fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase" }}>
                 🪞 Past reflections
               </div>
-              <div style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>{past.length}</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{past.length}</div>
             </div>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {visible.map(([d, e]) => {
@@ -904,12 +904,12 @@ export default function Muhasaba({
                     onMouseEnter={(ev) => { ev.currentTarget.style.borderColor = goldA(33); }}
                     onMouseLeave={(ev) => { ev.currentTarget.style.borderColor = "transparent"; }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                      <span style={{ fontSize: 13, color: "var(--color-text-secondary)", fontWeight: 500 }}>{fmt(d)}</span>
-                      <span style={{ fontSize: 11, color: "var(--color-text-tertiary)" }}>
+                      <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500 }}>{fmt(d)}</span>
+                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
                         {e.aiReport.model || ""}
                       </span>
                     </div>
-                    <div style={{ fontSize: 13, color: "var(--color-text-secondary)", fontStyle: "italic", lineHeight: 1.5 }}>
+                    <div style={{ fontSize: 13, color: "var(--text-secondary)", fontStyle: "italic", lineHeight: 1.5 }}>
                       "{preview}"
                     </div>
                   </div>
@@ -936,7 +936,7 @@ export default function Muhasaba({
           const r = muhasaba[historyOpenDay].aiReport;
           return (
             <div>
-              <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>
                 Generated {new Date(r.generatedAt).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}
                 {r.model ? ` · ${r.model}` : ""}
               </div>
@@ -952,7 +952,7 @@ export default function Muhasaba({
         })()}
       </Modal>
 
-      <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", textAlign: "center", marginBottom: 24 }}>
+      <div style={{ fontSize: 12, color: "var(--text-muted)", textAlign: "center", marginBottom: 24 }}>
         {entry.updatedAt
           ? `Saved ${new Date(entry.updatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
           : "Auto-saves as you type."}

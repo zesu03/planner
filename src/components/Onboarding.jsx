@@ -65,7 +65,7 @@ export default function Onboarding({
 
   return (
     <Modal open={open} onClose={onDismiss} title="Welcome — quick setup">
-      <div style={{ fontSize: 14, color: "var(--color-text-secondary)", lineHeight: 1.5, marginBottom: 18 }}>
+      <div style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: 18 }}>
         Two things make the app useful from day one. You can do either, both, or skip and set them up later from the Prayer tab.
       </div>
 
@@ -104,7 +104,7 @@ export default function Onboarding({
           style={{
             fontSize: 13,
             background: "transparent",
-            color: "var(--color-text-tertiary)",
+            color: "var(--text-muted)",
             border: "none",
             cursor: "pointer",
             padding: "6px 10px",
@@ -130,10 +130,10 @@ function SetupRow({
     }}>
       <div style={{ fontSize: 28, lineHeight: 1, flexShrink: 0 }}>{icon}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 15, fontWeight: 500, color: "var(--color-text-primary)", marginBottom: 4 }}>
+        <div style={{ fontSize: 15, fontWeight: 500, color: "var(--text-primary)", marginBottom: 4 }}>
           {title}
         </div>
-        <div style={{ fontSize: 13, color: "var(--color-text-secondary)", lineHeight: 1.5, marginBottom: 10 }}>
+        <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: 10 }}>
           {description}
         </div>
         {done ? (
@@ -141,7 +141,7 @@ function SetupRow({
             ✓ Done
           </div>
         ) : disabled ? (
-          <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", lineHeight: 1.5 }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
             {disabledHint}
           </div>
         ) : (

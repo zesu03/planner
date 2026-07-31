@@ -25,7 +25,7 @@ export default function GoalCard({ g, lastActivityDay, onSelect }) {
     ? "var(--color-text-danger)"
     : urgent
     ? "var(--color-text-warning)"
-    : "var(--color-text-secondary)";
+    : "var(--text-secondary)";
 
   const statusText = done
     ? g.completedAt
@@ -41,7 +41,7 @@ export default function GoalCard({ g, lastActivityDay, onSelect }) {
   // positive "active today", and the quiet/stale nudges. The in-between
   // ("yesterday", "Nd ago", "no focus yet") was noise on every card.
   let recencyText = null;
-  let recencyColor = "var(--color-text-tertiary)";
+  let recencyColor = "var(--text-muted)";
   if (!done && lastActivityDay) {
     const lastDays = Math.floor((new Date(todayStr()) - new Date(lastActivityDay)) / 86400000);
     if (lastDays === 0) { recencyText = "active today"; recencyColor = "var(--color-text-success)"; }
@@ -89,7 +89,7 @@ export default function GoalCard({ g, lastActivityDay, onSelect }) {
             fontSize: 16,
             lineHeight: 1.3,
             textDecoration: done ? "line-through" : "none",
-            textDecorationColor: done ? "var(--color-text-tertiary)" : "transparent",
+            textDecorationColor: done ? "var(--text-muted)" : "transparent",
           }}
         >
           {g.title}
@@ -107,7 +107,7 @@ export default function GoalCard({ g, lastActivityDay, onSelect }) {
         </span>
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 8, fontSize: 13, gap: 8, flexWrap: "wrap" }}>
-        <span style={{ color: "var(--color-text-tertiary)" }}>
+        <span style={{ color: "var(--text-muted)" }}>
           {(() => {
             const tasks = g.tasks || [];
             const oneShots = tasks.filter((t) => !isRecurring(t));

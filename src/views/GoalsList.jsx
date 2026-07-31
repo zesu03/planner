@@ -1,6 +1,7 @@
 import { S } from "../lib/styles";
 import GoalCard from "../components/GoalCard";
 import EmptyState from "../components/EmptyState";
+import { Icon } from "../components/icons";
 
 // Goals tab. Receives an already-filtered/sorted `visibleGoals` from Planner
 // (the filter+sort logic lives there because it's coupled to multiple state
@@ -41,9 +42,9 @@ export default function GoalsList({
     <div className="view-content" style={{ position: "relative" }}>
       {showHeader && (
         <div role="status" aria-label="Goal portfolio summary"
-          style={{ marginBottom: 14, fontSize: 14, color: "var(--color-text-secondary)", display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
+          style={{ marginBottom: 14, fontSize: 14, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 7, flexWrap: "wrap" }}>
           <span>
-            <strong style={{ color: "var(--color-text-primary)", fontWeight: 600 }}>{goalCounts.active ?? 0}</strong> active
+            <strong style={{ color: "var(--text-primary)", fontWeight: 600 }}>{goalCounts.active ?? 0}</strong> active
           </span>
           {(goalCounts.overdue ?? 0) > 0 && (
             <span style={{ color: "var(--color-text-danger)" }}>· {goalCounts.overdue} overdue</span>
@@ -52,7 +53,7 @@ export default function GoalsList({
             <span style={{ color: "var(--color-text-warning)" }}>· {goalCounts.week} due this week</span>
           )}
           {(goalCounts.completed ?? 0) > 0 && (
-            <span style={{ color: "var(--color-text-tertiary)" }}>· {goalCounts.completed} completed</span>
+            <span style={{ color: "var(--text-muted)" }}>· {goalCounts.completed} completed</span>
           )}
         </div>
       )}
@@ -100,12 +101,12 @@ export default function GoalsList({
                     color: active
                       ? "inherit"
                       : count === 0
-                        ? "var(--color-text-tertiary)"
+                        ? "var(--text-muted)"
                         : f.tone === "danger" && count > 0
                           ? "var(--color-text-danger)"
                           : f.tone === "warning" && count > 0
                             ? "var(--color-text-warning)"
-                            : "var(--color-text-secondary)",
+                            : "var(--text-secondary)",
                     fontWeight: 500,
                     minWidth: 16,
                     textAlign: "center",
@@ -118,7 +119,7 @@ export default function GoalsList({
           })}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-          <span style={{ fontSize: 13, color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>Sort:</span>
+          <span style={{ fontSize: 13, color: "var(--text-secondary)", whiteSpace: "nowrap" }}>Sort:</span>
           <select value={goalSort} onChange={(e) => setGoalSort(e.target.value)} style={{ fontSize: 14, padding: "4px 8px", minWidth: 100, width: "auto" }}>
             <option value="due">Due date</option>
             <option value="progress">Progress</option>
@@ -132,7 +133,7 @@ export default function GoalsList({
           <GoalCard key={g.id} g={g} lastActivityDay={lastActivityByGoal[g.id]} onSelect={() => onSelectGoal(g.id)} />
         ))}
         {visibleGoals.length === 0 && (goals.length === 0 ? (
-          <EmptyState icon="🎯" title="No goals yet" hint="Start with something concrete — a memorisation target, a habit, a project.">
+          <EmptyState icon={<Icon name="target" size={30} />} title="No goals yet" hint="Start with something concrete — a memorisation target, a habit, a project.">
             {onAddGoal && (
               <button onClick={onAddGoal} className="btn-primary" style={{ marginTop: 14, padding: "8px 18px" }}>
                 + Add your first goal
@@ -140,7 +141,7 @@ export default function GoalsList({
             )}
           </EmptyState>
         ) : (
-          <EmptyState icon="🔍" title="Nothing matches" hint="Try clearing the filter or search to see all your goals.">
+          <EmptyState icon={<Icon name="search" size={28} />} title="Nothing matches" hint="Try clearing the filter or search to see all your goals.">
             <button onClick={() => { setFilter("all"); setSearchTerm(""); }} style={{ marginTop: 12, fontSize: 14 }}>
               Reset filters
             </button>

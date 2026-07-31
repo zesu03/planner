@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { CAT_COLORS, NIYYAH_LABELS, PRAYER_COLORS, VOLUNTARY_PRAYERS } from "../lib/constants";
-import { PrayerIcon } from "../components/icons";
+import { PrayerIcon, Icon } from "../components/icons";
 import { fmt, localDateStr, todayStr } from "../lib/dates";
 import { fmtMins } from "../lib/focus";
 import { computeQazaOwed, QAZA_PRAYERS } from "../lib/qaza";
@@ -27,13 +27,13 @@ function CollapsibleSection({ title, icon, right, accent = "var(--gold)", defaul
           gap: 10, width: "100%",
           background: "transparent", border: "none", textAlign: "left",
           cursor: "pointer",
-          color: "var(--color-text-primary)",
+          color: "var(--text-primary)",
           padding: 0,
           ...(open ? { paddingBottom: 12, borderBottom: "0.5px solid var(--color-border-tertiary)" } : {}),
         }}>
         <span style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 15, fontWeight: 600, minWidth: 0 }}>
           <span style={{
-            display: "inline-block", width: 10, flexShrink: 0, color: "var(--color-text-tertiary)",
+            display: "inline-block", width: 10, flexShrink: 0, color: "var(--text-muted)",
             transition: "transform 0.2s",
             transform: open ? "rotate(90deg)" : "rotate(0deg)",
           }}>›</span>
@@ -41,13 +41,14 @@ function CollapsibleSection({ title, icon, right, accent = "var(--gold)", defaul
             <span style={{
               width: 30, height: 30, borderRadius: 9, flexShrink: 0,
               background: `color-mix(in srgb, ${accent} 14%, transparent)`,
+              color: accent,
               display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15,
             }}>{icon}</span>
           )}
           {title}
         </span>
         {right && (
-          <span style={{ fontSize: 12, color: "var(--color-text-tertiary)", fontWeight: 400, whiteSpace: "nowrap" }}>{right}</span>
+          <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 400, whiteSpace: "nowrap" }}>{right}</span>
         )}
       </button>
       {open && <div style={{ marginTop: 14 }}>{children}</div>}
@@ -71,12 +72,13 @@ function SectionHeader({ icon, title, accent = "var(--gold)", right }) {
           <span style={{
             width: 30, height: 30, borderRadius: 9, flexShrink: 0,
             background: `color-mix(in srgb, ${accent} 14%, transparent)`,
+            color: accent,
             display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15,
           }}>{icon}</span>
         )}
-        <span style={{ fontSize: 15, fontWeight: 600, color: "var(--color-text-primary)" }}>{title}</span>
+        <span style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>{title}</span>
       </div>
-      {right && <span style={{ fontSize: 12, color: "var(--color-text-tertiary)", whiteSpace: "nowrap" }}>{right}</span>}
+      {right && <span style={{ fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{right}</span>}
     </div>
   );
 }
@@ -351,7 +353,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
       const delta = recentAvg - priorAvg;
       if (delta > 0.4) direction = { word: "rising", color: "var(--color-text-success)" };
       else if (delta < -0.4) direction = { word: "drifting", color: "var(--color-text-warning)" };
-      else direction = { word: "steady", color: "var(--color-text-secondary)" };
+      else direction = { word: "steady", color: "var(--text-secondary)" };
     }
     // Build polyline points; gap-skip when a day has no entry.
     const segments = [];
@@ -400,7 +402,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
         for (const p of patterns) {
           if (!p?.kind || !p?.label) continue;
           const key = `${p.kind}|${p.label.toLowerCase()}`;
-          const meta = KIND_META[p.kind] || { color: "var(--color-text-secondary)", label: p.kind };
+          const meta = KIND_META[p.kind] || { color: "var(--text-secondary)", label: p.kind };
           const prior = groupMap.get(key);
           groupMap.set(key, {
             kind: p.kind,
@@ -457,7 +459,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
   const DigestRow = ({ icon, label, value, deltaLabel, direction, last }) => {
     const good = direction === "up_good" || direction === "down_good";
     const bad = direction === "down_bad" || direction === "up_bad";
-    const color = good ? "var(--color-text-success)" : bad ? "#BA7517" : "var(--color-text-tertiary)";
+    const color = good ? "var(--color-text-success)" : bad ? "#BA7517" : "var(--text-muted)";
     const arrow = direction === "up_good" || direction === "up_bad" ? "↑"
       : direction === "down_good" || direction === "down_bad" ? "↓"
       : direction === "missing" ? "" : "→";
@@ -468,8 +470,8 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
         borderBottom: last ? "none" : "0.5px dashed var(--color-border-tertiary)",
       }}>
         <span style={{ fontSize: 17, width: 24, textAlign: "center", flexShrink: 0 }}>{icon}</span>
-        <span style={{ flex: 1, fontSize: 13, color: "var(--color-text-secondary)" }}>{label}</span>
-        <span style={{ fontSize: 15, fontWeight: 600, color: "var(--color-text-primary)", whiteSpace: "nowrap" }}>{value}</span>
+        <span style={{ flex: 1, fontSize: 13, color: "var(--text-secondary)" }}>{label}</span>
+        <span style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", whiteSpace: "nowrap" }}>{value}</span>
         {deltaLabel && (
           <span style={{ fontSize: 12, color, fontWeight: 600, minWidth: 70, textAlign: "right", whiteSpace: "nowrap" }}>
             {arrow && <span style={{ marginRight: 4 }}>{arrow}</span>}{deltaLabel}
@@ -489,7 +491,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
     // Prayer rate
     const dPrayer = w.prayer.thisRate - w.prayer.priorRate;
     rows.push({
-      icon: "🕌",
+      icon: <Icon name="mosque" size={16} />,
       label: "Prayer rate",
       value: fmtPct(w.prayer.thisRate),
       deltaLabel: w.prayer.priorHasData ? fmtPctDelta(dPrayer) : "no prior data",
@@ -502,7 +504,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
     // Top missed (only if any were missed)
     if (w.topMissed) {
       rows.push({
-        icon: "⚠",
+        icon: <Icon name="warning" size={16} />,
         label: "Most missed",
         value: w.topMissed.p,
         deltaLabel: `${w.topMissed.missed}/${7} days`,
@@ -514,7 +516,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
     const dTah = w.tahajjud.thisCount - w.tahajjud.priorCount;
     if (w.tahajjud.thisCount > 0 || w.tahajjud.priorCount > 0) {
       rows.push({
-        icon: "🌃",
+        icon: <Icon name="night" size={16} />,
         label: "Tahajjud",
         value: `${w.tahajjud.thisCount} / 7`,
         deltaLabel: dTah === 0 ? "same" : `${dTah > 0 ? "+" : ""}${dTah}`,
@@ -526,7 +528,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
     if (w.niyyah.thisAvg != null) {
       const dN = w.niyyah.priorAvg != null ? w.niyyah.thisAvg - w.niyyah.priorAvg : null;
       rows.push({
-        icon: "🪶",
+        icon: <Icon name="feather" size={16} />,
         label: "Niyyah avg",
         value: w.niyyah.thisAvg.toFixed(1),
         deltaLabel: dN == null ? "no prior data" : dN > 0.3 ? "rising" : dN < -0.3 ? "drifting" : "steady",
@@ -557,7 +559,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
         scripture_call: "Scripture",
       };
       rows.push({
-        icon: "🔁",
+        icon: <Icon name="repeat" size={16} />,
         label: kindLabels[w.topPattern.kind] || w.topPattern.kind,
         value: w.topPattern.label,
         deltaLabel: `×${w.topPattern.count}`,
@@ -581,11 +583,11 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
               <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase" }}>
                 This week
               </div>
-              <div style={{ fontSize: 17, fontWeight: 600, color: "var(--color-text-primary)" }}>
+              <div style={{ fontSize: 17, fontWeight: 600, color: "var(--text-primary)" }}>
                 Where you stand
               </div>
             </div>
-            <div style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>
+            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
               {fmtRange(weekDigest.range.start, weekDigest.range.end)}
             </div>
           </div>
@@ -601,7 +603,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
           dashboard, not a productivity tab. Per-prayer 30-day daily grid +
           completion rate + this-month total + qaza balance. */}
       <div style={{ ...S.card, marginBottom: 16 }}>
-        <SectionHeader icon="🕌" title="Prayer health" right={`last ${prayerHealth.DAYS} days`} />
+        <SectionHeader icon={<Icon name="mosque" size={16} />} title="Prayer health" right={`last ${prayerHealth.DAYS} days`} />
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {prayerHealth.perPrayer.map((p) => {
             const color = PRAYER_COLORS[p.name];
@@ -646,16 +648,16 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
           nothing's been paid (fresh user has nothing to say here). */}
       {(qazaBalance.totalMissed > 0 || qazaBalance.totalPaid > 0) && (
         <div style={{ ...S.card, marginBottom: 16 }}>
-          <SectionHeader icon="📿" title="Qaza balance" accent="#BA7517"
+          <SectionHeader icon={<Icon name="repeat" size={16} />} title="Qaza balance" accent="#BA7517"
             right={qazaBalance.startDate ? `since ${qazaBalance.startDate}` : "lifetime"} />
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 320 }}>
               <thead>
                 <tr>
-                  <th style={{ textAlign: "left", fontWeight: 400, color: "var(--color-text-tertiary)", paddingBottom: 8 }}>Prayer</th>
-                  <th style={{ textAlign: "right", fontWeight: 400, color: "var(--color-text-tertiary)", paddingBottom: 8, paddingLeft: 8 }}>Outstanding</th>
-                  <th style={{ textAlign: "right", fontWeight: 400, color: "var(--color-text-tertiary)", paddingBottom: 8, paddingLeft: 8 }}>Made up</th>
-                  <th style={{ textAlign: "right", fontWeight: 400, color: "var(--color-text-tertiary)", paddingBottom: 8, paddingLeft: 8 }}>Total missed</th>
+                  <th style={{ textAlign: "left", fontWeight: 400, color: "var(--text-muted)", paddingBottom: 8 }}>Prayer</th>
+                  <th style={{ textAlign: "right", fontWeight: 400, color: "var(--text-muted)", paddingBottom: 8, paddingLeft: 8 }}>Outstanding</th>
+                  <th style={{ textAlign: "right", fontWeight: 400, color: "var(--text-muted)", paddingBottom: 8, paddingLeft: 8 }}>Made up</th>
+                  <th style={{ textAlign: "right", fontWeight: 400, color: "var(--text-muted)", paddingBottom: 8, paddingLeft: 8 }}>Total missed</th>
                 </tr>
               </thead>
               <tbody>
@@ -668,13 +670,13 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
                         <span style={{ marginRight: 6, display: "inline-flex", verticalAlign: "middle" }}><PrayerIcon name={r.prayer} size={14} /></span>
                         {r.prayer}
                       </td>
-                      <td style={{ padding: "6px 0 6px 8px", textAlign: "right", fontWeight: 600, color: clear ? "var(--color-text-tertiary)" : "#BA7517" }}>
+                      <td style={{ padding: "6px 0 6px 8px", textAlign: "right", fontWeight: 600, color: clear ? "var(--text-muted)" : "#BA7517" }}>
                         {r.owed}
                       </td>
-                      <td style={{ padding: "6px 0 6px 8px", textAlign: "right", color: r.paid > 0 ? "#1D9E75" : "var(--color-text-tertiary)" }}>
+                      <td style={{ padding: "6px 0 6px 8px", textAlign: "right", color: r.paid > 0 ? "#1D9E75" : "var(--text-muted)" }}>
                         {r.paid}
                       </td>
-                      <td style={{ padding: "6px 0 6px 8px", textAlign: "right", color: "var(--color-text-secondary)" }}>
+                      <td style={{ padding: "6px 0 6px 8px", textAlign: "right", color: "var(--text-secondary)" }}>
                         {r.totalMissed}
                       </td>
                     </tr>
@@ -690,14 +692,14 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
                   <td style={{ paddingTop: 10, paddingLeft: 8, textAlign: "right", fontWeight: 600, borderTop: "0.5px solid var(--color-border-tertiary)", color: "#1D9E75" }}>
                     {qazaBalance.totalPaid}
                   </td>
-                  <td style={{ paddingTop: 10, paddingLeft: 8, textAlign: "right", fontWeight: 600, borderTop: "0.5px solid var(--color-border-tertiary)", color: "var(--color-text-secondary)" }}>
+                  <td style={{ paddingTop: 10, paddingLeft: 8, textAlign: "right", fontWeight: 600, borderTop: "0.5px solid var(--color-border-tertiary)", color: "var(--text-secondary)" }}>
                     {qazaBalance.totalMissed}
                   </td>
                 </tr>
               </tfoot>
             </table>
           </div>
-          <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginTop: 10, lineHeight: 1.5 }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 10, lineHeight: 1.5 }}>
             Qaza is a lifetime ledger — nothing resets monthly. Use the <strong>+</strong> on the Prayer tab to log a makeup; tick the 7-day tracker if you actually prayed on time but forgot to mark it.
           </div>
         </div>
@@ -708,7 +710,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
           for someone not tracking nafl yet. */}
       {voluntary.some((v) => v.count > 0 || v.streak > 0) && (
         <div style={{ ...S.card, marginBottom: 16 }}>
-          <SectionHeader icon="🌃" title="Voluntary practice" accent="#5a4a8c" right="30-day window" />
+          <SectionHeader icon={<Icon name="night" size={16} />} title="Voluntary practice" accent="#5a4a8c" right="30-day window" />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
             {voluntary.map((v) => {
               const color = PRAYER_COLORS[v.name] || "var(--gold)";
@@ -727,13 +729,13 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                     <div>
                       <div style={{ fontSize: 22, fontWeight: 600, color, lineHeight: 1 }}>{ratePct}%</div>
-                      <div style={{ fontSize: 11, color: "var(--color-text-tertiary)", marginTop: 3 }}>{v.count} of {v.days} days</div>
+                      <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>{v.count} of {v.days} days</div>
                     </div>
                     <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: 16, fontWeight: 600, color: v.streak > 0 ? color : "var(--color-text-tertiary)" }}>
+                      <div style={{ fontSize: 16, fontWeight: 600, color: v.streak > 0 ? color : "var(--text-muted)" }}>
                         {v.streak > 0 ? `🔥 ${v.streak}` : "—"}
                       </div>
-                      <div style={{ fontSize: 11, color: "var(--color-text-tertiary)", marginTop: 3 }}>streak</div>
+                      <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>streak</div>
                     </div>
                   </div>
                 </div>
@@ -749,7 +751,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
           parent goal so the user can edit/tick from one click. */}
       {habitHealth.length > 0 && (
         <div style={{ ...S.card, marginBottom: 16 }}>
-          <SectionHeader icon="🔁" title="Habit health" accent="#1D9E75"
+          <SectionHeader icon={<Icon name="repeat" size={16} />} title="Habit health" accent="#1D9E75"
             right={`${habitHealth.length} habit${habitHealth.length === 1 ? "" : "s"} · 30-day window`} />
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {habitHealth.map((h) => {
@@ -774,18 +776,18 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
                     cursor: onSelectGoal ? "pointer" : "default",
                   }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
-                    <div style={{ fontSize: 14, fontWeight: 500, color: "var(--color-text-primary)", display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
-                      <span style={{ color: cat, flexShrink: 0 }}>🔁</span>
+                    <div style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                      <span style={{ color: cat, flexShrink: 0 }}><Icon name="repeat" size={13} /></span>
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.text}</span>
                     </div>
-                    <div style={{ fontSize: 13, color: "var(--color-text-secondary)", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                    <div style={{ fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
                       {h.streak > 0 && (
-                        <span style={{ color: cat, fontWeight: 600 }}>🔥 {h.streak}</span>
+                        <span style={{ color: cat, fontWeight: 600 }}><Icon name="flame" size={13} /> {h.streak}</span>
                       )}
                       <span style={{ color: rateColor, fontWeight: 600 }}>{ratePct}%</span>
                     </div>
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", display: "flex", gap: 6, alignItems: "center" }}>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", display: "flex", gap: 6, alignItems: "center" }}>
                     <span>{h.goalTitle}</span>
                     <span>·</span>
                     <span>{scheduleLabel(h.recurring)}</span>
@@ -808,7 +810,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
           dropping into productivity history. Stays expanded always. */}
       {mirrorPatterns.groups.length > 0 && (
         <div style={{ ...S.card, marginBottom: 16 }}>
-          <SectionHeader icon="🪞" title="Patterns from the mirror" accent="#7BB6C7"
+          <SectionHeader icon={<Icon name="mirror" size={16} />} title="Patterns from the mirror" accent="#7BB6C7"
             right={`across ${mirrorPatterns.reportsScanned} report${mirrorPatterns.reportsScanned === 1 ? "" : "s"} · last ${mirrorPatterns.windowDays} days`} />
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {mirrorPatterns.groups.map((g) => {
@@ -833,13 +835,13 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
                         color: g.color, letterSpacing: "0.5px", textTransform: "uppercase",
                         flexShrink: 0,
                       }}>{g.kindLabel}</span>
-                      <span style={{ fontSize: 14, fontWeight: 500, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {g.label}
                       </span>
                     </div>
                     <span style={{
                       fontSize: 11, fontWeight: 600,
-                      color: "var(--color-text-secondary)",
+                      color: "var(--text-secondary)",
                       padding: "2px 7px",
                       borderRadius: 99,
                       background: "var(--color-background-secondary)",
@@ -849,7 +851,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
                     </span>
                   </div>
                   {g.lastComment && (
-                    <div style={{ fontSize: 13, color: "var(--color-text-secondary)", lineHeight: 1.5 }}>
+                    <div style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5 }}>
                       {g.lastComment}
                     </div>
                   )}
@@ -874,7 +876,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
         <div style={{ overflowX: "auto" }}>
           <svg width={heatmap.width} height={heatmap.height + 18} style={{ display: "block" }}>
             {heatmap.monthLabels.map(({ col, label }) => (
-              <text key={col} x={col * (heatmap.cellSize + heatmap.gap)} y={9} fontSize="10" fill="var(--color-text-tertiary)" fontFamily="inherit">
+              <text key={col} x={col * (heatmap.cellSize + heatmap.gap)} y={9} fontSize="10" fill="var(--text-muted)" fontFamily="inherit">
                 {label}
               </text>
             ))}
@@ -894,7 +896,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
               );
             })}
           </svg>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, fontSize: 11, color: "var(--color-text-tertiary)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, fontSize: 11, color: "var(--text-muted)" }}>
             Less
             {[0, 0.22, 0.4, 0.6, 0.8, 1].map((a) => (
               <div key={a} style={{ width: 11, height: 11, borderRadius: 2, background: a === 0 ? "var(--color-background-secondary)" : "var(--gold)", opacity: a === 0 ? 1 : a }} />
@@ -908,7 +910,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
           opens the same drilldown Modal that lives just below. */}
       {niyyahTrend && (
         <CollapsibleSection
-          icon="🪶"
+          icon={<Icon name="feather" size={16} />}
           title="Niyyah trend"
           right={`${niyyahTrend.filledCount} entries · avg ${niyyahTrend.avg.toFixed(1)}/5`}>
           <svg width="100%" height={niyyahTrend.sparkH + 24} viewBox={`0 0 ${niyyahTrend.sparkW} ${niyyahTrend.sparkH + 24}`} preserveAspectRatio="none" style={{ display: "block" }}>
@@ -924,8 +926,8 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
               const y = niyyahTrend.sparkH - ((p.rating - 1) / 4) * niyyahTrend.sparkH;
               return <circle key={p.day} cx={x} cy={y} r="2.5" fill="var(--gold)"><title>{p.day} · {p.rating}/5</title></circle>;
             })}
-            <text x={2} y={10} fontSize="9" fill="var(--color-text-tertiary)" fontFamily="inherit">5</text>
-            <text x={2} y={niyyahTrend.sparkH + 4} fontSize="9" fill="var(--color-text-tertiary)" fontFamily="inherit">1</text>
+            <text x={2} y={10} fontSize="9" fill="var(--text-muted)" fontFamily="inherit">5</text>
+            <text x={2} y={niyyahTrend.sparkH + 4} fontSize="9" fill="var(--text-muted)" fontFamily="inherit">1</text>
           </svg>
           {niyyahTrend.direction && (
             <div style={{ fontSize: 13, color: niyyahTrend.direction.color, marginTop: 8, fontStyle: "italic" }}>
@@ -949,7 +951,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
             ? niyyahTrend.points.filter((p) => p.rating).slice().reverse() // newest first
             : [];
           if (rows.length === 0) {
-            return <EmptyState icon="🪞" title="No rated entries yet" hint="Rate your niyyah at the bottom of any muhasaba entry." padY={16} />;
+            return <EmptyState icon={<Icon name="mirror" size={16} />} title="No rated entries yet" hint="Rate your niyyah at the bottom of any muhasaba entry." padY={16} />;
           }
           return (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -962,7 +964,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
                     borderRadius: "var(--border-radius-md)",
                   }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: entry.bestDeed ? 6 : 0 }}>
-                      <div style={{ fontSize: 13, color: "var(--color-text-secondary)", fontWeight: 500 }}>
+                      <div style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500 }}>
                         {fmt(p.day)}
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -971,12 +973,12 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
                             <span key={n} style={{ color: n <= p.rating ? "var(--gold)" : "var(--color-border-tertiary)", fontSize: 14 }}>★</span>
                           ))}
                         </span>
-                        <span style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>{NIYYAH_LABELS[p.rating]}</span>
+                        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{NIYYAH_LABELS[p.rating]}</span>
                       </div>
                     </div>
                     {entry.bestDeed && (
-                      <div style={{ fontSize: 13, color: "var(--color-text-primary)", lineHeight: 1.5 }}>
-                        <span style={{ color: "var(--color-text-tertiary)", marginRight: 6 }}>Best deed:</span>
+                      <div style={{ fontSize: 13, color: "var(--text-primary)", lineHeight: 1.5 }}>
+                        <span style={{ color: "var(--text-muted)", marginRight: 6 }}>Best deed:</span>
                         {entry.bestDeed}
                       </div>
                     )}
@@ -991,7 +993,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
       {/* Per-goal sparklines (collapsed by default) */}
       {sparklines.rows.length > 0 && (
         <CollapsibleSection
-          icon="📈"
+          icon={<Icon name="trend" size={16} />}
           title="Per-goal focus"
           right={`${sparklines.rows.length} goal${sparklines.rows.length === 1 ? "" : "s"} · last 30 days`}>
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -1009,13 +1011,13 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
                 <div key={g.id} onClick={() => onSelectGoal(g.id)}
                   style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", padding: "4px 0" }}>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: catColor, flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontSize: 14, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <span style={{ flex: 1, fontSize: 14, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {g.title}
                   </span>
                   <svg width={sparklines.sparkW} height={sparklines.sparkH} style={{ flexShrink: 0 }}>
                     <polyline points={points} fill="none" stroke={catColor} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
                   </svg>
-                  <span style={{ fontSize: 13, color: "var(--color-text-secondary)", minWidth: 50, textAlign: "right" }}>
+                  <span style={{ fontSize: 13, color: "var(--text-secondary)", minWidth: 50, textAlign: "right" }}>
                     {fmtMins(total)}
                   </span>
                 </div>
@@ -1029,7 +1031,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
           empty — no point teasing a section with no data. */}
       {topFocusTasks.length > 0 && (
         <CollapsibleSection
-          icon="🏆"
+          icon={<Icon name="trophy" size={16} />}
           title="Top focus tasks"
           right={`top ${topFocusTasks.length}`}>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -1037,7 +1039,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
               <div key={label} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 15 }}>
                 <div style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--gold)", flexShrink: 0 }} />
                 <span style={{ flex: 1 }}>{label}</span>
-                <span style={{ color: "var(--color-text-secondary)" }}>{mins}m</span>
+                <span style={{ color: "var(--text-secondary)" }}>{mins}m</span>
               </div>
             ))}
           </div>
@@ -1048,7 +1050,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
           entries from sessions where the timer kept running while AFK. */}
       {focusLog.length > 0 && (
         <CollapsibleSection
-          icon="📝"
+          icon={<Icon name="note" size={16} />}
           title="Recent sessions"
           right={`${focusLog.length} total`}>
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -1066,12 +1068,12 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
                     <div style={{ width: 7, height: 7, borderRadius: "50%", background: g ? CAT_COLORS[g.category] : "#888", flexShrink: 0 }} />
                     <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {t?.text || "General focus"}
-                      {g && <span style={{ color: "var(--color-text-tertiary)", marginLeft: 6 }}>· {g.title}</span>}
+                      {g && <span style={{ color: "var(--text-muted)", marginLeft: 6 }}>· {g.title}</span>}
                     </span>
-                    <span style={{ color: "var(--color-text-secondary)", whiteSpace: "nowrap" }}>
+                    <span style={{ color: "var(--text-secondary)", whiteSpace: "nowrap" }}>
                       {l.mins}m
                     </span>
-                    <span style={{ color: "var(--color-text-tertiary)", fontSize: 12, whiteSpace: "nowrap" }}>
+                    <span style={{ color: "var(--text-muted)", fontSize: 12, whiteSpace: "nowrap" }}>
                       {l.day} · {l.at}
                     </span>
                     {onDeleteFocusEntry && (
@@ -1085,7 +1087,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
                           background: "transparent",
                           border: "0.5px solid var(--color-border-tertiary)",
                           borderRadius: 6,
-                          color: "var(--color-text-tertiary)",
+                          color: "var(--text-muted)",
                           cursor: "pointer",
                         }}>
                         ✕
@@ -1095,7 +1097,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
                   {l.note && (
                     <div style={{
                       marginTop: 6, marginLeft: 17,
-                      fontSize: 13, color: "var(--color-text-secondary)",
+                      fontSize: 13, color: "var(--text-secondary)",
                       fontStyle: "italic", lineHeight: 1.45,
                     }}>
                       “{l.note}”
@@ -1119,7 +1121,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
       {/* Footer — data export */}
       {onExport && (
         <div style={{ marginTop: 24, padding: "16px 0", textAlign: "center", borderTop: "0.5px dashed var(--color-border-tertiary)" }}>
-          <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginBottom: 8 }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>
             Your data, yours to keep.
           </div>
           <button onClick={onExport}
@@ -1127,7 +1129,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
               fontSize: 13,
               padding: "6px 14px",
               borderColor: "var(--color-border-secondary)",
-              color: "var(--color-text-secondary)",
+              color: "var(--text-secondary)",
             }}>
             ↓ Export all data (JSON)
           </button>

@@ -33,7 +33,7 @@ export const goldWashGradient = (angle = "135deg") =>
 
 export const S = {
   card: {
-    background: "var(--color-background-primary)",
+    background: "var(--bg-card)",
     border: "0.5px solid var(--color-border-tertiary)",
     borderRadius: "var(--border-radius-lg)",
     padding: "var(--card-padding)",
@@ -58,7 +58,7 @@ export const S = {
   tab: (active) => ({
     fontSize: "var(--font-size-md)",
     fontWeight: active ? "var(--fw-semibold)" : "var(--fw-regular)",
-    color: active ? "var(--color-text-primary)" : "var(--color-text-secondary)",
+    color: active ? "var(--text-primary)" : "var(--text-secondary)",
     borderBottom: active ? "2.5px solid var(--gold)" : "2.5px solid transparent",
     borderRadius: 0,
     padding: "9px 0",
@@ -75,8 +75,8 @@ export const S = {
     fontSize: "var(--font-size-base)",
     padding: "5px 16px",
     borderRadius: 99,
-    background: active ? "var(--color-text-primary)" : "transparent",
-    color: active ? "var(--color-background-primary)" : "var(--color-text-secondary)",
+    background: active ? "var(--text-primary)" : "transparent",
+    color: active ? "var(--bg-card)" : "var(--text-secondary)",
     border: "0.5px solid var(--color-border-secondary)",
     cursor: "pointer",
     boxShadow: "none", // small toggle chips don't need elevation

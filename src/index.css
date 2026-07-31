@@ -102,16 +102,22 @@ body {
   --focus-ring-halo:  color-mix(in srgb, var(--gold) 18%, transparent);
   --focus-ring-width: 2px;
 
-  --color-background-primary: var(--bg-card);
+  /* ── Semantic layer ──────────────────────────────────────────────────
+     Neutral text/background use the base PRIMITIVES directly:
+       text   → var(--text-primary | --text-secondary | --text-muted)
+       bg     → var(--bg-primary | --bg-secondary | --bg-card)
+       accent → var(--gold), var(--noor)   radius → var(--radius | --radius-sm)
+     The tokens below are the SEMANTIC layer — state colours (danger/warning/
+     success), borders, and the md/lg radius scale — with no primitive
+     equivalent. Prefer a primitive when one exists; reach here for states.
+     (--color-background-secondary is theme-specific in light mode, so it is
+     NOT a plain alias of --bg-secondary — keep using it as-is.) */
   --color-background-secondary: var(--bg-secondary);
   --color-border-tertiary: rgba(212,182,94,0.22);
   --color-border-secondary: rgba(212,182,94,0.32);
   --color-border-danger: rgba(214,95,82,0.4);
   --color-border-warning: rgba(214,168,95,0.45);
   --color-border-success: rgba(127,190,143,0.45);
-  --color-text-primary: var(--text-primary);
-  --color-text-secondary: var(--text-secondary);
-  --color-text-tertiary: var(--text-muted);
   --color-text-danger: #e88b7c;
   --color-text-warning: #d6a85f;
   --color-text-success: #7fbe8f;
@@ -152,16 +158,12 @@ body {
   --text-secondary: #5a4818;
   --text-muted: #6b5a2a; /* bumped from #8a7848 — was 3.7:1 on bg-card; now ~6.1:1 (WCAG AA) */
 
-  --color-background-primary: var(--bg-card);
   --color-background-secondary: #ece1c4;
   --color-border-tertiary: rgba(96,70,18,0.22);
   --color-border-secondary: rgba(96,70,18,0.34);
   --color-border-danger: rgba(154,52,40,0.4);
   --color-border-warning: rgba(192,140,40,0.5);
   --color-border-success: rgba(58,107,52,0.45);
-  --color-text-primary: var(--text-primary);
-  --color-text-secondary: var(--text-secondary);
-  --color-text-tertiary: var(--text-muted);
   --color-text-danger: #9a3428;
   --color-text-warning: #7a5614;
   --color-text-success: #3a6b34;
@@ -440,7 +442,7 @@ select:focus-visible {
   margin: 0;
   font-size: var(--font-size-2xl);
   font-weight: var(--fw-semibold);
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   line-height: var(--line-height-tight);
 }
 .app-header-greeting .accent { color: var(--gold); font-weight: var(--fw-medium); }
@@ -451,7 +453,7 @@ select:focus-visible {
 }
 .app-header-date {
   font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   margin-top: 5px;
 }
 .app-header-actions {
@@ -481,7 +483,7 @@ select:focus-visible {
   white-space: nowrap;
   font-size: var(--font-size-md);
   font-weight: var(--fw-regular);
-  color: var(--color-text-secondary);
+  color: var(--text-secondary);
   border-bottom: 2.5px solid transparent;
   border-radius: 0;
   border-top: none;
@@ -496,11 +498,11 @@ select:focus-visible {
   transition: color 0.15s ease, border-color 0.15s ease;
 }
 .tab-btn:hover {
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   border-color: transparent; /* don't pop the underline on hover — only on active */
 }
 .tab-btn--active {
-  color: var(--color-text-primary);
+  color: var(--text-primary);
   font-weight: var(--fw-semibold);
   border-bottom-color: var(--gold);
 }
@@ -725,7 +727,7 @@ select:focus-visible {
     padding: 6px env(safe-area-inset-right) calc(6px + env(safe-area-inset-bottom)) env(safe-area-inset-left);
     gap: 0;
     overflow: visible;
-    background: color-mix(in srgb, var(--color-background-primary) 95%, transparent);
+    background: color-mix(in srgb, var(--bg-card) 95%, transparent);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border-top: 0.5px solid var(--color-border-tertiary);

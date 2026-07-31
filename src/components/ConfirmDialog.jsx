@@ -19,7 +19,7 @@ export default function ConfirmDialog({
   return (
     <Modal open={open} onClose={onClose} title={title} maxWidth={420}>
       {message && (
-        <div style={{ fontSize: 14, color: "var(--color-text-secondary)", marginBottom: 18, lineHeight: 1.5 }}>
+        <div style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 18, lineHeight: 1.5 }}>
           {message}
         </div>
       )}

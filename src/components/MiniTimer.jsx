@@ -75,12 +75,12 @@ export default function MiniTimer({ pomSeconds, pomRunning, total, ringColor = "
             opacity={paused ? 0.45 : 1}
             style={{ transition: "stroke-dashoffset 0.5s, opacity 0.3s" }} />
           <text x={VB / 2} y={VB / 2 - 4} textAnchor="middle"
-            style={{ fontSize: 42, fontWeight: 500, fill: paused ? "var(--gold)" : "var(--color-text-primary)", fontFamily: "monospace" }}>
+            style={{ fontSize: 42, fontWeight: 500, fill: paused ? "var(--gold)" : "var(--text-primary)", fontFamily: "monospace" }}>
             {fmtTime(dialSecs)}
           </text>
           {!compact && (
             <text x={VB / 2} y={VB / 2 + 24} textAnchor="middle"
-              style={{ fontSize: 12, fill: paused ? "var(--color-text-warning)" : "var(--color-text-secondary)", letterSpacing: "0.4px", textTransform: "uppercase", fontWeight: paused ? 600 : 400 }}>
+              style={{ fontSize: 12, fill: paused ? "var(--color-text-warning)" : "var(--text-secondary)", letterSpacing: "0.4px", textTransform: "uppercase", fontWeight: paused ? 600 : 400 }}>
               {paused ? `paused · ${fmtTime(pomSeconds)} left` : "focus"}
             </text>
           )}

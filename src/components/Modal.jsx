@@ -39,7 +39,7 @@ export default function Modal({ open, onClose, title, children, maxWidth = 560 }
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: "var(--color-background-primary)",
+          background: "var(--bg-card)",
           border: "0.5px solid var(--color-border-secondary)",
           borderRadius: "var(--border-radius-lg)",
           padding: "var(--card-padding)",
@@ -57,7 +57,7 @@ export default function Modal({ open, onClose, title, children, maxWidth = 560 }
           paddingBottom: 10,
           borderBottom: "0.5px solid var(--color-border-tertiary)",
         }}>
-          <div style={{ fontSize: 16, fontWeight: 600, color: "var(--color-text-primary)" }}>{title}</div>
+          <div style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>{title}</div>
           <button
             onClick={onClose}
             aria-label="Close dialog"
@@ -68,7 +68,7 @@ export default function Modal({ open, onClose, title, children, maxWidth = 560 }
               border: "0.5px solid var(--color-border-tertiary)",
               borderRadius: 8,
               cursor: "pointer",
-              color: "var(--color-text-secondary)",
+              color: "var(--text-secondary)",
               lineHeight: 1,
             }}>
             ✕

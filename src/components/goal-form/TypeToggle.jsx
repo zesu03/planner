@@ -14,7 +14,7 @@ export default function TypeToggle({ value, onChange }) {
             style={{
               background: active ? goldA(18) : "var(--color-background-secondary)",
               border: `0.5px solid ${active ? goldA(60) : "var(--color-border-tertiary)"}`,
-              color: active ? "var(--color-text-primary)" : "var(--color-text-secondary)",
+              color: active ? "var(--text-primary)" : "var(--text-secondary)",
               borderRadius: "var(--border-radius-md)",
               padding: "10px 12px",
               cursor: "pointer",
@@ -25,7 +25,7 @@ export default function TypeToggle({ value, onChange }) {
               transition: "all 0.15s",
             }}>
             <span style={{ fontSize: 14, fontWeight: active ? 600 : 500 }}>{opt.label}</span>
-            <span style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>{opt.hint}</span>
+            <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{opt.hint}</span>
           </button>
         );
       })}

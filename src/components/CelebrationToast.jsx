@@ -96,7 +96,7 @@ export default function CelebrationToast({ celebration, onDismiss, onOpen }) {
         maxWidth: 520,
         padding: "14px 18px 14px 22px",
         borderRadius: "var(--border-radius-lg)",
-        background: `linear-gradient(135deg, ${tint(13)} 0%, ${tint(4)} 100%), var(--color-background-primary)`,
+        background: `linear-gradient(135deg, ${tint(13)} 0%, ${tint(4)} 100%), var(--bg-card)`,
         border: `0.5px solid ${tint(53)}`,
         boxShadow: "var(--shadow-modal)",
         overflow: "hidden",
@@ -112,7 +112,7 @@ export default function CelebrationToast({ celebration, onDismiss, onOpen }) {
           background: "transparent",
           border: "0.5px solid var(--color-border-tertiary)",
           borderRadius: 99,
-          color: "var(--color-text-tertiary)",
+          color: "var(--text-muted)",
           cursor: "pointer", lineHeight: 1,
         }}
       >
@@ -151,26 +151,26 @@ export default function CelebrationToast({ celebration, onDismiss, onOpen }) {
                 <span style={{ fontSize: numberSize, fontWeight: 800, color: accent, lineHeight: 1, letterSpacing: "-0.02em" }}>
                   {v.count}
                 </span>
-                <span style={{ fontSize: 15, color: "var(--color-text-secondary)" }}>{v.unit}</span>
+                <span style={{ fontSize: 15, color: "var(--text-secondary)" }}>{v.unit}</span>
                 {next && (
-                  <span style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginLeft: "auto", whiteSpace: "nowrap" }}>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: "auto", whiteSpace: "nowrap" }}>
                     → next {next}
                   </span>
                 )}
               </div>
-              <div style={{ fontSize: 12.5, color: "var(--color-text-secondary)", marginTop: 5, lineHeight: 1.4 }}>
+              <div style={{ fontSize: 12.5, color: "var(--text-secondary)", marginTop: 5, lineHeight: 1.4 }}>
                 {v.sub}
               </div>
             </>
           ) : (
             <>
               <div style={{
-                fontSize: 16, fontWeight: 600, color: "var(--color-text-primary)", lineHeight: 1.3,
+                fontSize: 16, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3,
                 whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
               }}>
                 {v.title}
               </div>
-              <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 3, lineHeight: 1.4 }}>
+              <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 3, lineHeight: 1.4 }}>
                 {v.sub}
               </div>
             </>

@@ -8,6 +8,9 @@
 import {
   Sunrise, SunDim, Sun, CloudSun, Sunset, Moon, MoonStar,
   LayoutDashboard, Target, Timer, BarChart3,
+  Flame, Repeat, Search, MapPin, Bell, Trophy, Sprout, Pencil,
+  Maximize2, Feather, NotebookPen, Sparkles, HandHeart, Mail, AlertTriangle,
+  TrendingUp, BookMarked,
 } from "lucide-react";
 
 // Prayer name → time-of-day icon.
@@ -56,4 +59,44 @@ const TAB_ICON = {
 export function TabIcon({ name, size = 20, strokeWidth = 1.9, style }) {
   const I = TAB_ICON[name] || LayoutDashboard;
   return <I size={size} strokeWidth={strokeWidth} style={style} aria-hidden="true" />;
+}
+
+// Reusable mosque (login/error screens, prayer section headers).
+export function MosqueIcon(props) {
+  return <Mosque {...props} />;
+}
+
+// Generic app icon by semantic name — the single place UI glyphs are mapped,
+// so sizing/stroke stay consistent. Add here rather than reaching for an emoji.
+// (Some names reuse a close lucide glyph where no exact match exists — e.g.
+// dhikr/mirror → Sparkles, dua → HandHeart.)
+const ICON = {
+  mosque: Mosque,
+  flame: Flame,          // streaks / istiqāmah
+  target: Target,        // goals
+  repeat: Repeat,        // recurring habit / qaza ledger
+  search: Search,
+  location: MapPin,
+  bell: Bell,            // notifications
+  trophy: Trophy,        // top focus
+  sprout: Sprout,        // first task / getting started
+  pencil: Pencil,        // edit
+  maximize: Maximize2,   // fullscreen
+  feather: Feather,      // niyyah / intention
+  note: NotebookPen,     // recent sessions / notes
+  sparkles: Sparkles,    // AI mirror / niyyah spark
+  mirror: Sparkles,      // AI reflection
+  dhikr: Sparkles,       // remembrance (no exact lucide glyph)
+  dua: HandHeart,        // supplication
+  mail: Mail,            // yesterday's du'a note
+  moon: Moon,
+  night: MoonStar,       // voluntary / night practice
+  warning: AlertTriangle,
+  trend: TrendingUp,     // niyyah trend
+  verse: BookMarked,     // saved ayat
+};
+
+export function Icon({ name, size = 16, strokeWidth = 1.9, style, className }) {
+  const I = ICON[name] || Sparkles;
+  return <I size={size} strokeWidth={strokeWidth} style={style} className={className} aria-hidden="true" />;
 }

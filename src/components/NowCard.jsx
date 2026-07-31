@@ -13,7 +13,7 @@
 
 import { useEffect, useState } from "react";
 import { PRAYER_COLORS } from "../lib/constants";
-import { PrayerIcon } from "./icons";
+import { PrayerIcon, Icon } from "./icons";
 import { localDateStr } from "../lib/dates";
 import { prayerDisplayName } from "../lib/prayer";
 import { goldA, noorA, tintA } from "../lib/styles";
@@ -132,7 +132,7 @@ export default function NowCard({
       overflow: "hidden",
       borderRadius: "var(--border-radius-lg)",
       border: `0.5px solid ${goldA(38)}`,
-      background: `radial-gradient(120% 100% at 100% 0%, ${phase.glow} 0%, transparent 55%), var(--color-background-primary)`,
+      background: `radial-gradient(120% 100% at 100% 0%, ${phase.glow} 0%, transparent 55%), var(--bg-card)`,
       padding: "18px 20px 16px",
       marginBottom: 18,
       boxShadow: "var(--shadow-card)",
@@ -143,11 +143,11 @@ export default function NowCard({
           <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gold)", letterSpacing: "0.7px", textTransform: "uppercase", marginBottom: 3 }}>
             {phase.eyebrow}
           </div>
-          <div style={{ fontFamily: "'Fraunces', serif", fontSize: 21, fontWeight: 600, color: "var(--color-text-primary)", lineHeight: 1.2 }}>
+          <div style={{ fontFamily: "'Fraunces', serif", fontSize: 21, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.2 }}>
             {phase.title}
           </div>
         </div>
-        <div style={{ fontSize: 13, color: "var(--color-text-tertiary)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", paddingTop: 2 }}>
+        <div style={{ fontSize: 13, color: "var(--text-muted)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", paddingTop: 2 }}>
           {clock}
         </div>
       </div>
@@ -174,14 +174,14 @@ export default function NowCard({
           </span>
         )}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 10, fontWeight: 600, color: urgent ? prayerColor : "var(--color-text-tertiary)", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 2 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, color: urgent ? prayerColor : "var(--text-muted)", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 2 }}>
             {prayerEyebrow}
           </div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
             {prayerLabel}
           </div>
           {prayerCity && prayerTimesSet && (
-            <div style={{ fontSize: 12, color: "var(--color-text-secondary)", marginTop: 1 }}>{prayerCity}</div>
+            <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 1 }}>{prayerCity}</div>
           )}
         </div>
         {/* Five-prayer dot row — glanceable daily progress */}
@@ -205,13 +205,13 @@ export default function NowCard({
 
       {/* Focus progress — quiet secondary signal */}
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-        <span style={{ fontSize: 12, color: "var(--color-text-tertiary)", whiteSpace: "nowrap" }}>
+        <span style={{ fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap" }}>
           Focus {focusMins}m{focusGoal ? ` / ${focusGoal}m` : ""}
         </span>
         <div style={{ flex: 1, height: 5, background: "var(--color-background-secondary)", borderRadius: 99, overflow: "hidden" }}>
           <div style={{ height: "100%", width: `${focusPct}%`, background: `linear-gradient(90deg, ${noorA(85)}, var(--noor))`, borderRadius: 99, boxShadow: `0 0 8px ${noorA(45)}`, transition: "width 0.4s ease" }} />
         </div>
-        <span style={{ fontSize: 12, color: focusPct >= 100 ? "var(--color-text-success)" : "var(--color-text-tertiary)", fontWeight: 600, whiteSpace: "nowrap" }}>
+        <span style={{ fontSize: 12, color: focusPct >= 100 ? "var(--color-text-success)" : "var(--text-muted)", fontWeight: 600, whiteSpace: "nowrap" }}>
           {focusPct}%
         </span>
       </div>
@@ -225,15 +225,15 @@ export default function NowCard({
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 7, marginTop: 13, fontSize: 13 }}>
         {streak > 0 ? (
           <>
-            <span style={{ fontSize: 15 }}>🔥</span>
-            <span style={{ fontWeight: 600, color: "var(--color-text-primary)" }}>{streak}-day istiqāmah</span>
+            <span style={{ display: "inline-flex", color: "var(--gold)" }}><Icon name="flame" size={15} /></span>
+            <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{streak}-day istiqāmah</span>
             {!todayActive && (
               <span style={{ color: "var(--color-text-warning)", fontWeight: 500 }}>· keep it alive today</span>
             )}
           </>
         ) : (
-          <span style={{ color: "var(--color-text-tertiary)", fontStyle: "italic" }}>
-            🌱 Begin your istiqāmah — one act today starts the chain
+          <span style={{ color: "var(--text-muted)", fontStyle: "italic", display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <Icon name="sprout" size={14} /> Begin your istiqāmah — one act today starts the chain
           </span>
         )}
       </div>

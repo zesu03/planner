@@ -61,7 +61,7 @@ function RecurringPicker({ value, onChange }) {
                 fontSize: 13, padding: "5px 12px", borderRadius: 99,
                 background: active ? goldA(22) : "var(--color-background-secondary)",
                 border: `0.5px solid ${active ? "var(--gold)" : "var(--color-border-tertiary)"}`,
-                color: active ? "var(--gold)" : "var(--color-text-secondary)",
+                color: active ? "var(--gold)" : "var(--text-secondary)",
                 fontWeight: active ? 600 : 400,
                 cursor: "pointer",
               }}>
@@ -82,7 +82,7 @@ function RecurringPicker({ value, onChange }) {
                   fontSize: 13, fontWeight: 500,
                   background: active ? goldA(28) : "var(--color-background-secondary)",
                   border: `0.5px solid ${active ? "var(--gold)" : "var(--color-border-tertiary)"}`,
-                  color: active ? "var(--gold)" : "var(--color-text-secondary)",
+                  color: active ? "var(--gold)" : "var(--text-secondary)",
                   cursor: "pointer", padding: 0,
                 }}>
                 {label}
@@ -292,7 +292,7 @@ export default function GoalDetail({ selected, goBack }) {
   return (
     <div className="view-content">
       <button onClick={goBack}
-        style={{ fontSize: 15, color: "var(--color-text-secondary)", marginBottom: 14, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+        style={{ fontSize: 15, color: "var(--text-secondary)", marginBottom: 14, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
         ← Back
       </button>
 
@@ -320,7 +320,7 @@ export default function GoalDetail({ selected, goBack }) {
               fontSize: 18,
               fontWeight: 500,
               textDecoration: done ? "line-through" : "none",
-              textDecorationColor: done ? "var(--color-text-tertiary)" : "transparent",
+              textDecorationColor: done ? "var(--text-muted)" : "transparent",
             }}>
               {selected.title}
             </h3>
@@ -340,14 +340,14 @@ export default function GoalDetail({ selected, goBack }) {
                     }}>
                     ✓ Completed {fmt(selected.completedAt || todayStr())}
                   </span>
-                  <span style={S.pill("var(--color-background-secondary)", "var(--color-text-tertiary)")}>
+                  <span style={S.pill("var(--color-background-secondary)", "var(--text-muted)")}>
                     Was due {fmt(selected.due)}
                   </span>
                 </>
               ) : (
                 <span style={S.pill(
                   overdue ? "var(--color-background-danger)" : "var(--color-background-secondary)",
-                  overdue ? "var(--color-text-danger)" : "var(--color-text-secondary)"
+                  overdue ? "var(--color-text-danger)" : "var(--text-secondary)"
                 )}>
                   Due {fmt(selected.due)}
                 </span>
@@ -360,7 +360,7 @@ export default function GoalDetail({ selected, goBack }) {
                 style={{
                   fontSize: 14,
                   borderColor: done ? "var(--color-border-tertiary)" : goldA(40),
-                  color: done ? "var(--color-text-secondary)" : "var(--gold)",
+                  color: done ? "var(--text-secondary)" : "var(--gold)",
                 }}>
                 {done ? "Reopen" : "Mark complete"}
               </button>
@@ -374,28 +374,28 @@ export default function GoalDetail({ selected, goBack }) {
           <div style={{ ...S.card, marginBottom: 14 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div>
-                <label style={{ fontSize: 14, color: "var(--color-text-secondary)", display: "block", marginBottom: 6 }}>Title</label>
+                <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Title</label>
                 <input value={goalDraft.title} onChange={(e) => setGoalDraft((d) => ({ ...d, title: e.target.value }))} />
               </div>
               <div>
-                <label style={{ fontSize: 14, color: "var(--color-text-secondary)", display: "block", marginBottom: 6 }}>Timeframe</label>
+                <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Timeframe</label>
                 <TypeToggle value={goalDraft.type} onChange={(v) => setGoalDraft((d) => ({ ...d, type: v }))} />
               </div>
               <div>
-                <label style={{ fontSize: 14, color: "var(--color-text-secondary)", display: "block", marginBottom: 6 }}>Category</label>
+                <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Category</label>
                 <CategoryTiles value={goalDraft.category} onChange={(v) => setGoalDraft((d) => ({ ...d, category: v }))} />
               </div>
               <div>
-                <label style={{ fontSize: 14, color: "var(--color-text-secondary)", display: "block", marginBottom: 6 }}>Due date</label>
+                <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Due date</label>
                 <DueChips value={goalDraft.due} onChange={(v) => setGoalDraft((d) => ({ ...d, due: v }))} />
               </div>
               <div>
-                <label style={{ fontSize: 14, color: "var(--color-text-secondary)", display: "block", marginBottom: 6 }}>Niyyah / Intention</label>
+                <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Niyyah / Intention</label>
                 <input value={goalDraft.intention} onChange={(e) => setGoalDraft((d) => ({ ...d, intention: e.target.value }))} />
                 <NiyyahChips onPick={(v) => setGoalDraft((d) => ({ ...d, intention: v }))} />
               </div>
               <div>
-                <label style={{ fontSize: 14, color: "var(--color-text-secondary)", display: "block", marginBottom: 6 }}>Notes</label>
+                <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Notes</label>
                 <textarea rows={2} value={goalDraft.notes} onChange={(e) => setGoalDraft((d) => ({ ...d, notes: e.target.value }))} />
               </div>
               <div style={{ display: "flex", gap: 8 }}>
@@ -409,7 +409,7 @@ export default function GoalDetail({ selected, goBack }) {
         {selected.intention && (
           <div style={{ ...S.goldCard, marginBottom: 14, padding: "10px 14px" }}>
             <div style={{ fontSize: 13, color: "var(--gold)", marginBottom: 3 }}>Niyyah</div>
-            <div style={{ fontSize: 15, fontStyle: "italic", color: "var(--color-text-primary)" }}>
+            <div style={{ fontSize: 15, fontStyle: "italic", color: "var(--text-primary)" }}>
               {selected.intention}
             </div>
           </div>
@@ -424,7 +424,7 @@ export default function GoalDetail({ selected, goBack }) {
             ["Logged", fmtMins(totalLogged), "#1D9E75"],
           ].map(([l, v, c]) => (
             <div key={l} style={{ background: "var(--color-background-secondary)", borderRadius: "var(--border-radius-md)", padding: "12px 14px" }}>
-              <div style={{ fontSize: 13, color: "var(--color-text-secondary)", marginBottom: 4 }}>{l}</div>
+              <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 4 }}>{l}</div>
               <div style={{ fontSize: 22, fontWeight: 500, color: c }}>{v}</div>
             </div>
           ))}
@@ -435,7 +435,7 @@ export default function GoalDetail({ selected, goBack }) {
           </div>
           <span style={{ fontSize: 14, fontWeight: 600, color: CAT_COLORS[selected.category], fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{p}%</span>
         </div>
-        <div style={{ fontSize: 14, color: "var(--color-text-secondary)", marginTop: 5, marginBottom: 16 }}>
+        <div style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 5, marginBottom: 16 }}>
           {(() => {
             const oneShots = selected.tasks.filter((t) => !isRecurring(t));
             const habits = selected.tasks.filter((t) => isRecurring(t));
@@ -473,28 +473,28 @@ export default function GoalDetail({ selected, goBack }) {
               border: "0.5px solid var(--color-border-tertiary)",
             }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10, gap: 10, flexWrap: "wrap" }}>
-                <div style={{ fontSize: 13, color: "var(--color-text-secondary)", fontWeight: 500 }}>
+                <div style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500 }}>
                   Focus rhythm
                 </div>
-                <div style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                   {lastActivityLabel ? `Last session ${lastActivityLabel}` : "No sessions yet"}
                 </div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
                 <div style={{ display: "flex", gap: 16 }}>
                   <div>
-                    <div style={{ fontSize: 11, color: "var(--color-text-tertiary)", letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: 2 }}>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: 2 }}>
                       Last 7 days
                     </div>
-                    <div style={{ fontSize: 16, fontWeight: 500, color: focusRhythm.last7Mins > 0 ? cat : "var(--color-text-tertiary)" }}>
+                    <div style={{ fontSize: 16, fontWeight: 500, color: focusRhythm.last7Mins > 0 ? cat : "var(--text-muted)" }}>
                       {fmtMins(focusRhythm.last7Mins)}
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontSize: 11, color: "var(--color-text-tertiary)", letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: 2 }}>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: 2 }}>
                       Last 30 days
                     </div>
-                    <div style={{ fontSize: 16, fontWeight: 500, color: focusRhythm.last30Mins > 0 ? cat : "var(--color-text-tertiary)" }}>
+                    <div style={{ fontSize: 16, fontWeight: 500, color: focusRhythm.last30Mins > 0 ? cat : "var(--text-muted)" }}>
                       {fmtMins(focusRhythm.last30Mins)}
                     </div>
                   </div>
@@ -546,10 +546,10 @@ export default function GoalDetail({ selected, goBack }) {
               border: "0.5px solid var(--color-border-tertiary)",
             }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10, gap: 10, flexWrap: "wrap" }}>
-                <div style={{ fontSize: 13, color: "var(--color-text-secondary)", fontWeight: 500 }}>
+                <div style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500 }}>
                   Muhasaba · last 7 nights
                 </div>
-                <div style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                   {(goalChecksWindow.counts.yes || 0)} yes · {(goalChecksWindow.counts.partial || 0)} partial · {(goalChecksWindow.counts.no || 0)} no
                 </div>
               </div>
@@ -565,9 +565,9 @@ export default function GoalDetail({ selected, goBack }) {
                         flex: 1,
                         height: 28,
                         borderRadius: 4,
-                        background: sty ? sty.bg : "var(--color-background-primary)",
+                        background: sty ? sty.bg : "var(--bg-card)",
                         border: `0.5px solid ${sty ? sty.bd : (isToday ? "var(--color-border-secondary)" : "var(--color-border-tertiary)")}`,
-                        color: sty ? sty.fg : "var(--color-text-tertiary)",
+                        color: sty ? sty.fg : "var(--text-muted)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
@@ -588,7 +588,7 @@ export default function GoalDetail({ selected, goBack }) {
         <div style={{ borderTop: "0.5px solid var(--color-border-tertiary)", paddingTop: 14, marginBottom: 14 }}>
           <div className="task-toolbar" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, marginBottom: 10 }}>
             <div style={{ fontSize: 15, fontWeight: 500 }}>
-              Tasks <span style={{ color: "var(--color-text-tertiary)", fontWeight: 400, fontSize: 13 }}>— use Start to begin focus</span>
+              Tasks <span style={{ color: "var(--text-muted)", fontWeight: 400, fontSize: 13 }}>— use Start to begin focus</span>
             </div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {["all", "open", "done"].map((f) => (
@@ -636,7 +636,7 @@ export default function GoalDetail({ selected, goBack }) {
                   border: "0.5px solid var(--color-border-tertiary)",
                   borderRadius: "var(--border-radius-md)",
                   cursor: "pointer",
-                  color: "var(--color-text-secondary)",
+                  color: "var(--text-secondary)",
                   lineHeight: 1,
                 }}>
                 {addExpanded ? "▴" : "▾"}
@@ -646,7 +646,7 @@ export default function GoalDetail({ selected, goBack }) {
               <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 10 }}>
                 <div className="grid-2-stack">
                   <div>
-                    <label style={{ fontSize: 13, color: "var(--color-text-secondary)", display: "block", marginBottom: 4 }}>Priority</label>
+                    <label style={{ fontSize: 13, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Priority</label>
                     <select value={newTask.priority}
                       onChange={(e) => setNewTask((n) => ({ ...n, priority: e.target.value }))}
                       style={{ width: "100%", fontSize: 15 }}>
@@ -654,7 +654,7 @@ export default function GoalDetail({ selected, goBack }) {
                     </select>
                   </div>
                   <div>
-                    <label style={{ fontSize: 13, color: "var(--color-text-secondary)", display: "block", marginBottom: 4 }}>ETA (mins)</label>
+                    <label style={{ fontSize: 13, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>ETA (mins)</label>
                     <input type="number" min="1" value={newTask.eta}
                       onChange={(e) => setNewTask((n) => ({ ...n, eta: e.target.value }))}
                       style={{ width: "100%", fontSize: 15, boxSizing: "border-box" }} />
@@ -664,7 +664,7 @@ export default function GoalDetail({ selected, goBack }) {
                     of the way for normal one-shot tasks. Toggle Daily /
                     Weekly to turn this into a habit instead. */}
                 <div>
-                  <label style={{ fontSize: 13, color: "var(--color-text-secondary)", display: "block", marginBottom: 4 }}>Repeats</label>
+                  <label style={{ fontSize: 13, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Repeats</label>
                   <RecurringPicker
                     value={newTask.recurring}
                     onChange={(v) => setNewTask((n) => ({ ...n, recurring: v }))} />
@@ -674,8 +674,8 @@ export default function GoalDetail({ selected, goBack }) {
                     the user picks Daily / Weekly. Capped at the goal's due. */}
                 {!newTask.recurring && (
                   <div>
-                    <label style={{ fontSize: 13, color: "var(--color-text-secondary)", display: "block", marginBottom: 4 }}>
-                      Due date <span style={{ color: "var(--color-text-tertiary)" }}>· optional</span>
+                    <label style={{ fontSize: 13, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>
+                      Due date <span style={{ color: "var(--text-muted)" }}>· optional</span>
                     </label>
                     <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                       {[
@@ -689,9 +689,9 @@ export default function GoalDetail({ selected, goBack }) {
                             onClick={() => setNewTask((n) => ({ ...n, due: active ? "" : p.v }))}
                             style={{
                               fontSize: 13, padding: "4px 10px", borderRadius: 99,
-                              background: active ? "var(--color-background-primary)" : "transparent",
+                              background: active ? "var(--bg-card)" : "transparent",
                               border: `0.5px solid ${active ? "var(--gold)" : "var(--color-border-tertiary)"}`,
-                              color: active ? "var(--gold)" : "var(--color-text-secondary)",
+                              color: active ? "var(--gold)" : "var(--text-secondary)",
                               fontWeight: active ? 600 : 400,
                               cursor: "pointer",
                             }}>
@@ -722,7 +722,7 @@ export default function GoalDetail({ selected, goBack }) {
                   const isActive = pomTaskId === t.id && pomGoalId === selected.id;
                   const isEditing = editingTaskId === t.id;
                   const priC = { High: "var(--color-background-danger)", Medium: "var(--color-background-warning)", Low: "var(--color-background-secondary)" };
-                  const priT = { High: "var(--color-text-danger)", Medium: "var(--color-text-warning)", Low: "var(--color-text-secondary)" };
+                  const priT = { High: "var(--color-text-danger)", Medium: "var(--color-text-warning)", Low: "var(--text-secondary)" };
                   return (
                     <SortableRow key={t.id} id={t.id} disabled={isEditing}>
                       {({ setNodeRef, style: sortableStyle, listeners, attributes, isDragging }) => (
@@ -754,7 +754,7 @@ export default function GoalDetail({ selected, goBack }) {
                               touchAction: "none", // prevent page scroll while dragging
                               background: "transparent",
                               border: "none",
-                              color: "var(--color-text-tertiary)",
+                              color: "var(--text-muted)",
                               lineHeight: 1,
                               opacity: isEditing ? 0.3 : 0.7,
                             }}>
@@ -792,8 +792,8 @@ export default function GoalDetail({ selected, goBack }) {
                                 </div>
                                 {!isRecurring(t) && (
                                   <div onClick={(e) => e.stopPropagation()}>
-                                    <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginBottom: 4, letterSpacing: "0.3px", textTransform: "uppercase", fontWeight: 600 }}>
-                                      Due date <span style={{ textTransform: "none", fontWeight: 400, color: "var(--color-text-tertiary)" }}>· optional</span>
+                                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4, letterSpacing: "0.3px", textTransform: "uppercase", fontWeight: 600 }}>
+                                      Due date <span style={{ textTransform: "none", fontWeight: 400, color: "var(--text-muted)" }}>· optional</span>
                                     </div>
                                     <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
                                       <input type="date" value={taskDraft.due || ""}
@@ -809,7 +809,7 @@ export default function GoalDetail({ selected, goBack }) {
                                   </div>
                                 )}
                                 <div onClick={(e) => e.stopPropagation()}>
-                                  <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginBottom: 4, letterSpacing: "0.3px", textTransform: "uppercase", fontWeight: 600 }}>
+                                  <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4, letterSpacing: "0.3px", textTransform: "uppercase", fontWeight: 600 }}>
                                     Repeats
                                   </div>
                                   <RecurringPicker
@@ -821,7 +821,7 @@ export default function GoalDetail({ selected, goBack }) {
                               <>
                                 <div style={{
                                   fontSize: 16,
-                                  color: isDoneOn(t) ? "var(--color-text-tertiary)" : "var(--color-text-primary)",
+                                  color: isDoneOn(t) ? "var(--text-muted)" : "var(--text-primary)",
                                   textDecoration: isDoneOn(t) ? "line-through" : "none",
                                   display: "flex", alignItems: "center", gap: 6, minWidth: 0,
                                 }}>
@@ -833,7 +833,7 @@ export default function GoalDetail({ selected, goBack }) {
                                     {t.text}
                                   </span>
                                 </div>
-                                <div style={{ fontSize: 13, color: "var(--color-text-secondary)", marginTop: 2, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 2, display: "flex", gap: 8, flexWrap: "wrap" }}>
                                   {isRecurring(t) ? (
                                     <>
                                       <span style={{ color: "var(--gold)" }}>
@@ -843,7 +843,7 @@ export default function GoalDetail({ selected, goBack }) {
                                         <span>· 🔥 {recurringStreak(t)} in a row</span>
                                       )}
                                       {!isScheduledOn(t) && (
-                                        <span style={{ color: "var(--color-text-tertiary)", fontStyle: "italic" }}>· not today</span>
+                                        <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>· not today</span>
                                       )}
                                       {t.totalTime > 0 && <span>· {fmtMins(t.totalTime)} total</span>}
                                     </>
@@ -859,7 +859,7 @@ export default function GoalDetail({ selected, goBack }) {
                                           ? "var(--color-text-danger)"
                                           : urgentT
                                             ? "var(--color-text-warning)"
-                                            : "var(--color-text-secondary)";
+                                            : "var(--text-secondary)";
                                         const label = overdueT
                                           ? `${Math.abs(dl)}d overdue`
                                           : dl === 0
@@ -897,7 +897,7 @@ export default function GoalDetail({ selected, goBack }) {
                                   aria-label={`Remove task: ${t.text}`}>Remove</button>
                                 <button onClick={(e) => { e.stopPropagation(); setMenuOpenTaskId(null); }}
                                   aria-label="Close menu" title="Close menu"
-                                  style={{ fontSize: 13, color: "var(--color-text-tertiary)", background: "none", border: "none", cursor: "pointer", padding: "4px 8px" }}>✕</button>
+                                  style={{ fontSize: 13, color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer", padding: "4px 8px" }}>✕</button>
                               </>
                             ) : (
                               <>
@@ -909,7 +909,7 @@ export default function GoalDetail({ selected, goBack }) {
                                 <button onClick={(e) => { e.stopPropagation(); setMenuOpenTaskId(t.id); }}
                                   aria-label={`More actions for ${t.text}`} aria-haspopup="true" aria-expanded={false}
                                   title="More actions"
-                                  style={{ fontSize: 16, padding: "4px 10px", lineHeight: 1, color: "var(--color-text-secondary)" }}>⋯</button>
+                                  style={{ fontSize: 16, padding: "4px 10px", lineHeight: 1, color: "var(--text-secondary)" }}>⋯</button>
                               </>
                             )}
                           </div>
@@ -954,7 +954,7 @@ export default function GoalDetail({ selected, goBack }) {
           ) : (
             <p style={{
               fontSize: 15,
-              color: selected.notes ? "var(--color-text-primary)" : "var(--color-text-tertiary)",
+              color: selected.notes ? "var(--text-primary)" : "var(--text-muted)",
               margin: 0,
             }}>
               {selected.notes || "No notes added."}

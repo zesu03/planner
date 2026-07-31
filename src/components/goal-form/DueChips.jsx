@@ -13,7 +13,7 @@ export default function DueChips({ value, onChange }) {
             style={{
               background: active ? goldA(18) : "var(--color-background-secondary)",
               border: `0.5px solid ${active ? goldA(60) : "var(--color-border-tertiary)"}`,
-              color: active ? "var(--gold)" : "var(--color-text-secondary)",
+              color: active ? "var(--gold)" : "var(--text-secondary)",
               borderRadius: 99,
               padding: "5px 12px",
               cursor: "pointer",

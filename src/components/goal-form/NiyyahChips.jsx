@@ -15,7 +15,7 @@ export default function NiyyahChips({ onPick }) {
             borderRadius: 99,
             background: "var(--color-background-secondary)",
             border: `0.5px solid ${goldA(20)}`,
-            color: "var(--color-text-secondary)",
+            color: "var(--text-secondary)",
             cursor: "pointer",
             maxWidth: "100%",
             whiteSpace: "nowrap",

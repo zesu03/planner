@@ -12,6 +12,8 @@
 import { S } from "../lib/styles";
 import { tintA } from "../lib/styles";
 
+import { Icon } from "./icons";
+
 const truncate = (s, n = 72) => (s && s.length > n ? s.slice(0, n).replace(/\s\S*$/, "") + "…" : s);
 
 function Beat({ icon, accent, eyebrow, label, onClick }) {
@@ -39,14 +41,14 @@ function Beat({ icon, accent, eyebrow, label, onClick }) {
         fontSize: 15, flexShrink: 0,
       }}>{icon}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 10, fontWeight: 600, color: "var(--color-text-tertiary)", letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: 1 }}>
+        <div style={{ fontSize: 10, fontWeight: 600, color: "var(--text-muted)", letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: 1 }}>
           {eyebrow}
         </div>
-        <div style={{ fontSize: 13.5, color: "var(--color-text-primary)", lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+        <div style={{ fontSize: 13.5, color: "var(--text-primary)", lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
           {label}
         </div>
       </div>
-      {onClick && <span style={{ fontSize: 13, color: "var(--color-text-tertiary)", flexShrink: 0 }}>›</span>}
+      {onClick && <span style={{ fontSize: 13, color: "var(--text-muted)", flexShrink: 0 }}>›</span>}
     </div>
   );
 }
@@ -63,16 +65,16 @@ export default function ContinuityStrip({
 }) {
   const beats = [];
   if (yDua) {
-    beats.push({ key: "ydua", icon: "🤲", accent: "#7BB6C7", eyebrow: "Yesterday's du'a · today is the test", label: truncate(yDua.text), onClick: onOpenYesterday });
+    beats.push({ key: "ydua", icon: <Icon name="dua" size={16} />, accent: "#7BB6C7", eyebrow: "Yesterday's du'a · today is the test", label: truncate(yDua.text), onClick: onOpenYesterday });
   }
   if (yMirrorTomorrow) {
-    beats.push({ key: "mirror", icon: "🪞", accent: "var(--gold)", eyebrow: "Last night's mirror set this", label: truncate(yMirrorTomorrow.text), onClick: () => onOpenMirrorDay?.(yMirrorTomorrow.day) });
+    beats.push({ key: "mirror", icon: <Icon name="mirror" size={16} />, accent: "var(--gold)", eyebrow: "Last night's mirror set this", label: truncate(yMirrorTomorrow.text), onClick: () => onOpenMirrorDay?.(yMirrorTomorrow.day) });
   }
   if (qazaOwedTotal > 0) {
-    beats.push({ key: "qaza", icon: "↻", accent: "#BA7517", eyebrow: "Qaza ledger", label: `${qazaOwedTotal} prayer${qazaOwedTotal === 1 ? "" : "s"} owed — a small payback honours them`, onClick: onOpenPrayer });
+    beats.push({ key: "qaza", icon: <Icon name="repeat" size={16} />, accent: "#BA7517", eyebrow: "Qaza ledger", label: `${qazaOwedTotal} prayer${qazaOwedTotal === 1 ? "" : "s"} owed — a small payback honours them`, onClick: onOpenPrayer });
   }
   if (todayDua && todayDua.trim()) {
-    beats.push({ key: "tdua", icon: "💌", accent: "#7BB6C7", eyebrow: "For tomorrow", label: truncate(todayDua), onClick: onOpenMuhasaba });
+    beats.push({ key: "tdua", icon: <Icon name="mail" size={16} />, accent: "#7BB6C7", eyebrow: "For tomorrow", label: truncate(todayDua), onClick: onOpenMuhasaba });
   }
 
   if (beats.length === 0) return null;

@@ -64,7 +64,7 @@ export default function FullscreenDial({
         position: "fixed",
         inset: 0,
         zIndex: 9999,
-        background: "var(--color-background-primary)",
+        background: "var(--bg-card)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -83,7 +83,7 @@ export default function FullscreenDial({
           right: 16,
           fontSize: 13,
           padding: "6px 12px",
-          color: "var(--color-text-tertiary)",
+          color: "var(--text-muted)",
           background: "transparent",
           border: "0.5px solid var(--color-border-tertiary)",
           borderRadius: 99,
@@ -128,7 +128,7 @@ export default function FullscreenDial({
             opacity={paused ? 0.85 : 1}
             style={{
               fontSize: 220, fontWeight: 500,
-              fill: paused ? "var(--gold)" : "var(--color-text-primary)",
+              fill: paused ? "var(--gold)" : "var(--text-primary)",
               fontFamily: "monospace",
               transition: "opacity 0.3s, fill 0.3s",
             }}>
@@ -137,7 +137,7 @@ export default function FullscreenDial({
           <text x={VB / 2} y={VB / 2 + 90} textAnchor="middle"
             style={{
               fontSize: 50,
-              fill: paused ? "var(--color-text-warning)" : "var(--color-text-secondary)",
+              fill: paused ? "var(--color-text-warning)" : "var(--text-secondary)",
               letterSpacing: "8px",
               textTransform: "uppercase",
               fontWeight: paused ? 600 : 400,
@@ -151,10 +151,10 @@ export default function FullscreenDial({
           stay clean. */}
       {activeTask && activeGoal && (
         <div style={{ textAlign: "center", maxWidth: 560, width: "100%" }}>
-          <div style={{ fontSize: 11, color: "var(--color-text-tertiary)", letterSpacing: "0.6px", textTransform: "uppercase", marginBottom: 6 }}>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", letterSpacing: "0.6px", textTransform: "uppercase", marginBottom: 6 }}>
             Working on
           </div>
-          <div style={{ fontSize: 20, fontWeight: 500, color: "var(--color-text-primary)", lineHeight: 1.4 }}>
+          <div style={{ fontSize: 20, fontWeight: 500, color: "var(--text-primary)", lineHeight: 1.4 }}>
             {activeTask.text}
           </div>
           <div style={{ fontSize: 14, color: cat || "var(--gold)", marginTop: 6 }}>
@@ -167,7 +167,7 @@ export default function FullscreenDial({
               padding: "12px 18px",
               fontSize: 14,
               fontStyle: "italic",
-              color: "var(--color-text-primary)",
+              color: "var(--text-primary)",
               background: `linear-gradient(135deg, ${goldA(10)} 0%, ${goldA(3)} 100%)`,
               border: `0.5px solid ${goldA(28)}`,
               borderRadius: "var(--border-radius-md)",
@@ -197,7 +197,7 @@ export default function FullscreenDial({
         )}
       </div>
 
-      <div style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>
+      <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
         Space pause · Esc exit
       </div>
     </div>

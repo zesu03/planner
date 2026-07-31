@@ -51,8 +51,8 @@ export function usePictureInPicture({ width = 320, height = 380 } = {}) {
       document.documentElement.getAttribute("data-theme") || "dark",
     );
     w.document.body.style.margin = "0";
-    w.document.body.style.background = "var(--color-background-primary)";
-    w.document.body.style.color = "var(--color-text-primary)";
+    w.document.body.style.background = "var(--bg-card)";
+    w.document.body.style.color = "var(--text-primary)";
     w.document.body.style.fontFamily = getComputedStyle(document.body).fontFamily;
     w.document.title = "Focus";
     w.addEventListener("pagehide", () => setPipWindow(null), { once: true });

@@ -88,14 +88,14 @@ export default function Prayer({
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
             <div>
-              <label style={{ fontSize: 14, color: "var(--color-text-secondary)", display: "block", marginBottom: 4 }}>City</label>
+              <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>City</label>
               <input value={cityInput} onChange={(e) => setCityInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && fetchPrayers(cityInput, countryInput)}
                 placeholder="e.g. London"
                 style={{ width: "100%", boxSizing: "border-box", fontSize: 15 }} />
             </div>
             <div>
-              <label style={{ fontSize: 14, color: "var(--color-text-secondary)", display: "block", marginBottom: 4 }}>Country</label>
+              <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Country</label>
               <input value={countryInput} onChange={(e) => setCountryInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && fetchPrayers(cityInput, countryInput)}
                 placeholder="e.g. UK"
@@ -131,9 +131,9 @@ export default function Prayer({
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
             <div>
               <div style={{ fontSize: 15, fontWeight: 500 }}>{prayerCity}</div>
-              <div style={{ fontSize: 13, color: "var(--color-text-secondary)" }}>Today's prayer times</div>
+              <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>Today's prayer times</div>
             </div>
-            <button onClick={() => setEditingCity(true)} style={{ fontSize: 14, color: "var(--color-text-secondary)" }}>
+            <button onClick={() => setEditingCity(true)} style={{ fontSize: 14, color: "var(--text-secondary)" }}>
               Change city
             </button>
           </div>
@@ -155,9 +155,9 @@ export default function Prayer({
               }}>
                 <span style={{ display: "flex", color: due ? accent : "var(--gold)" }}><PrayerIcon name={nextPrayer.name} size={26} /></span>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, color: due ? accent : "var(--color-text-secondary)", fontWeight: due ? 600 : 400 }}>{eyebrow}</div>
+                  <div style={{ fontSize: 13, color: due ? accent : "var(--text-secondary)", fontWeight: due ? 600 : 400 }}>{eyebrow}</div>
                   <div style={{ fontSize: 21, fontWeight: 500, color: due ? accent : "var(--gold)" }}>{prayerDisplayName(nextPrayer.name, localDateStr())}</div>
-                  <div style={{ fontSize: 15, color: "var(--color-text-secondary)" }}>{nextPrayer.time}</div>
+                  <div style={{ fontSize: 15, color: "var(--text-secondary)" }}>{nextPrayer.time}</div>
                 </div>
                 {due && (
                   <button onClick={() => markPrayer(nextPrayer.name)}
@@ -199,7 +199,7 @@ export default function Prayer({
                       ? `linear-gradient(90deg, ${pColor}14 0%, ${pColor}08 100%)`
                       : isCurrent
                         ? `linear-gradient(90deg, ${pColor}22 0%, ${pColor}0a 100%)`
-                        : "var(--color-background-primary)",
+                        : "var(--bg-card)",
                     borderColor: done
                       ? pColor + "55"
                       : isCurrent
@@ -232,7 +232,7 @@ export default function Prayer({
                         }}>Now</span>
                       )}
                     </div>
-                    <div style={{ fontSize: 14, color: "var(--color-text-secondary)" }}>
+                    <div style={{ fontSize: 14, color: "var(--text-secondary)" }}>
                       {prayerTimes[p]}{streak > 0 && !isSunrise ? ` · 🔥 ${streak} day streak` : ""}
                     </div>
                   </div>
@@ -248,7 +248,7 @@ export default function Prayer({
                           padding: "5px 14px",
                           borderRadius: 99,
                           background: done ? pColor : "transparent",
-                          color: done ? "#fff" : "var(--color-text-secondary)",
+                          color: done ? "#fff" : "var(--text-secondary)",
                           border: `0.5px solid ${done ? pColor : "var(--color-border-secondary)"}`,
                           cursor: disabled ? "not-allowed" : "pointer",
                           opacity: disabled ? 0.4 : 1,
@@ -291,7 +291,7 @@ export default function Prayer({
                     }}><PrayerIcon name={vp} size={18} /></span>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 15, fontWeight: 500, color }}>Voluntary · {vp}</div>
-                      <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginTop: 2 }}>
+                      <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
                         {lastThird ? `Best after ${lastThird} (last third of the night)` : "Pray in the last third of the night"}
                         {streak > 0 ? ` · 🔥 ${streak} day streak` : ""}
                       </div>
@@ -309,7 +309,7 @@ export default function Prayer({
                           padding: "5px 14px",
                           borderRadius: 99,
                           background: done ? color : "transparent",
-                          color: done ? "#fff" : "var(--color-text-secondary)",
+                          color: done ? "#fff" : "var(--text-secondary)",
                           border: `0.5px solid ${done ? color : "var(--color-border-secondary)"}`,
                           cursor: disabled ? "not-allowed" : "pointer",
                           opacity: disabled ? 0.4 : 1,
@@ -339,7 +339,7 @@ export default function Prayer({
                           borderRadius: 4,
                           background: dDone ? color : "var(--color-background-secondary)",
                           border: `0.5px solid ${dDone ? color : isToday ? "var(--color-border-secondary)" : "var(--color-border-tertiary)"}`,
-                          color: dDone ? "#fff" : "var(--color-text-tertiary)",
+                          color: dDone ? "#fff" : "var(--text-muted)",
                           fontSize: 11,
                           cursor: "pointer",
                         }}>
@@ -359,12 +359,12 @@ export default function Prayer({
             <div style={{ ...S.card, marginBottom: 20 }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 4 }}>
                 <div style={{ fontSize: 15, fontWeight: 500 }}>Qaza ledger</div>
-                <div style={{ fontSize: 13, color: "var(--color-text-secondary)" }}>
+                <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
                   {totalOwed > 0 ? `${totalOwed} owed` : "All clear · alhamdulillah"}
                   {totalPaid > 0 ? ` · ${totalPaid} made up` : ""}
                 </div>
               </div>
-              <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginBottom: 12 }}>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>
                 Since {qaza?.startDate || "today"} · tap <strong>+</strong> as you make each one up.
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
@@ -379,7 +379,7 @@ export default function Prayer({
                       padding: "10px 12px",
                       borderRadius: 10,
                       border: `0.5px solid ${isClear ? "var(--color-border-tertiary)" : pColor + "66"}`,
-                      background: isClear ? "var(--color-background-primary)" : `linear-gradient(135deg, ${pColor}0f 0%, ${pColor}05 100%)`,
+                      background: isClear ? "var(--bg-card)" : `linear-gradient(135deg, ${pColor}0f 0%, ${pColor}05 100%)`,
                       overflow: "hidden",
                     }}>
                       <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: pColor, opacity: isClear ? 0.3 : 1 }} />
@@ -389,11 +389,11 @@ export default function Prayer({
                       </div>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingLeft: 6 }}>
                         <div>
-                          <div style={{ fontSize: 22, fontWeight: 600, lineHeight: 1, color: isClear ? "var(--color-text-tertiary)" : "var(--color-text-primary)" }}>
+                          <div style={{ fontSize: 22, fontWeight: 600, lineHeight: 1, color: isClear ? "var(--text-muted)" : "var(--text-primary)" }}>
                             {owed}
                           </div>
                           {paid > 0 && (
-                            <div style={{ fontSize: 11, color: "var(--color-text-tertiary)", marginTop: 2 }}>
+                            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
                               {paid} paid
                             </div>
                           )}
@@ -407,7 +407,7 @@ export default function Prayer({
                                 padding: "3px 8px",
                                 borderRadius: 99,
                                 background: "transparent",
-                                color: "var(--color-text-secondary)",
+                                color: "var(--text-secondary)",
                                 border: "0.5px solid var(--color-border-secondary)",
                                 cursor: "pointer",
                               }}>−</button>
@@ -436,24 +436,24 @@ export default function Prayer({
           {/* 7-day tracker */}
           <div style={S.card}>
             <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 4 }}>7-day tracker</div>
-            <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginBottom: 12 }}>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>
               Tap any cell to mark / unmark — useful when you prayed but forgot to log it.
             </div>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 340 }}>
                 <thead>
                   <tr>
-                    <th style={{ textAlign: "left", color: "var(--color-text-secondary)", fontWeight: 400, paddingBottom: 8, paddingRight: 8 }}>Prayer</th>
+                    <th style={{ textAlign: "left", color: "var(--text-secondary)", fontWeight: 400, paddingBottom: 8, paddingRight: 8 }}>Prayer</th>
                     {Array.from({ length: 7 }).map((_, i) => {
                       const d = new Date();
                       d.setDate(d.getDate() - 6 + i);
                       return (
-                        <th key={i} style={{ textAlign: "center", color: "var(--color-text-secondary)", fontWeight: 400, paddingBottom: 8, minWidth: 32 }}>
+                        <th key={i} style={{ textAlign: "center", color: "var(--text-secondary)", fontWeight: 400, paddingBottom: 8, minWidth: 32 }}>
                           {d.getDate()}
                         </th>
                       );
                     })}
-                    <th style={{ textAlign: "center", color: "var(--color-text-secondary)", fontWeight: 400, paddingBottom: 8, paddingLeft: 8 }}>%</th>
+                    <th style={{ textAlign: "center", color: "var(--text-secondary)", fontWeight: 400, paddingBottom: 8, paddingLeft: 8 }}>%</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -466,7 +466,7 @@ export default function Prayer({
                     const doneCount = days.filter((d) => (prayerLog[p] || []).includes(d)).length;
                     return (
                       <tr key={p}>
-                        <td style={{ paddingRight: 8, paddingBottom: 6, color: "var(--color-text-primary)", whiteSpace: "nowrap" }}>{p}</td>
+                        <td style={{ paddingRight: 8, paddingBottom: 6, color: "var(--text-primary)", whiteSpace: "nowrap" }}>{p}</td>
                         {days.map((d) => {
                           const done = (prayerLog[p] || []).includes(d);
                           const isToday = d === localDateStr();
@@ -491,7 +491,7 @@ export default function Prayer({
                                   alignItems: "center",
                                   justifyContent: "center",
                                   fontSize: 12,
-                                  color: done ? "#fff" : "var(--color-text-tertiary)",
+                                  color: done ? "#fff" : "var(--text-muted)",
                                   cursor: "pointer",
                                 }}>
                                 {done ? "✓" : ""}
@@ -503,7 +503,7 @@ export default function Prayer({
                           textAlign: "center",
                           paddingLeft: 8,
                           fontWeight: 500,
-                          color: doneCount === 7 ? "var(--gold)" : doneCount >= 4 ? "var(--color-text-success)" : "var(--color-text-secondary)",
+                          color: doneCount === 7 ? "var(--gold)" : doneCount >= 4 ? "var(--color-text-success)" : "var(--text-secondary)",
                         }}>
                           {Math.round((doneCount / 7) * 100)}%
                         </td>
@@ -634,7 +634,7 @@ function RemindersPanel({ notifications, updateNotifications }) {
         }}>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 15, fontWeight: 500 }}>Prayer reminders</div>
-          <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginTop: 2 }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
             {busy ? "Asking permission…" : "Push notification at the start of each prayer."}
           </div>
         </div>
@@ -642,7 +642,7 @@ function RemindersPanel({ notifications, updateNotifications }) {
       </button>
 
       {blocked && disabledHint && (
-        <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginTop: 10, lineHeight: 1.5 }}>
+        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 10, lineHeight: 1.5 }}>
           {disabledHint}
         </div>
       )}

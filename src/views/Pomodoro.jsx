@@ -53,7 +53,7 @@ function SessionBanner({ lastSession, goals, dismissLastSession, updateLastSessi
       position: "relative",
       padding: "18px 20px",
       borderRadius: "var(--border-radius-lg)",
-      background: `linear-gradient(135deg, ${goldA(18)} 0%, ${goldA(4)} 100%), var(--color-background-primary)`,
+      background: `linear-gradient(135deg, ${goldA(18)} 0%, ${goldA(4)} 100%), var(--bg-card)`,
       border: `0.5px solid ${goldA(45)}`,
       marginBottom: 16,
       overflow: "hidden",
@@ -67,7 +67,7 @@ function SessionBanner({ lastSession, goals, dismissLastSession, updateLastSessi
           background: "transparent",
           border: "0.5px solid var(--color-border-tertiary)",
           borderRadius: 99,
-          color: "var(--color-text-tertiary)",
+          color: "var(--text-muted)",
           cursor: "pointer", lineHeight: 1,
         }}>
         ✕
@@ -84,24 +84,24 @@ function SessionBanner({ lastSession, goals, dismissLastSession, updateLastSessi
           <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 700, letterSpacing: "0.6px", textTransform: "uppercase", marginBottom: 3 }}>
             {eyebrow} · Alhamdulillah
           </div>
-          <div style={{ fontSize: 17, fontWeight: 600, color: "var(--color-text-primary)", lineHeight: 1.3 }}>
+          <div style={{ fontSize: 17, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3 }}>
             {lastSession.mins} {lastSession.mins === 1 ? "minute" : "minutes"} for Allah
           </div>
           {(task || goal) && (
-            <div style={{ fontSize: 13, color: "var(--color-text-secondary)", marginTop: 4, lineHeight: 1.45 }}>
+            <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 4, lineHeight: 1.45 }}>
               {task?.text || "General focus"}
               {goal && (
                 <>
-                  <span style={{ color: "var(--color-text-tertiary)", margin: "0 6px" }}>→</span>
+                  <span style={{ color: "var(--text-muted)", margin: "0 6px" }}>→</span>
                   <span style={{ color: cat, fontWeight: 500 }}>{goal.title}</span>
                   {goalPct != null && (
-                    <span style={{ color: "var(--color-text-tertiary)", marginLeft: 6 }}>· {goalPct}%</span>
+                    <span style={{ color: "var(--text-muted)", marginLeft: 6 }}>· {goalPct}%</span>
                   )}
                 </>
               )}
             </div>
           )}
-          <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginTop: 6, fontStyle: "italic" }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6, fontStyle: "italic" }}>
             "إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ" — actions are by intentions.
           </div>
         </div>
@@ -134,7 +134,7 @@ function SessionBanner({ lastSession, goals, dismissLastSession, updateLastSessi
             ? <span style={{ fontSize: 12, color: "var(--color-text-success)", fontWeight: 600, whiteSpace: "nowrap" }}>Saved ✓</span>
             : note.trim()
               ? <button onClick={commit} className="btn-primary" style={{ padding: "6px 14px", fontSize: 13, whiteSpace: "nowrap" }}>Save</button>
-              : <span style={{ fontSize: 11, color: "var(--color-text-tertiary)", fontStyle: "italic", whiteSpace: "nowrap" }}>Optional</span>}
+              : <span style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic", whiteSpace: "nowrap" }}>Optional</span>}
         </div>
       </div>
     </div>
@@ -182,11 +182,11 @@ function TodayStrip({ focusLog, todayMins, streak, goalMins, onEditGoal, style, 
       {/* Header: today total · editable goal · streak */}
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase", color: "var(--color-text-tertiary)" }}>Today</span>
-          <span style={{ fontSize: 22, fontWeight: 600, color: met ? "var(--color-text-success)" : "var(--color-text-primary)", fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>Today</span>
+          <span style={{ fontSize: 22, fontWeight: 600, color: met ? "var(--color-text-success)" : "var(--text-primary)", fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
             {fmtMins(todayMins)}
           </span>
-          <span style={{ fontSize: 13, color: "var(--color-text-tertiary)" }}>
+          <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
             /{" "}
             {editing ? (
               <input type="number" min="1" max="720" value={draft} autoFocus
@@ -221,13 +221,13 @@ function TodayStrip({ focusLog, todayMins, streak, goalMins, onEditGoal, style, 
         const apply = (m) => { onEditGoal(m); setEditing(false); };
         return (
           <div style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center", marginBottom: 14 }}>
-            <span style={{ fontSize: 11, color: "var(--color-text-tertiary)", letterSpacing: "0.4px", textTransform: "uppercase", marginRight: 4 }}>quick set</span>
+            <span style={{ fontSize: 11, color: "var(--text-muted)", letterSpacing: "0.4px", textTransform: "uppercase", marginRight: 4 }}>quick set</span>
             {GOAL_PRESETS.map((m) => {
               const active = m === goalMins;
               const label = m >= 60 && m % 60 === 0 ? `${m / 60}h` : `${m}m`;
               return (
                 <button key={m} onClick={() => apply(m)} title={`${m} minutes daily goal`}
-                  style={{ fontSize: 13, padding: "4px 10px", borderRadius: 99, background: active ? "var(--gold)" : "var(--color-background-secondary)", border: `0.5px solid ${active ? "var(--gold)" : "var(--color-border-tertiary)"}`, color: active ? "#0f0f0f" : "var(--color-text-primary)", cursor: "pointer", fontWeight: active ? 600 : 500 }}>
+                  style={{ fontSize: 13, padding: "4px 10px", borderRadius: 99, background: active ? "var(--gold)" : "var(--color-background-secondary)", border: `0.5px solid ${active ? "var(--gold)" : "var(--color-border-tertiary)"}`, color: active ? "#0f0f0f" : "var(--text-primary)", cursor: "pointer", fontWeight: active ? 600 : 500 }}>
                   {label}
                 </button>
               );
@@ -254,7 +254,7 @@ function TodayStrip({ focusLog, todayMins, streak, goalMins, onEditGoal, style, 
                   transition: "height 0.4s ease",
                 }} />
               </div>
-              <div style={{ fontSize: 10, color: d.isToday ? "var(--gold)" : "var(--color-text-tertiary)", fontWeight: d.isToday ? 600 : 400 }}>
+              <div style={{ fontSize: 10, color: d.isToday ? "var(--gold)" : "var(--text-muted)", fontWeight: d.isToday ? 600 : 400 }}>
                 {d.label}
               </div>
             </div>
@@ -422,7 +422,7 @@ export default function Pomodoro({
       />
       {/* Quiet niyyah lead-in — the "Bismillah — Start" button below carries
           the intention too, so this stays a one-line whisper, not a card. */}
-      <div style={{ textAlign: "center", fontSize: 13, fontStyle: "italic", color: "var(--color-text-tertiary)", marginTop: 2, marginBottom: 18 }}>
+      <div style={{ textAlign: "center", fontSize: 13, fontStyle: "italic", color: "var(--text-muted)", marginTop: 2, marginBottom: 18 }}>
         Make your intention before you begin — this effort is for Allah.
       </div>
 
@@ -437,7 +437,7 @@ export default function Pomodoro({
         flexDirection: "column",
         alignItems: "center",
         padding: "28px 20px",
-        background: "radial-gradient(120% 75% at 50% 0%, color-mix(in srgb, var(--gold) 6%, transparent) 0%, transparent 58%), var(--color-background-primary)",
+        background: "radial-gradient(120% 75% at 50% 0%, color-mix(in srgb, var(--gold) 6%, transparent) 0%, transparent 58%), var(--bg-card)",
         boxShadow: "var(--shadow-card)",
       }}>
           {(() => {
@@ -512,7 +512,7 @@ export default function Pomodoro({
                       opacity={paused ? 0.85 : 1}
                       style={{
                         fontSize: 56, fontWeight: 600,
-                        fill: paused ? "var(--gold)" : "var(--color-text-primary)",
+                        fill: paused ? "var(--gold)" : "var(--text-primary)",
                         fontVariantNumeric: "tabular-nums",
                         letterSpacing: "-1px",
                         transition: "opacity 0.3s, fill 0.3s",
@@ -525,7 +525,7 @@ export default function Pomodoro({
                     onClick={canEditDial && !editingFocus ? enterDialEdit : undefined}
                     style={{
                       fontSize: 14,
-                      fill: paused ? "var(--color-text-warning)" : "var(--color-text-secondary)",
+                      fill: paused ? "var(--color-text-warning)" : "var(--text-secondary)",
                       letterSpacing: "0.4px",
                       textTransform: "uppercase",
                       fontWeight: paused ? 600 : 400,
@@ -560,13 +560,13 @@ export default function Pomodoro({
                         padding: "2px 4px",
                         fontVariantNumeric: "tabular-nums",
                         background: "transparent",
-                        color: "var(--color-text-primary)",
+                        color: "var(--text-primary)",
                         border: "none",
                         borderBottom: `2px solid ${goldA(60)}`,
                         outline: "none",
                       }}
                     />
-                    <span style={{ fontSize: 18, color: "var(--color-text-tertiary)" }}>m</span>
+                    <span style={{ fontSize: 18, color: "var(--text-muted)" }}>m</span>
                   </div>
                 )}
               </div>
@@ -582,7 +582,7 @@ export default function Pomodoro({
             const cur = pomDurations.defaultFocus;
             return (
               <div style={{ marginTop: 6, marginBottom: 14, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", justifyContent: "center" }}>
-                <span style={{ fontSize: 12, color: "var(--color-text-tertiary)", letterSpacing: "0.4px", textTransform: "uppercase" }}>
+                <span style={{ fontSize: 12, color: "var(--text-muted)", letterSpacing: "0.4px", textTransform: "uppercase" }}>
                   Focus length
                 </span>
                 <div style={{ display: "flex", gap: 4, flexWrap: "wrap", justifyContent: "center" }}>
@@ -599,7 +599,7 @@ export default function Pomodoro({
                           borderRadius: 99,
                           background: active ? goldA(22) : "var(--color-background-secondary)",
                           border: `0.5px solid ${active ? goldA(60) : "var(--color-border-tertiary)"}`,
-                          color: active ? "var(--gold)" : pomRunning ? "var(--color-text-tertiary)" : "var(--color-text-primary)",
+                          color: active ? "var(--gold)" : pomRunning ? "var(--text-muted)" : "var(--text-primary)",
                           cursor: pomRunning ? "not-allowed" : "pointer",
                           fontWeight: active ? 600 : 500,
                         }}>
@@ -630,10 +630,10 @@ export default function Pomodoro({
             const catColor = CAT_COLORS[activeGoal.category];
             return (
               <div style={{ textAlign: "center", marginTop: 10, width: "100%" }}>
-                <div style={{ fontSize: 11, color: "var(--color-text-tertiary)", letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: 4 }}>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: 4 }}>
                   Working on
                 </div>
-                <div style={{ fontSize: 16, fontWeight: 500, color: "var(--color-text-primary)" }}>
+                <div style={{ fontSize: 16, fontWeight: 500, color: "var(--text-primary)" }}>
                   {activeTask.text}
                 </div>
                 <div style={{ fontSize: 13, color: catColor, marginTop: 4 }}>
@@ -652,24 +652,24 @@ export default function Pomodoro({
                   textAlign: "left",
                 }}>
                   <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 6, gap: 8 }}>
-                    <span style={{ fontSize: 11, color: "var(--color-text-tertiary)", letterSpacing: "0.4px", textTransform: "uppercase", fontWeight: 600 }}>
+                    <span style={{ fontSize: 11, color: "var(--text-muted)", letterSpacing: "0.4px", textTransform: "uppercase", fontWeight: 600 }}>
                       Goal progress
                     </span>
                     <span style={{ fontSize: 13, fontWeight: 600, color: catColor }}>
                       {goalPct}%
                     </span>
                   </div>
-                  <div style={{ height: 6, background: "var(--color-background-primary)", borderRadius: 99, overflow: "hidden" }}>
+                  <div style={{ height: 6, background: "var(--bg-card)", borderRadius: 99, overflow: "hidden" }}>
                     <div style={{ height: "100%", width: `${goalPct}%`, background: catColor, transition: "width 0.4s ease" }} />
                   </div>
-                  <div style={{ marginTop: 8, fontSize: 12, color: "var(--color-text-secondary)", display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                  <div style={{ marginTop: 8, fontSize: 12, color: "var(--text-secondary)", display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                     <span>
                       {tasksTotal > 0 && `${tasksDone}/${tasksTotal} task${tasksTotal === 1 ? "" : "s"} done`}
                       {tasksTotal > 0 && habits.length > 0 && " · "}
                       {habits.length > 0 && `${habits.length} habit${habits.length === 1 ? "" : "s"}`}
                     </span>
                     {goalFocusMins > 0 && (
-                      <span style={{ color: "var(--color-text-tertiary)" }}>
+                      <span style={{ color: "var(--text-muted)" }}>
                         {fmtMins(goalFocusMins)} logged total
                       </span>
                     )}
@@ -682,7 +682,7 @@ export default function Pomodoro({
                     padding: "10px 14px",
                     fontSize: 13,
                     fontStyle: "italic",
-                    color: "var(--color-text-primary)",
+                    color: "var(--text-primary)",
                     background: `linear-gradient(135deg, ${goldA(10)} 0%, ${goldA(3)} 100%)`,
                     border: `0.5px solid ${goldA(28)}`,
                     borderRadius: "var(--border-radius-md)",
@@ -698,7 +698,7 @@ export default function Pomodoro({
             );
           })()}
           {!activeTask && (
-            <div style={{ marginTop: 8, fontSize: 13, color: "var(--color-text-tertiary)", textAlign: "center" }}>
+            <div style={{ marginTop: 8, fontSize: 13, color: "var(--text-muted)", textAlign: "center" }}>
               No task linked · general focus block
             </div>
           )}
@@ -728,13 +728,13 @@ export default function Pomodoro({
           title={pip.supported
             ? (pip.pipWindow ? "Close pop-out" : "Open a floating timer that stays on top")
             : "Pop-out requires Chrome or Edge"}
-          style={{ fontSize: 13, padding: "7px 14px", color: "var(--color-text-tertiary)", opacity: pip.supported ? 1 : 0.5, cursor: pip.supported ? "pointer" : "not-allowed" }}>
+          style={{ fontSize: 13, padding: "7px 14px", color: "var(--text-muted)", opacity: pip.supported ? 1 : 0.5, cursor: pip.supported ? "pointer" : "not-allowed" }}>
           {pip.pipWindow ? "Close pop-out" : "Pop out ⧉"}
         </button>
         <button
           onClick={enterFullscreen}
           title="Hide everything else — just the dial, the task, and the niyyah"
-          style={{ fontSize: 13, padding: "7px 14px", color: "var(--color-text-tertiary)" }}>
+          style={{ fontSize: 13, padding: "7px 14px", color: "var(--text-muted)" }}>
           Focus mode ⛶
         </button>
       </div>
@@ -753,7 +753,7 @@ export default function Pomodoro({
       {/* Up next */}
       {upcoming.length > 0 && (
         <div style={{ ...S.card }}>
-          <div style={{ fontSize: 13, color: "var(--color-text-tertiary)", fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 10 }}>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 10 }}>
             Up next
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -778,10 +778,10 @@ export default function Pomodoro({
                   }}>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: cat, flexShrink: 0 }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div style={{ fontSize: 14, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {t.text}
                     </div>
-                    <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {g.title} · {fmtMins(t.eta || 30)}
                     </div>
                   </div>

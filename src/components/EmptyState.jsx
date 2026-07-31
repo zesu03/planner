@@ -4,9 +4,9 @@
 // buttons (e.g. "+ Add your first goal").
 export default function EmptyState({ icon, title, hint, padY = 28, children }) {
   return (
-    <div style={{ textAlign: "center", padding: `${padY}px 12px`, color: "var(--color-text-tertiary)" }}>
+    <div style={{ textAlign: "center", padding: `${padY}px 12px`, color: "var(--text-muted)" }}>
       <div style={{ fontSize: 30, marginBottom: 8, opacity: 0.75 }}>{icon}</div>
-      <div style={{ fontSize: 15, color: "var(--color-text-secondary)", fontWeight: 500, marginBottom: hint ? 4 : 0 }}>
+      <div style={{ fontSize: 15, color: "var(--text-secondary)", fontWeight: 500, marginBottom: hint ? 4 : 0 }}>
         {title}
       </div>
       {hint && <div style={{ fontSize: 13, maxWidth: 340, margin: "0 auto", lineHeight: 1.5 }}>{hint}</div>}

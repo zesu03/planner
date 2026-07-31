@@ -11,6 +11,7 @@ import EmptyState from "../components/EmptyState";
 import Modal from "../components/Modal";
 import NowCard from "../components/NowCard";
 import ContinuityStrip from "../components/ContinuityStrip";
+import { Icon } from "../components/icons";
 
 // Dashboard / daily-loop view. Reads aggregate state from Planner; does not
 // own any. The NowCard hero leads, then the continuity thread; the rest is
@@ -135,9 +136,9 @@ export default function Dashboard({
       {/* First-run onboarding — auto-dismisses when all three steps are done */}
       {showOnboarding && (() => {
         const steps = [
-          { key: "prayer", icon: "🕌", label: "Set your prayer times", hint: "Lets the dashboard surface the next prayer.", done: onboardingDone.prayer, go: () => setView("prayer") },
-          { key: "goal", icon: "🌱", label: "Plant your first goal", hint: "Start with a Deen goal you can return to daily.", done: onboardingDone.goal, go: () => setView("add") },
-          { key: "muhasaba", icon: "🌙", label: "Try tonight's muhasaba", hint: "Hold yourself accountable — even one entry is a start.", done: onboardingDone.muhasaba, go: () => { setMuhasabaDay(todayStr()); setView("muhasaba"); } },
+          { key: "prayer", icon: <Icon name="mosque" size={18} />, label: "Set your prayer times", hint: "Lets the dashboard surface the next prayer.", done: onboardingDone.prayer, go: () => setView("prayer") },
+          { key: "goal", icon: <Icon name="sprout" size={18} />, label: "Plant your first goal", hint: "Start with a Deen goal you can return to daily.", done: onboardingDone.goal, go: () => setView("add") },
+          { key: "muhasaba", icon: <Icon name="moon" size={18} />, label: "Try tonight's muhasaba", hint: "Hold yourself accountable — even one entry is a start.", done: onboardingDone.muhasaba, go: () => { setMuhasabaDay(todayStr()); setView("muhasaba"); } },
         ];
         const completed = steps.filter((s) => s.done).length;
         return (
@@ -147,11 +148,11 @@ export default function Dashboard({
                 <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 700, letterSpacing: "0.6px", textTransform: "uppercase", marginBottom: 3 }}>
                   Get started
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 500, color: "var(--color-text-primary)" }}>
+                <div style={{ fontSize: 15, fontWeight: 500, color: "var(--text-primary)" }}>
                   Three small steps to set the rhythm
                 </div>
               </div>
-              <div style={{ fontSize: 12, color: "var(--color-text-tertiary)" }}>
+              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
                 {completed}/{steps.length}
               </div>
             </div>
@@ -177,8 +178,8 @@ export default function Dashboard({
                   <span style={{
                     width: 28, height: 28, borderRadius: "50%",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    background: s.done ? "rgba(127,190,143,0.22)" : "var(--color-background-primary)",
-                    color: s.done ? "var(--color-text-success)" : "var(--color-text-secondary)",
+                    background: s.done ? "rgba(127,190,143,0.22)" : "var(--bg-card)",
+                    color: s.done ? "var(--color-text-success)" : "var(--text-secondary)",
                     fontSize: 14, fontWeight: 600, flexShrink: 0,
                   }}>
                     {s.done ? "✓" : s.icon}
@@ -186,13 +187,13 @@ export default function Dashboard({
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{
                       fontSize: 14, fontWeight: 500,
-                      color: s.done ? "var(--color-text-tertiary)" : "var(--color-text-primary)",
+                      color: s.done ? "var(--text-muted)" : "var(--text-primary)",
                       textDecoration: s.done ? "line-through" : "none",
                     }}>
                       {s.label}
                     </div>
                     {!s.done && (
-                      <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginTop: 1 }}>{s.hint}</div>
+                      <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 1 }}>{s.hint}</div>
                     )}
                   </div>
                   {!s.done && (
@@ -210,7 +211,7 @@ export default function Dashboard({
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12 }}>
         <span style={{ fontSize: 16, fontWeight: 500 }}>Upcoming goals</span>
         {goals.length > 0 && (
-          <span style={{ fontSize: 13, color: "var(--color-text-tertiary)" }}>{overallPct}% overall</span>
+          <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{overallPct}% overall</span>
         )}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
@@ -218,7 +219,7 @@ export default function Dashboard({
           <GoalCard key={g.id} g={g} lastActivityDay={lastActivityByGoal[g.id]} onSelect={() => onSelectGoal(g.id)} />
         ))}
         {goals.length === 0 && (
-          <EmptyState icon="🌱"
+          <EmptyState icon={<Icon name="sprout" size={30} />}
             title="Plant your first niyyah"
             hint="Start with a Deen goal — memorising a surah, daily Quran, regular dhikr. Small, consistent steps build the strongest habits." />
         )}
@@ -253,10 +254,10 @@ export default function Dashboard({
             e.currentTarget.style.borderColor = "var(--color-border-secondary)";
             e.currentTarget.style.boxShadow = "none";
           }}>
-          <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 6 }}>
-            🪞 The mirror · today's reflection
+          <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+            <Icon name="mirror" size={13} /> The mirror · today's reflection
           </div>
-          <div style={{ fontSize: 14, color: "var(--color-text-secondary)", fontStyle: "italic", lineHeight: 1.55 }}>
+          <div style={{ fontSize: 14, color: "var(--text-secondary)", fontStyle: "italic", lineHeight: 1.55 }}>
             "{aiPreview}"
           </div>
           <div style={{ fontSize: 12, color: "var(--gold)", marginTop: 8 }}>
@@ -338,7 +339,7 @@ export default function Dashboard({
               {verseOfDay.arabic || FALLBACK_VERSE.arabic}
             </div>
             <div style={{
-              fontSize: 14, color: "var(--color-text-secondary)", lineHeight: 1.6,
+              fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6,
               fontStyle: "italic", maxWidth: 540, margin: "0 auto",
             }}>
               "{(verseOfDay.translation || FALLBACK_VERSE.translation).replace(/<[^>]*>/g, "")}"
@@ -359,18 +360,18 @@ export default function Dashboard({
                     background: "transparent",
                     border: `0.5px solid ${goldA(25)}`,
                     borderRadius: 99,
-                    color: "var(--color-text-secondary)",
+                    color: "var(--text-secondary)",
                     cursor: "pointer",
                     opacity: 0.75,
                     whiteSpace: "nowrap",
                   }}>
-                  📿 {savedCount} saved
+                  <span style={{ display: "inline-flex", verticalAlign: "middle", marginRight: 4 }}><Icon name="verse" size={13} /></span>{savedCount} saved
                 </button>
               )}
             </div>
             {/* niyyah lead-out — the rotating intention, folded into the
                 verse's closing moment rather than floating mid-page. */}
-            <div style={{ fontSize: 13, color: "var(--color-text-tertiary)", fontStyle: "italic", marginTop: 16, opacity: 0.85, maxWidth: 480, marginLeft: "auto", marginRight: "auto" }}>
+            <div style={{ fontSize: 13, color: "var(--text-muted)", fontStyle: "italic", marginTop: 16, opacity: 0.85, maxWidth: 480, marginLeft: "auto", marginRight: "auto" }}>
               {INTENTIONS[intentionIdx]}
             </div>
           </div>
@@ -388,7 +389,7 @@ export default function Dashboard({
         >
           {savedVerses.length === 0 ? (
             <EmptyState
-              icon="📿"
+              icon={<Icon name="verse" size={28} />}
               title="No saved verses yet"
               hint="Tap ☆ Save on the verse of the day to start your collection."
               padY={20}
@@ -407,7 +408,7 @@ export default function Dashboard({
                       style={{ fontSize: 12, color: "var(--gold)", fontWeight: 600, textDecoration: "none", letterSpacing: "0.4px", textTransform: "uppercase" }}>
                       Quran.com {v.verseKey} ↗
                     </a>
-                    <span style={{ fontSize: 11, color: "var(--color-text-tertiary)" }}>
+                    <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
                       saved {new Date(v.savedAt).toLocaleDateString([], { dateStyle: "short" })}
                     </span>
                   </div>
@@ -417,7 +418,7 @@ export default function Dashboard({
                     </div>
                   )}
                   {v.translation && (
-                    <div style={{ fontSize: 14, color: "var(--color-text-primary)", lineHeight: 1.55, fontStyle: "italic", marginBottom: 10 }}>
+                    <div style={{ fontSize: 14, color: "var(--text-primary)", lineHeight: 1.55, fontStyle: "italic", marginBottom: 10 }}>
                       "{v.translation}"
                     </div>
                   )}
@@ -434,7 +435,7 @@ export default function Dashboard({
                         aria-label="Remove this saved verse"
                         style={{
                           fontSize: 12, padding: "4px 10px",
-                          color: "var(--color-text-tertiary)",
+                          color: "var(--text-muted)",
                           border: "0.5px solid var(--color-border-tertiary)",
                         }}>
                         Remove

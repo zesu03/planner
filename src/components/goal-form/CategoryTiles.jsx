@@ -11,7 +11,7 @@ export default function CategoryTiles({ value, onChange }) {
             style={{
               background: active ? color + "33" : "var(--color-background-secondary)",
               border: `0.5px solid ${active ? color : "var(--color-border-tertiary)"}`,
-              color: active ? "var(--color-text-primary)" : "var(--color-text-secondary)",
+              color: active ? "var(--text-primary)" : "var(--text-secondary)",
               borderRadius: 99,
               padding: "6px 12px 6px 10px",
               cursor: "pointer",

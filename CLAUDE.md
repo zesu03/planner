@@ -195,6 +195,8 @@ The light gold (`#7a5810`) is intentionally darker than dark gold so opacity-tin
 ### Styling conventions
 
 - Inline `style={...}` is the norm. Reusable inline-style helpers are in `S` from `lib/styles.js`. Prefer extending `S` over inventing new ad-hoc styles.
+- **Colour tokens (canonical):** neutral text/background use the **base primitives** directly — `var(--text-primary | --text-secondary | --text-muted)` and `var(--bg-primary | --bg-secondary | --bg-card)`; accents are `var(--gold)` / `var(--noor)`. The `var(--color-*-danger|warning|success)` and `var(--color-border-*)` tokens are the **semantic-state layer** (no primitive equivalent) — use them for those states. Don't reintroduce `--color-text-primary` / `--color-background-primary` (removed; they were plain aliases). `--color-background-secondary` is kept because light mode gives it a distinct value.
+- **Icons:** UI icons are SVG via `components/icons.jsx` (`<PrayerIcon>`, `<TabIcon>` — lucide-react + a custom mosque) and inline SVG in `CelebrationToast`. Don't add emoji as UI icons (they render inconsistently cross-platform); server push notifications keep emoji, which is fine for the system tray.
 - Primary actions use the `.btn-primary` class (in `index.css`), not inline gold backgrounds. Keep all "Create / Save / Start" buttons consistent.
 - Card padding goes through `--card-padding` token (responsive: `20px 22px` desktop, `14px 16px` mobile).
 - Arabic text uses `<div className="arabic">` (Amiri font, RTL, line-height 2.1). Loaded from Google Fonts in `index.css`.
