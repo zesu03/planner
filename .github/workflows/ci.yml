@@ -1,0 +1,39 @@
+name: CI
+
+# Runs the unit suite + a production build on every push to main and every PR.
+# This is the multiplier on the Phase 0 test work — the safety net only protects
+# if it runs automatically, not when someone remembers to.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Unit tests
+        run: npm test
+
+      - name: Production build
+        run: npm run build
+        # The Vite build inlines VITE_FIREBASE_* but never executes app code
+        # (initializeApp runs at runtime, not build), so placeholders are enough
+        # to keep the build hermetic and free of "undefined env" surprises.
+        env:
+          VITE_FIREBASE_API_KEY: ci-placeholder
+          VITE_FIREBASE_AUTH_DOMAIN: ci-placeholder
+          VITE_FIREBASE_PROJECT_ID: ci-placeholder
+          VITE_FIREBASE_STORAGE_BUCKET: ci-placeholder
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ci-placeholder
+          VITE_FIREBASE_APP_ID: ci-placeholder

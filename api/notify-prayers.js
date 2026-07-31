@@ -41,6 +41,9 @@
 // dominant-byte-count notifications.prayerTimes blob.
 
 import admin from "firebase-admin";
+import { initServerMonitoring, captureServerException, flushMonitoring } from "./_monitoring.js";
+
+initServerMonitoring();
 
 let _adminInited = false;
 function getAdmin() {
@@ -230,6 +233,10 @@ async function processUser(userDoc, now, messaging, db) {
     return { dispatched, deadTokens };
   } catch (e) {
     console.error("processUser failed for", userDoc.id, e?.message || e);
+    // Queue without flushing — the per-user path runs under Promise.all and a
+    // flush-per-user would serialise the fan-out; the handler's finally drains
+    // the queue once before the function exits.
+    captureServerException(e, { fn: "notify-prayers", stage: "processUser", uid: userDoc.id });
     return { dispatched: 0, deadTokens: 0 };
   }
 }
@@ -272,6 +279,11 @@ export default async function handler(req, res) {
     // getAdmin() (bad/missing service account) or the query can throw —
     // return a clean 500 instead of an unhandled rejection.
     console.error("notify-prayers handler failed", e?.message || e);
+    captureServerException(e, { fn: "notify-prayers", stage: "handler" });
     return res.status(500).json({ error: "Internal error" });
+  } finally {
+    // Drain any queued captures (per-user + handler) before the runtime
+    // freezes the function. No-op when monitoring is unconfigured.
+    await flushMonitoring();
   }
 }

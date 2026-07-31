@@ -40,7 +40,7 @@ function variantFor(celebration) {
       icon: "🌙",
       eyebrow: "Muhasaba streak",
       title: `${celebration.count} nights of self-accounting`,
-      sub: "ʿUmar would be pleased. Don't break the chain tonight.",
+      sub: "Accounting for yourself before you are brought to account. Don't break the chain tonight.",
       actionLabel: "Open Muhasaba ›",
     };
   }

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import AuthWrapper from "./AuthWrapper";
 import Planner from "./Planner";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 export default function App() {
   // One-shot migration: the FCM service worker used to live at
@@ -17,7 +18,13 @@ export default function App() {
 
   return (
     <AuthWrapper>
-      {(user) => <Planner user={user} />}
+      {(user) => (
+        // Boundary lives inside AuthWrapper so a crash in the app keeps the
+        // auth bar (and Sign out) usable, and a re-auth can recover.
+        <ErrorBoundary>
+          <Planner user={user} />
+        </ErrorBoundary>
+      )}
     </AuthWrapper>
   );
 }

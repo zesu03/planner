@@ -22,6 +22,7 @@ import { fmtTime, focusStreakDays, STREAK_MILESTONES } from "./lib/focus";
 import { rewardMilestone } from "./lib/feedback";
 import { goldA, S } from "./lib/styles";
 import { attachForegroundHandler } from "./lib/notifications";
+import { setUser as setMonitoringUser } from "./lib/monitoring";
 import { buildReportPayload as buildReportPayloadLib } from "./lib/reportPayload";
 import CelebrationToast from "./components/CelebrationToast";
 import ConfirmDialog from "./components/ConfirmDialog";
@@ -40,7 +41,7 @@ import Muhasaba from "./views/Muhasaba";
 
 // ── main component ─────────────────────────────────────────────────────────
 export default function Planner({ user }) {
-  const { goals: goalsFromDb, prayerLog: prayerLogFromDb, focusLog: focusLogFromDb, settings: settingsFromDb, muhasaba: muhasabaFromDb, qaza: qazaFromDb, savedVerses: savedVersesFromDb, notifications: notificationsFromDb, loading, updateGoals, updatePrayerLog, updateFocusLog, updateSettings, updateMuhasaba, updateQaza, updateSavedVerses, updateNotifications } = useUserData(user.uid);
+  const { goals: goalsFromDb, prayerLog: prayerLogFromDb, focusLog: focusLogFromDb, settings: settingsFromDb, muhasaba: muhasabaFromDb, qaza: qazaFromDb, savedVerses: savedVersesFromDb, notifications: notificationsFromDb, loading, syncState, updateGoals, updatePrayerLog, updateFocusLog, updateSettings, updateMuhasaba, updateQaza, updateSavedVerses, updateNotifications } = useUserData(user.uid);
   const goals = goalsFromDb ?? [];
   const prayerLog = prayerLogFromDb ?? {};
   const focusLog = focusLogFromDb ?? [];
@@ -260,6 +261,10 @@ export default function Planner({ user }) {
     attachForegroundHandler().then((fn) => { if (!cancelled) detach = fn; });
     return () => { cancelled = true; if (typeof detach === "function") detach(); };
   }, []);
+
+  // Tag monitoring events with the signed-in uid so captured errors are
+  // attributable. No-op until a Sentry DSN is configured.
+  useEffect(() => { setMonitoringUser(user.uid); }, [user.uid]);
 
   // apply* are stable aliases to useFirestore's already-memoised update*
   // setters, which themselves accept either a value or a (prev) => next
@@ -843,6 +848,20 @@ export default function Planner({ user }) {
           <div className="app-header-date">{dateLine}</div>
         </div>
         <div className="app-header-actions">
+          {/* Sync status (Phase R1) — surfaces write state so a failed save is
+              never silent. "synced" shows nothing to stay quiet. */}
+          {syncState === "saving" && (
+            <span title="Saving your changes…"
+              style={{fontSize:13,padding:"3px 10px",borderRadius:99,background:"var(--bg-card)",border:"0.5px solid var(--border)",color:"var(--text-secondary)"}}>
+              Saving…
+            </span>
+          )}
+          {syncState === "error" && (
+            <span role="status" aria-live="polite" title="A recent change couldn't be saved to the server. Reloading often clears it; your other data is safe."
+              style={{fontSize:13,padding:"3px 10px",borderRadius:99,background:"rgba(199,90,58,0.15)",border:"0.5px solid rgba(199,90,58,0.5)",color:"#c75a3a",fontWeight:500}}>
+              ⚠ Not saved
+            </span>
+          )}
           {pomRunning && <span style={{fontSize:14,padding:"3px 10px",borderRadius:99,background:goldA(15),color:"var(--gold)",fontWeight:500}}>● Focus {fmtTime(pomSeconds)}</span>}
           {/* Theme toggle lives in the auth bar at the very top now (see
               AuthWrapper). It's adjacent to Sign out so it's a stable

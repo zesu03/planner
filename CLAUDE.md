@@ -7,9 +7,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run dev` — start the Vite dev server (frontend only, port 5173)
 - `npm run build` — production build to `dist/`
 - `npm run preview` — preview the production build
+- `npm test` — run the Vitest unit suite once (`npm run test:watch` for watch mode)
 - `vercel dev` — run Vite **and** the `api/` serverless functions together (port 3000). Required for testing the Gemini reflection endpoint locally; `npm run dev` will 404 on `/api/*`.
 
-There is no test runner, linter, or type-checker configured. Don't add one without asking.
+**Testing:** Vitest (`vitest.config.js`, `node` env, `TZ=UTC` pinned, config kept
+separate from `vite.config.js` so the PWA plugin doesn't run in tests). Tests are
+co-located as `src/**/*.test.js` and cover the pure `lib/` helpers **and the sync
+engine's write-safety reducers** (`lib/sync.js` — extracted from `useFirestore` so
+the invariants are testable; the hook wires them into the live path, there is no
+parallel copy). When you change a `lib/` helper or a sync invariant, update its test.
+
+There is still no linter or type-checker configured. Don't add one without asking.
 
 The **service worker is build-only**: vite-plugin-pwa compiles `src/sw.js` → `dist/sw.js` during `npm run build` (with the Workbox precache manifest injected). `npm run dev` does **not** serve it, so offline boot and background FCM pushes can't be tested against the dev server — use `npm run build && npm run preview` (or a deploy) for anything touching the SW.
 
@@ -21,9 +29,11 @@ For the Gemini reflection endpoint, the **server-side** vars (`GEMINI_API_KEY`, 
 
 For **prayer-time push notifications** (FCM), add `VITE_FIREBASE_VAPID_KEY` (client — from Firebase Console → Cloud Messaging → Web Push certificates) and `CRON_SECRET` (server — any random string; the external cron URL passes it as `?secret=`). `FIREBASE_SERVICE_ACCOUNT` is reused by the notify-prayers endpoint, so set it on Vercel too. The actual scheduler is **cron-job.org** (free), configured to GET `/api/notify-prayers?secret=<CRON_SECRET>` every minute — Vercel Hobby crons can't do per-minute granularity.
 
+For **error monitoring** (optional; Sentry), add `VITE_SENTRY_DSN` (client) and `SENTRY_DSN` (server, on Vercel). **Both are DSN-gated no-ops when unset** — the app runs identically without them, and the client Sentry SDK is a dynamic import that's tree-shaken out of the bundle entirely when `VITE_SENTRY_DSN` is absent. Monitoring goes through wrappers, never Sentry directly: [src/lib/monitoring.js](src/lib/monitoring.js) (client — `initMonitoring`/`setUser`/`captureError`) and [api/_monitoring.js](api/_monitoring.js) (server — `initServerMonitoring`/`captureServerException`/`flushMonitoring`; the underscore prefix keeps Vercel from routing it as a function).
+
 ## Architecture
 
-React 18 + Vite SPA, shipped as an installable **PWA** (vite-plugin-pwa). No TypeScript, no router, no state management library, no component library, no test framework. The one third-party UI dependency is **@dnd-kit** (core/sortable/utilities), used solely for drag-to-reorder of tasks in [src/views/GoalDetail.jsx](src/views/GoalDetail.jsx).
+React 18 + Vite SPA, shipped as an installable **PWA** (vite-plugin-pwa). No TypeScript, no router, no state management library, no component library. Testing is **Vitest** (unit tests for `lib/` + the sync reducers; see Commands). The one third-party UI dependency is **@dnd-kit** (core/sortable/utilities), used solely for drag-to-reorder of tasks in [src/views/GoalDetail.jsx](src/views/GoalDetail.jsx).
 
 **Auth gates everything via [src/AuthWrapper.jsx](src/AuthWrapper.jsx).** `App` renders `<AuthWrapper>{(user) => <Planner user={user} />}</AuthWrapper>`. Until Firebase Auth resolves, nothing else mounts; `Planner` can assume `user.uid` exists.
 
