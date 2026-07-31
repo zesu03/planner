@@ -28,6 +28,7 @@ import CelebrationToast from "./components/CelebrationToast";
 import ConfirmDialog from "./components/ConfirmDialog";
 import Onboarding from "./components/Onboarding";
 import { GoalDetailProvider } from "./contexts/GoalDetailContext";
+import { TabIcon } from "./components/icons";
 
 // View components (one per tab).
 // Views are code-split (Phase 3 / J): only the active tab's chunk loads on
@@ -926,7 +927,6 @@ export default function Planner({ user }) {
       <nav className="tabbar" aria-label="Primary">
         {["dashboard","list","prayer","pomodoro","muhasaba","stats"].map((v)=>{
           const labels = { dashboard:"Dashboard", list:"Goals", prayer:"Prayer", pomodoro:"Focus", muhasaba:"Muhasaba", stats:"Stats" };
-          const icons = { dashboard:"☀️", list:"🎯", prayer:"🕌", pomodoro:"⏱", muhasaba:"🌙", stats:"📊" };
           const active = view === v;
           return (
             <button key={v}
@@ -934,7 +934,7 @@ export default function Planner({ user }) {
               className={`tab-btn${active ? " tab-btn--active" : ""}`}
               aria-current={active ? "page" : undefined}
               onClick={()=>setView(v)}>
-              <span className="tab-btn-icon" aria-hidden="true">{icons[v]}</span>
+              <span className="tab-btn-icon" aria-hidden="true"><TabIcon name={v} size={20} /></span>
               <span className="tab-btn-label">{labels[v]}</span>
             </button>
           );

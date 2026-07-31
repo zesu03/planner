@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { CAT_COLORS, NIYYAH_LABELS, PRAYER_COLORS, PRAYER_ICONS, VOLUNTARY_PRAYERS } from "../lib/constants";
+import { CAT_COLORS, NIYYAH_LABELS, PRAYER_COLORS, VOLUNTARY_PRAYERS } from "../lib/constants";
+import { PrayerIcon } from "../components/icons";
 import { fmt, localDateStr, todayStr } from "../lib/dates";
 import { fmtMins } from "../lib/focus";
 import { computeQazaOwed, QAZA_PRAYERS } from "../lib/qaza";
@@ -613,7 +614,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
             return (
               <div key={p.name} className="prayer-health-row">
                 <div className="prayer-health-row__label" style={{ color }}>
-                  <span style={{ fontSize: 14 }}>{PRAYER_ICONS[p.name]}</span>
+                  <span style={{ display: "inline-flex" }}><PrayerIcon name={p.name} size={14} /></span>
                   {p.name}
                 </div>
                 <div className="prayer-health-row__strip">
@@ -664,7 +665,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
                   return (
                     <tr key={r.prayer}>
                       <td style={{ padding: "6px 0", color, fontWeight: 500 }}>
-                        <span style={{ marginRight: 6 }}>{PRAYER_ICONS[r.prayer]}</span>
+                        <span style={{ marginRight: 6, display: "inline-flex", verticalAlign: "middle" }}><PrayerIcon name={r.prayer} size={14} /></span>
                         {r.prayer}
                       </td>
                       <td style={{ padding: "6px 0 6px 8px", textAlign: "right", fontWeight: 600, color: clear ? "var(--color-text-tertiary)" : "#BA7517" }}>
@@ -720,7 +721,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
                   border: `0.5px solid ${color}44`,
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                    <span style={{ fontSize: 16 }}>{PRAYER_ICONS[v.name]}</span>
+                    <span style={{ display: "inline-flex" }}><PrayerIcon name={v.name} size={16} /></span>
                     <span style={{ fontSize: 14, fontWeight: 500, color }}>{v.name}</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { PRAYERS, PRAYER_ICONS, PRAYER_COLORS, VOLUNTARY_PRAYERS } from "../lib/constants";
+import { PRAYERS, PRAYER_COLORS, VOLUNTARY_PRAYERS } from "../lib/constants";
+import { PrayerIcon } from "../components/icons";
 import { localDateStr } from "../lib/dates";
 import { QAZA_PRAYERS } from "../lib/qaza";
 import { currentPrayerWindow, prayerDisplayName } from "../lib/prayer";
@@ -152,7 +153,7 @@ export default function Prayer({
                 borderColor: due ? accent + "88" : undefined,
                 background: due ? `linear-gradient(90deg, ${accent}1a 0%, ${accent}08 100%)` : undefined,
               }}>
-                <span style={{ fontSize: 28 }}>{PRAYER_ICONS[nextPrayer.name]}</span>
+                <span style={{ display: "flex", color: due ? accent : "var(--gold)" }}><PrayerIcon name={nextPrayer.name} size={26} /></span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, color: due ? accent : "var(--color-text-secondary)", fontWeight: due ? 600 : 400 }}>{eyebrow}</div>
                   <div style={{ fontSize: 21, fontWeight: 500, color: due ? accent : "var(--gold)" }}>{prayerDisplayName(nextPrayer.name, localDateStr())}</div>
@@ -213,7 +214,7 @@ export default function Prayer({
                     background: pColor + "22", display: "flex",
                     alignItems: "center", justifyContent: "center", flexShrink: 0,
                   }}>
-                    {PRAYER_ICONS[p]}
+                    <PrayerIcon name={p} size={20} />
                   </span>
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 500, fontSize: 16, color: pColor, display: "flex", alignItems: "center", gap: 8 }}>
@@ -287,7 +288,7 @@ export default function Prayer({
                       fontSize: 18, width: 32, height: 32, borderRadius: 10,
                       background: color + "22", display: "flex",
                       alignItems: "center", justifyContent: "center", flexShrink: 0,
-                    }}>{PRAYER_ICONS[vp]}</span>
+                    }}><PrayerIcon name={vp} size={18} /></span>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontSize: 15, fontWeight: 500, color }}>Voluntary · {vp}</div>
                       <div style={{ fontSize: 12, color: "var(--color-text-tertiary)", marginTop: 2 }}>
@@ -383,7 +384,7 @@ export default function Prayer({
                     }}>
                       <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: pColor, opacity: isClear ? 0.3 : 1 }} />
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, paddingLeft: 6 }}>
-                        <span style={{ fontSize: 14 }}>{PRAYER_ICONS[p]}</span>
+                        <span style={{ display: "flex" }}><PrayerIcon name={p} size={14} /></span>
                         <span style={{ fontSize: 14, fontWeight: 500, color: pColor }}>{p}</span>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingLeft: 6 }}>

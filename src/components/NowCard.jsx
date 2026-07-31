@@ -12,7 +12,8 @@
 // Presentational: all data + callbacks come from the Dashboard as props.
 
 import { useEffect, useState } from "react";
-import { PRAYER_ICONS, PRAYER_COLORS } from "../lib/constants";
+import { PRAYER_COLORS } from "../lib/constants";
+import { PrayerIcon } from "./icons";
 import { localDateStr } from "../lib/dates";
 import { prayerDisplayName } from "../lib/prayer";
 import { goldA, noorA, tintA } from "../lib/styles";
@@ -113,17 +114,17 @@ export default function NowCard({
   if (!prayerTimesSet) {
     prayerEyebrow = "Prayer times"; prayerLabel = "Not set yet";
   } else if (nextPrayer?.due) {
-    const shown = prayerDisplayName(nextPrayer.name, localDateStr());
     prayerEyebrow = "Due now · not prayed";
-    prayerLabel = `${PRAYER_ICONS[nextPrayer.name] || "🕌"} ${shown}`;
+    prayerLabel = prayerDisplayName(nextPrayer.name, localDateStr());
     prayerColor = PRAYER_COLORS[nextPrayer.name] || "var(--gold)";
     urgent = true;
   } else if (nextPrayer) {
-    const shown = prayerDisplayName(nextPrayer.name, localDateStr());
     prayerEyebrow = nextPrayer.tomorrow ? "Tomorrow's first prayer" : "Next prayer";
-    prayerLabel = `${PRAYER_ICONS[nextPrayer.name] || "🕌"} ${shown} · ${fmtCountdown(countdown)}`;
+    prayerLabel = `${prayerDisplayName(nextPrayer.name, localDateStr())} · ${fmtCountdown(countdown)}`;
     prayerColor = PRAYER_COLORS[nextPrayer.name] || "var(--gold)";
   }
+  // Icon rendered as an element beside the label (only when a prayer is set).
+  const prayerIconName = prayerTimesSet && nextPrayer ? nextPrayer.name : null;
 
   return (
     <div style={{
@@ -167,6 +168,11 @@ export default function NowCard({
           cursor: "pointer",
           marginBottom: 12,
         }}>
+        {prayerIconName && (
+          <span style={{ display: "flex", flexShrink: 0, color: prayerColor }}>
+            <PrayerIcon name={prayerIconName} size={22} />
+          </span>
+        )}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 10, fontWeight: 600, color: urgent ? prayerColor : "var(--color-text-tertiary)", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 2 }}>
             {prayerEyebrow}

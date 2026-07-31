@@ -2,11 +2,11 @@ import { useState } from "react";
 import {
   PRAYERS,
   VOLUNTARY_PRAYERS,
-  PRAYER_ICONS,
   PRAYER_COLORS,
   SIN_TAGS,
   NIYYAH_LABELS,
 } from "../lib/constants";
+import { PrayerIcon } from "../components/icons";
 import { fmt, todayStr, addDays, addDaysToStr } from "../lib/dates";
 import { fmtMins } from "../lib/focus";
 import {
@@ -540,7 +540,7 @@ export default function Muhasaba({
                 display: "inline-flex", alignItems: "center", gap: 5,
                 opacity: done ? 1 : 0.6,
               }}>
-                <span>{PRAYER_ICONS[p]}</span>{p}{done && <span> ✓</span>}
+                <span style={{ display: "inline-flex", verticalAlign: "middle", marginRight: 4 }}><PrayerIcon name={p} size={15} /></span>{p}{done && <span> ✓</span>}
               </span>
             );
           })}
@@ -561,7 +561,7 @@ export default function Muhasaba({
                 display: "inline-flex", alignItems: "center", gap: 5,
                 opacity: done ? 1 : 0.7,
               }}>
-                <span>{PRAYER_ICONS[p]}</span>{p}{done && <span> ✓</span>}
+                <span style={{ display: "inline-flex", verticalAlign: "middle", marginRight: 4 }}><PrayerIcon name={p} size={15} /></span>{p}{done && <span> ✓</span>}
               </span>
             );
           })}
