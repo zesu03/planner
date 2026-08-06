@@ -114,14 +114,35 @@ function migrateV1(old, prayerLog, today) {
   };
 }
 
-// Seed-or-migrate-then-settle in one idempotent pass. Run on load once the
-// user doc has resolved (an empty prayerLog pre-load would manufacture phantom
-// qaza — the caller must gate on the load flag). Returns the same reference
-// when a v2 ledger has nothing to settle, so the effect can skip the write.
+// Invariant repair: lifetime makeups (paidTotal) can never be less than the
+// makeups actually logged per day (paidLog). If a write race ever clobbered
+// paidTotal while a paidLog entry survived — the Stats "made up" count reading
+// lower than the Prayer tab's "made up today" — raise paidTotal back to the
+// logged sum. Never lowers it (pre-paidLog makeups legitimately exceed the log).
+// Returns the same reference when already consistent.
+function normalizePaidTotal(qaza) {
+  const paidLog = qaza.paidLog || {};
+  const sums = zeroCounts();
+  for (const day of Object.keys(paidLog)) {
+    const d = paidLog[day] || {};
+    for (const p of QAZA_PRAYERS) sums[p] += d[p] || 0;
+  }
+  const paidTotal = { ...zeroCounts(), ...(qaza.paidTotal || {}) };
+  let changed = false;
+  for (const p of QAZA_PRAYERS) {
+    if (paidTotal[p] < sums[p]) { paidTotal[p] = sums[p]; changed = true; }
+  }
+  return changed ? { ...qaza, paidTotal } : qaza;
+}
+
+// Seed-or-migrate-then-settle-then-heal in one idempotent pass. Run on load
+// once the user doc has resolved (an empty prayerLog pre-load would manufacture
+// phantom qaza — the caller must gate on the load flag). Returns the same
+// reference when there's nothing to change, so the effect can skip the write.
 export function reconcileQaza(qaza, prayerLog = {}, today = todayStr()) {
   if (!qaza || !qaza.startDate) return settleQaza(emptyQaza(), prayerLog, today);
   const q = qaza.version === QAZA_VERSION ? qaza : migrateV1(qaza, prayerLog, today);
-  return settleQaza(q, prayerLog, today);
+  return normalizePaidTotal(settleQaza(q, prayerLog, today));
 }
 
 // ── mutations (pure reducers) ──────────────────────────────────────────

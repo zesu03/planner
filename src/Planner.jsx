@@ -318,17 +318,19 @@ export default function Planner({ user }) {
   const applyMuhasabaUpdate = updateMuhasaba;
   const applyQazaUpdate = updateQaza;
 
-  // Seed / migrate / settle the qaza ledger. Runs once the user doc has
-  // resolved (`!loading`) — settling against a pre-load empty prayerLog would
-  // manufacture phantom qaza. reconcileQaza is idempotent and returns the same
-  // reference when a v2 ledger has nothing new to settle, so we skip the write
-  // in that case. Depends on prayerLog so a fresh sync (or a new day) re-settles.
+  // Seed / migrate / settle / heal the qaza ledger. Runs once the user doc has
+  // resolved (`loaded`) — settling against a pre-load empty prayerLog would
+  // manufacture phantom qaza. Uses the FUNCTIONAL updater form so reconcile
+  // reads the freshest ledger (latestQazaRef), never a stale React snapshot —
+  // otherwise this whole-object write could clobber a concurrent makeup's
+  // paidTotal. reconcileQaza returns the same reference when there's nothing to
+  // do, and updateQaza no-ops on an unchanged reference, so this is write-free
+  // in the steady state.
   useEffect(() => {
     if (!loaded) return;
-    const next = reconcileQaza(qazaFromDb, prayerLog, todayStr());
-    if (next !== qazaFromDb) updateQaza(next);
+    updateQaza((cur) => reconcileQaza(cur, prayerLog, todayStr()));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded, qazaFromDb, prayerLogFromDb, updateQaza]);
+  }, [loaded, prayerLogFromDb, updateQaza]);
 
   // Log one made-up qaza. payQaza is a no-op when nothing is owed (no phantom
   // credit); undoQaza only reverses a makeup logged TODAY — the two are exact

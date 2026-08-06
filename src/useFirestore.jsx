@@ -516,6 +516,12 @@ export function useUserData(userId) {
     const next = typeof updaterOrValue === "function"
       ? updaterOrValue(latestQazaRef.current)
       : updaterOrValue;
+    // No-op guard: a functional updater that returns the same reference (e.g.
+    // the reconcile pass with nothing new to settle) shouldn't dirty the field
+    // or trigger a write. Combined with reconcile reading latestQazaRef (not
+    // stale React state), this stops the reconcile write from clobbering a
+    // concurrent makeup's paidTotal.
+    if (next === latestQazaRef.current) return;
     latestQazaRef.current = next;
     dirtyRef.current.qaza = true;
     setQaza(next);

@@ -132,6 +132,24 @@ describe("reconcileQaza", () => {
     const q = mk({ owed: { ...ZERO, Fajr: 3 } });
     expect(reconcileQaza(q, {}, todayStr())).toBe(q);
   });
+
+  it("heals paidTotal that dropped below the logged makeups", () => {
+    // A clobber left Isha with a paidLog entry but paidTotal 0 (Stats showed
+    // fewer made-up than the Prayer tab's 'made up today'). Reconcile lifts
+    // paidTotal back to at least the logged sum.
+    const q = mk({
+      paidTotal: { ...ZERO, Fajr: 2, Isha: 0 },
+      paidLog: { [todayStr()]: { Fajr: 2, Isha: 1 } },
+    });
+    const out = reconcileQaza(q, {}, todayStr());
+    expect(out.paidTotal.Isha).toBe(1);
+    expect(out.paidTotal.Fajr).toBe(2); // unchanged — already consistent
+  });
+
+  it("never lowers paidTotal below the logged sum (pre-paidLog makeups)", () => {
+    const q = mk({ paidTotal: { ...ZERO, Fajr: 9 }, paidLog: { [todayStr()]: { Fajr: 1 } } });
+    expect(reconcileQaza(q, {}, todayStr())).toBe(q); // 9 >= 1, nothing to change
+  });
 });
 
 describe("payQaza / undoQaza — exact inverses, no counter drift", () => {
