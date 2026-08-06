@@ -15,7 +15,7 @@ import { newId } from "./lib/ids";
 import { todayStr, localDateStr, daysLeft, addDaysToStr } from "./lib/dates";
 import { isGoalDone, pct } from "./lib/goals";
 import { emptyMuhasabaEntry, isMuhasabaFilled, muhasabaStreak } from "./lib/muhasaba";
-import { reconcileQaza, qazaOwed, payQaza, undoQaza, qazaAfterRetroToggle, QAZA_PRAYERS } from "./lib/qaza";
+import { reconcileQaza, qazaOwed, payQaza, undoQaza, addQaza, qazaAfterRetroToggle, QAZA_PRAYERS } from "./lib/qaza";
 import { nextPrayer as computeNextPrayer, prayerDayFor as computePrayerDayFor } from "./lib/prayer";
 import { dayPhase, prayersToday, focusToday, muhasabaState, yesterdayDua, firstOpenTask, istiqamahStreak, istiqamahActiveToday } from "./lib/daily";
 import { fmtTime, focusStreakDays, STREAK_MILESTONES } from "./lib/focus";
@@ -340,6 +340,27 @@ export default function Planner({ user }) {
   const undoOneQaza = useCallback((prayer) => {
     applyQazaUpdate((q) => undoQaza(q, prayer, todayStr()));
   }, [applyQazaUpdate]);
+
+  // Add/subtract a specific count to one prayer's outstanding (per-prayer bulk
+  // correction). n may be negative — addQaza clamps at 0.
+  const adjustQaza = useCallback((prayer, n) => {
+    if (!n) return;
+    applyQazaUpdate((q) => addQaza(q, prayer, n));
+  }, [applyQazaUpdate]);
+
+  // Seed a historical backlog: add the same estimated count to all five
+  // prayers at once (the backlog estimator's "≈ N per prayer").
+  const addQazaAll = useCallback((n) => {
+    if (!n || n <= 0) return;
+    applyQazaUpdate((q) => QAZA_PRAYERS.reduce((acc, p) => addQaza(acc, p, n), q));
+  }, [applyQazaUpdate]);
+
+  // Daily makeup target drives the completion projection. Lives in settings so
+  // it persists and rides the same field-scoped write path.
+  const setQazaTarget = useCallback((n) => {
+    const target = Math.max(1, Math.floor(Number(n) || 1));
+    updateSettings((prev) => ({ ...prev, qazaDailyTarget: target }));
+  }, [updateSettings]);
 
   // Saved verses — personal collection of bookmarked ayat from the
   // verse-of-day card. De-duped by verseKey so re-saving the same verse is
@@ -1061,6 +1082,10 @@ export default function Planner({ user }) {
           qazaOwed={qazaOwedMap}
           payOneQaza={payOneQaza}
           undoOneQaza={undoOneQaza}
+          adjustQaza={adjustQaza}
+          addQazaAll={addQazaAll}
+          qazaDailyTarget={userSettings.qazaDailyTarget || 5}
+          setQazaTarget={setQazaTarget}
           notifications={notifications}
           updateNotifications={updateNotifications}
         />

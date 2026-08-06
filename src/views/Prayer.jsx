@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import { PRAYERS, PRAYER_COLORS, VOLUNTARY_PRAYERS } from "../lib/constants";
 import { PrayerIcon } from "../components/icons";
-import { localDateStr } from "../lib/dates";
+import { localDateStr, addDaysToStr } from "../lib/dates";
 import { QAZA_PRAYERS, paidOnDay } from "../lib/qaza";
+import Modal from "../components/Modal";
 import { currentPrayerWindow, prayerDisplayName } from "../lib/prayer";
 import { S } from "../lib/styles";
 import { rewardPrayerMark } from "../lib/feedback";
@@ -12,6 +13,20 @@ import {
   isNotificationsSupported,
   requestPermissionAndToken,
 } from "../lib/notifications";
+
+// Small circular ± control used by the projection's daily-target stepper.
+const targetStep = {
+  width: 22,
+  height: 22,
+  padding: 0,
+  borderRadius: 99,
+  fontSize: 14,
+  lineHeight: 1,
+  background: "var(--bg-card)",
+  color: "var(--text-secondary)",
+  border: "0.5px solid var(--color-border-secondary)",
+  cursor: "pointer",
+};
 
 // Prayer tab. All state-touching behaviour comes through props so this view
 // stays purely presentational.
@@ -39,6 +54,10 @@ export default function Prayer({
   qazaOwed,
   payOneQaza,
   undoOneQaza,
+  adjustQaza,
+  addQazaAll,
+  qazaDailyTarget,
+  setQazaTarget,
   notifications,
   updateNotifications,
 }) {
@@ -65,6 +84,7 @@ export default function Prayer({
   // chime + haptic + a brief burst on the row. `burstKey` drives the
   // animation; it auto-clears so the row settles back.
   const [burstKey, setBurstKey] = useState(null);
+  const [estimatorOpen, setEstimatorOpen] = useState(false);
   function markPrayer(p) {
     const wasDone = prayerDoneToday ? prayerDoneToday(p) : false;
     togglePrayerLog(p);
@@ -371,82 +391,79 @@ export default function Prayer({
                 Outstanding makeups since {qaza?.startDate || "today"}. A missed prayer settles here after its day ends — tap <strong>+</strong> as you make each one up.
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
-                {QAZA_PRAYERS.map((p) => {
-                  const owed = qazaOwed[p] || 0;
-                  const paidTotalP = qaza?.paidTotal?.[p] || 0;
-                  const paidToday = qaza?.paidLog?.[todayKeyQaza]?.[p] || 0;
-                  const pColor = PRAYER_COLORS[p];
-                  const isClear = owed === 0;
-                  return (
-                    <div key={p} style={{
-                      position: "relative",
-                      padding: "10px 12px",
-                      borderRadius: 10,
-                      border: `0.5px solid ${isClear ? "var(--color-border-tertiary)" : pColor + "66"}`,
-                      background: isClear ? "var(--bg-card)" : `linear-gradient(135deg, ${pColor}0f 0%, ${pColor}05 100%)`,
-                      overflow: "hidden",
-                    }}>
-                      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: pColor, opacity: isClear ? 0.3 : 1 }} />
-                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, paddingLeft: 6 }}>
-                        <span style={{ display: "flex" }}><PrayerIcon name={p} size={14} /></span>
-                        <span style={{ fontSize: 14, fontWeight: 500, color: pColor }}>{p}</span>
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingLeft: 6 }}>
-                        <div>
-                          <div style={{ fontSize: 22, fontWeight: 600, lineHeight: 1, color: isClear ? "var(--text-muted)" : "var(--text-primary)" }}>
-                            {owed}
-                          </div>
-                          {paidToday > 0 ? (
-                            <div style={{ fontSize: 11, color: "var(--color-text-success)", fontWeight: 600, marginTop: 2 }}>
-                              {paidToday} made up today
-                            </div>
-                          ) : paidTotalP > 0 ? (
-                            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
-                              {paidTotalP} made up total
-                            </div>
-                          ) : null}
-                        </div>
-                        <div style={{ display: "flex", gap: 4 }}>
-                          {/* − only undoes a makeup logged TODAY, so it's an
-                              exact inverse of + within the session — no phantom
-                              "made up today" from undoing an older makeup. */}
-                          {paidToday > 0 && (
-                            <button onClick={() => undoOneQaza(p)}
-                              title={`Undo a ${p} qaza made up today`}
-                              style={{
-                                fontSize: 13,
-                                padding: "3px 8px",
-                                borderRadius: 99,
-                                background: "transparent",
-                                color: "var(--text-secondary)",
-                                border: "0.5px solid var(--color-border-secondary)",
-                                cursor: "pointer",
-                              }}>−</button>
-                          )}
-                          {/* + is disabled when nothing is owed, so you can't
-                              log a makeup against zero debt. */}
-                          <button onClick={() => owed > 0 && payOneQaza(p)}
-                            disabled={owed === 0}
-                            title={owed === 0 ? `No ${p} qaza outstanding` : `Mark one ${p} qaza as made up`}
-                            style={{
-                              fontSize: 13,
-                              fontWeight: 600,
-                              padding: "3px 10px",
-                              borderRadius: 99,
-                              background: owed === 0 ? "transparent" : pColor,
-                              color: owed === 0 ? "var(--text-muted)" : "#fff",
-                              border: `0.5px solid ${owed === 0 ? "var(--color-border-tertiary)" : pColor}`,
-                              cursor: owed === 0 ? "not-allowed" : "pointer",
-                              opacity: owed === 0 ? 0.5 : 1,
-                            }}>+</button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                {QAZA_PRAYERS.map((p) => (
+                  <QazaTile key={p}
+                    p={p}
+                    owed={qazaOwed[p] || 0}
+                    paidToday={qaza?.paidLog?.[todayKeyQaza]?.[p] || 0}
+                    paidTotalP={qaza?.paidTotal?.[p] || 0}
+                    pColor={PRAYER_COLORS[p]}
+                    onPay={payOneQaza}
+                    onUndo={undoOneQaza}
+                    onAdjust={adjustQaza}
+                  />
+                ))}
               </div>
+
+              {/* Completion projection — only meaningful once something's owed.
+                  Pace is a user-set daily target (persisted in settings). */}
+              {totalOwed > 0 && (() => {
+                const target = Math.max(1, qazaDailyTarget || 5);
+                const days = Math.ceil(totalOwed / target);
+                const clearBy = addDaysToStr(localDateStr(), days);
+                const clearLabel = new Date(`${clearBy}T12:00:00Z`)
+                  .toLocaleDateString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" });
+                const yrs = days / 365;
+                return (
+                  <div style={{
+                    marginTop: 12,
+                    padding: "10px 12px",
+                    borderRadius: 10,
+                    border: "0.5px solid var(--color-border-tertiary)",
+                    background: "var(--color-background-secondary)",
+                    fontSize: 13,
+                    color: "var(--text-secondary)",
+                    display: "flex",
+                    alignItems: "center",
+                    flexWrap: "wrap",
+                    gap: 8,
+                  }}>
+                    <span>At</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                      <button onClick={() => setQazaTarget(target - 1)} disabled={target <= 1}
+                        aria-label="Fewer per day"
+                        style={{ ...targetStep, opacity: target <= 1 ? 0.4 : 1, cursor: target <= 1 ? "not-allowed" : "pointer" }}>−</button>
+                      <strong style={{ color: "var(--text-primary)", minWidth: 16, textAlign: "center" }}>{target}</strong>
+                      <button onClick={() => setQazaTarget(target + 1)} aria-label="More per day" style={targetStep}>+</button>
+                    </span>
+                    <span>/day → cleared <strong style={{ color: "var(--gold)" }}>~{clearLabel}</strong> ({days.toLocaleString()} day{days === 1 ? "" : "s"}{yrs >= 1 ? ` · ~${yrs.toFixed(1)} yr` : ""})</span>
+                  </div>
+                );
+              })()}
+
+              <button onClick={() => setEstimatorOpen(true)}
+                style={{
+                  marginTop: 12,
+                  width: "100%",
+                  padding: "9px 12px",
+                  fontSize: 13,
+                  color: "var(--text-secondary)",
+                  background: "transparent",
+                  border: "0.5px dashed var(--color-border-secondary)",
+                  borderRadius: 10,
+                  cursor: "pointer",
+                }}>
+                + Add older missed prayers
+              </button>
             </div>
           )}
+
+          <QazaEstimator
+            open={estimatorOpen}
+            onClose={() => setEstimatorOpen(false)}
+            currentTotal={totalOwed}
+            onAdd={(perPrayer) => { addQazaAll(perPrayer); setEstimatorOpen(false); }}
+          />
 
           {/* 7-day tracker */}
           <div style={S.card}>
@@ -665,5 +682,172 @@ function RemindersPanel({ notifications, updateNotifications }) {
         <div role="alert" aria-live="polite" style={{ fontSize: 13, color: "var(--color-text-danger)", marginTop: 10 }}>{error}</div>
       )}
     </div>
+  );
+}
+
+// One prayer's qaza cell. Holds its own bulk-edit state: tapping the number
+// opens a small add/remove input for large per-prayer corrections (the
+// quick +/− stepper only moves one at a time). − only reverses a makeup
+// logged today; + is disabled at zero owed (see the gating rationale in
+// lib/qaza.js).
+function QazaTile({ p, owed, paidToday, paidTotalP, pColor, onPay, onUndo, onAdjust }) {
+  const [editing, setEditing] = useState(false);
+  const [qty, setQty] = useState("");
+  const isClear = owed === 0;
+  const apply = (sign) => {
+    const n = Math.floor(Number(qty));
+    if (!n || n <= 0) return;
+    onAdjust(p, sign * n);
+    setQty("");
+    setEditing(false);
+  };
+  return (
+    <div style={{
+      position: "relative",
+      padding: "10px 12px",
+      borderRadius: 10,
+      border: `0.5px solid ${isClear ? "var(--color-border-tertiary)" : pColor + "66"}`,
+      background: isClear ? "var(--bg-card)" : `linear-gradient(135deg, ${pColor}0f 0%, ${pColor}05 100%)`,
+      overflow: "hidden",
+    }}>
+      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: pColor, opacity: isClear ? 0.3 : 1 }} />
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, paddingLeft: 6 }}>
+        <span style={{ display: "flex" }}><PrayerIcon name={p} size={14} /></span>
+        <span style={{ fontSize: 14, fontWeight: 500, color: pColor }}>{p}</span>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingLeft: 6 }}>
+        <div>
+          <button onClick={() => setEditing((e) => !e)}
+            title={`Adjust ${p} count by a specific amount`}
+            style={{
+              padding: 0,
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              fontSize: 22,
+              fontWeight: 600,
+              lineHeight: 1,
+              color: isClear ? "var(--text-muted)" : "var(--text-primary)",
+              borderBottom: "1px dotted var(--color-border-secondary)",
+            }}>
+            {owed}
+          </button>
+          {paidToday > 0 ? (
+            <div style={{ fontSize: 11, color: "var(--color-text-success)", fontWeight: 600, marginTop: 2 }}>
+              {paidToday} made up today
+            </div>
+          ) : paidTotalP > 0 ? (
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
+              {paidTotalP} made up total
+            </div>
+          ) : null}
+        </div>
+        <div style={{ display: "flex", gap: 4 }}>
+          {paidToday > 0 && (
+            <button onClick={() => onUndo(p)}
+              title={`Undo a ${p} qaza made up today`}
+              style={{
+                fontSize: 13,
+                padding: "3px 8px",
+                borderRadius: 99,
+                background: "transparent",
+                color: "var(--text-secondary)",
+                border: "0.5px solid var(--color-border-secondary)",
+                cursor: "pointer",
+              }}>−</button>
+          )}
+          <button onClick={() => owed > 0 && onPay(p)}
+            disabled={owed === 0}
+            title={owed === 0 ? `No ${p} qaza outstanding` : `Mark one ${p} qaza as made up`}
+            style={{
+              fontSize: 13,
+              fontWeight: 600,
+              padding: "3px 10px",
+              borderRadius: 99,
+              background: owed === 0 ? "transparent" : pColor,
+              color: owed === 0 ? "var(--text-muted)" : "#fff",
+              border: `0.5px solid ${owed === 0 ? "var(--color-border-tertiary)" : pColor}`,
+              cursor: owed === 0 ? "not-allowed" : "pointer",
+              opacity: owed === 0 ? 0.5 : 1,
+            }}>+</button>
+        </div>
+      </div>
+      {editing && (
+        <div style={{ display: "flex", gap: 6, marginTop: 8, paddingLeft: 6, alignItems: "center" }}>
+          <input type="number" inputMode="numeric" min="1" value={qty}
+            onChange={(e) => setQty(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && apply(1)}
+            placeholder="qty"
+            aria-label={`Amount to adjust ${p}`}
+            style={{ width: 60, fontSize: 13, padding: "3px 6px", boxSizing: "border-box" }} />
+          <button onClick={() => apply(1)} disabled={!qty}
+            style={{ fontSize: 12, padding: "3px 8px", borderRadius: 8, cursor: qty ? "pointer" : "not-allowed", background: "transparent", border: `0.5px solid ${pColor}66`, color: pColor }}>Add</button>
+          <button onClick={() => apply(-1)} disabled={!qty || owed === 0}
+            style={{ fontSize: 12, padding: "3px 8px", borderRadius: 8, cursor: (qty && owed > 0) ? "pointer" : "not-allowed", background: "transparent", border: "0.5px solid var(--color-border-secondary)", color: "var(--text-secondary)", opacity: owed === 0 ? 0.5 : 1 }}>Remove</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Backlog estimator — turns "roughly how long did I miss prayers" into a
+// per-prayer count and adds it to the ledger. Applies equally to all five
+// (the common "I missed ~N years of everything" case); fine-tune per prayer
+// afterwards with each tile's tap-to-edit. Excludes exempt days by asking the
+// user not to count them (menstruation / pre-puberty / pre-Islam).
+function QazaEstimator({ open, onClose, onAdd, currentTotal }) {
+  const [years, setYears] = useState("");
+  const [months, setMonths] = useState("");
+  const [days, setDays] = useState("");
+  const perPrayer = Math.max(0, Math.floor(
+    (Number(years) || 0) * 365 + (Number(months) || 0) * 30 + (Number(days) || 0)
+  ));
+  const total = perPrayer * 5;
+  const field = { width: "100%", boxSizing: "border-box", fontSize: 15, padding: "8px 10px" };
+  const label = { fontSize: 13, color: "var(--text-secondary)", display: "block", marginBottom: 4 };
+  return (
+    <Modal open={open} onClose={onClose} title="Add older missed prayers">
+      <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6, marginTop: 0 }}>
+        Estimate how long you missed the obligatory prayers. This adds that many to
+        <strong> each</strong> of the five. Don&apos;t count days you were exempt — menstruation
+        or post-natal bleeding, before puberty, or before Islam.
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
+        <div>
+          <label style={label}>Years</label>
+          <input type="number" inputMode="numeric" min="0" value={years} onChange={(e) => setYears(e.target.value)} placeholder="0" style={field} />
+        </div>
+        <div>
+          <label style={label}>Months</label>
+          <input type="number" inputMode="numeric" min="0" value={months} onChange={(e) => setMonths(e.target.value)} placeholder="0" style={field} />
+        </div>
+        <div>
+          <label style={label}>Days</label>
+          <input type="number" inputMode="numeric" min="0" value={days} onChange={(e) => setDays(e.target.value)} placeholder="0" style={field} />
+        </div>
+      </div>
+      <div style={{
+        padding: "10px 12px",
+        borderRadius: 10,
+        background: "var(--color-background-secondary)",
+        border: "0.5px solid var(--color-border-tertiary)",
+        marginBottom: 14,
+      }}>
+        <div style={{ fontSize: 14, color: "var(--text-primary)" }}>
+          ≈ <strong>{perPrayer.toLocaleString()}</strong> per prayer · <strong>{total.toLocaleString()}</strong> total
+        </div>
+        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+          Current outstanding: {currentTotal.toLocaleString()} → {(currentTotal + total).toLocaleString()} after adding.
+          Years count as 365 days, months as 30 — round estimates are fine.
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <button onClick={onClose} style={{ fontSize: 14, padding: "8px 14px" }}>Cancel</button>
+        <button onClick={() => onAdd(perPrayer)} disabled={perPrayer === 0} className="btn-primary"
+          style={{ padding: "8px 16px", opacity: perPrayer === 0 ? 0.5 : 1, cursor: perPrayer === 0 ? "not-allowed" : "pointer" }}>
+          Add to ledger
+        </button>
+      </div>
+    </Modal>
   );
 }
