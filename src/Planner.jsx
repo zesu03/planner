@@ -15,7 +15,7 @@ import { newId } from "./lib/ids";
 import { todayStr, localDateStr, daysLeft, addDaysToStr } from "./lib/dates";
 import { isGoalDone, pct } from "./lib/goals";
 import { emptyMuhasabaEntry, isMuhasabaFilled, muhasabaStreak } from "./lib/muhasaba";
-import { emptyQaza, computeQazaOwed, QAZA_PRAYERS } from "./lib/qaza";
+import { reconcileQaza, qazaOwed, payQaza, undoQaza, qazaAfterRetroToggle, QAZA_PRAYERS } from "./lib/qaza";
 import { nextPrayer as computeNextPrayer, prayerDayFor as computePrayerDayFor } from "./lib/prayer";
 import { dayPhase, prayersToday, focusToday, muhasabaState, yesterdayDua, firstOpenTask, istiqamahStreak, istiqamahActiveToday } from "./lib/daily";
 import { fmtTime, focusStreakDays, STREAK_MILESTONES } from "./lib/focus";
@@ -57,7 +57,7 @@ function ViewFallback() {
 
 // ── main component ─────────────────────────────────────────────────────────
 export default function Planner({ user }) {
-  const { goals: goalsFromDb, prayerLog: prayerLogFromDb, focusLog: focusLogFromDb, settings: settingsFromDb, muhasaba: muhasabaFromDb, qaza: qazaFromDb, savedVerses: savedVersesFromDb, notifications: notificationsFromDb, loading, syncState, updateGoals, updatePrayerLog, updateFocusLog, updateSettings, updateMuhasaba, updateQaza, updateSavedVerses, updateNotifications } = useUserData(user.uid);
+  const { goals: goalsFromDb, prayerLog: prayerLogFromDb, focusLog: focusLogFromDb, settings: settingsFromDb, muhasaba: muhasabaFromDb, qaza: qazaFromDb, savedVerses: savedVersesFromDb, notifications: notificationsFromDb, loading, loaded, syncState, updateGoals, updatePrayerLog, updateFocusLog, updateSettings, updateMuhasaba, updateQaza, updateSavedVerses, updateNotifications } = useUserData(user.uid);
   const goals = goalsFromDb ?? [];
   const prayerLog = prayerLogFromDb ?? {};
   const focusLog = focusLogFromDb ?? [];
@@ -318,49 +318,27 @@ export default function Planner({ user }) {
   const applyMuhasabaUpdate = updateMuhasaba;
   const applyQazaUpdate = updateQaza;
 
-  // Seed the qaza ledger the first time the user reaches the app — startDate
-  // anchors counting to "from today forward" so pre-existing prayerLog gaps
-  // don't spawn a wall of qaza on first launch.
+  // Seed / migrate / settle the qaza ledger. Runs once the user doc has
+  // resolved (`!loading`) — settling against a pre-load empty prayerLog would
+  // manufacture phantom qaza. reconcileQaza is idempotent and returns the same
+  // reference when a v2 ledger has nothing new to settle, so we skip the write
+  // in that case. Depends on prayerLog so a fresh sync (or a new day) re-settles.
   useEffect(() => {
-    if (!qazaFromDb) return;
-    if (qazaFromDb.startDate) return;
-    updateQaza(emptyQaza());
-  }, [qazaFromDb, updateQaza]);
+    if (!loaded) return;
+    const next = reconcileQaza(qazaFromDb, prayerLog, todayStr());
+    if (next !== qazaFromDb) updateQaza(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, qazaFromDb, prayerLogFromDb, updateQaza]);
 
-  // Pay off one qaza for a given prayer — increments paid[p], which the
-  // owed-computation subtracts from the missed-days count.
+  // Log one made-up qaza. payQaza is a no-op when nothing is owed (no phantom
+  // credit); undoQaza only reverses a makeup logged TODAY — the two are exact
+  // inverses so a mistaken −then+ can't drift the counters.
   const payOneQaza = useCallback((prayer) => {
-    if (!QAZA_PRAYERS.includes(prayer)) return;
-    const today = todayStr();
-    applyQazaUpdate((q) => {
-      const base = q?.startDate ? q : emptyQaza();
-      const paid = { ...(base.paid || {}) };
-      paid[prayer] = (paid[prayer] || 0) + 1;
-      // Record it under today so the ledger can show "made up today".
-      const paidLog = { ...(base.paidLog || {}) };
-      const todayCounts = { ...(paidLog[today] || {}) };
-      todayCounts[prayer] = (todayCounts[prayer] || 0) + 1;
-      paidLog[today] = todayCounts;
-      return { ...base, paid, paidLog };
-    });
+    applyQazaUpdate((q) => payQaza(q, prayer, todayStr()));
   }, [applyQazaUpdate]);
 
   const undoOneQaza = useCallback((prayer) => {
-    if (!QAZA_PRAYERS.includes(prayer)) return;
-    const today = todayStr();
-    applyQazaUpdate((q) => {
-      if (!q?.paid?.[prayer]) return q;
-      const paid = { ...q.paid, [prayer]: Math.max(0, q.paid[prayer] - 1) };
-      // Roll back today's tally too, if this prayer had any made-up today —
-      // so undoing a mistaken tap doesn't leave a phantom "made up today".
-      const paidLog = { ...(q.paidLog || {}) };
-      const todayCounts = { ...(paidLog[today] || {}) };
-      if (todayCounts[prayer] > 0) {
-        todayCounts[prayer] -= 1;
-        paidLog[today] = todayCounts;
-      }
-      return { ...q, paid, paidLog };
-    });
+    applyQazaUpdate((q) => undoQaza(q, prayer, todayStr()));
   }, [applyQazaUpdate]);
 
   // Saved verses — personal collection of bookmarked ayat from the
@@ -510,6 +488,7 @@ export default function Planner({ user }) {
     // Block marking (but not unmarking) a prayer whose window hasn't opened
     // yet — e.g. tapping Asr at Dhuhr time.
     if (!already && !prayerStartHasPassed(prayer, day)) return;
+    const willBeMarked = !already;
     applyPrayerLogUpdate((log) => {
       const prev = log[prayer] || [];
       const alreadyIn = prev.includes(day);
@@ -518,6 +497,11 @@ export default function Planner({ user }) {
         : [day, ...prev];
       return { ...log, [prayer]: next };
     });
+    // Keep the qaza ledger in sync when retro-marking a fard prayer on an
+    // already-settled day: marking it prayed clears that day's qaza, unmarking
+    // restores it. Same-day (unsettled) toggles are a no-op here — today stays
+    // pending until it rolls over and settles.
+    applyQazaUpdate((q) => qazaAfterRetroToggle(q, prayer, day, willBeMarked));
   }
 
   // Which day a "Mark prayed" tap is attributed to. Delegates to the lib
@@ -830,7 +814,7 @@ export default function Planner({ user }) {
   const yDuaInfo = yesterdayDua(muhasaba);
   const todayDuaText = muhasaba[todayStr()]?.duaTomorrow || null;
   const firstTaskInfo = firstOpenTask(goals);
-  const qazaOwedMap = computeQazaOwed(prayerLog, qaza, prayerTimes);
+  const qazaOwedMap = qazaOwed(qaza);
   const qazaOwedTotal = QAZA_PRAYERS.reduce((s, p) => s + (qazaOwedMap[p] || 0), 0);
   const prayersTodaySummary = prayersToday(prayerLog);
   const focusTodaySummary = focusToday(focusLog, dailyFocusGoalMins);
@@ -1074,7 +1058,7 @@ export default function Planner({ user }) {
           canMarkPrayer={canMarkPrayer}
           prayerStreak={prayerStreak}
           qaza={qaza}
-          qazaOwed={computeQazaOwed(prayerLog, qaza, prayerTimes)}
+          qazaOwed={qazaOwedMap}
           payOneQaza={payOneQaza}
           undoOneQaza={undoOneQaza}
           notifications={notifications}

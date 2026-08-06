@@ -368,12 +368,12 @@ export default function Prayer({
                 </div>
               </div>
               <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>
-                Since {qaza?.startDate || "today"} · tap <strong>+</strong> as you make each one up.
+                Outstanding makeups since {qaza?.startDate || "today"}. A missed prayer settles here after its day ends — tap <strong>+</strong> as you make each one up.
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10 }}>
                 {QAZA_PRAYERS.map((p) => {
                   const owed = qazaOwed[p] || 0;
-                  const paid = qaza?.paid?.[p] || 0;
+                  const paidTotalP = qaza?.paidTotal?.[p] || 0;
                   const paidToday = qaza?.paidLog?.[todayKeyQaza]?.[p] || 0;
                   const pColor = PRAYER_COLORS[p];
                   const isClear = owed === 0;
@@ -400,16 +400,19 @@ export default function Prayer({
                             <div style={{ fontSize: 11, color: "var(--color-text-success)", fontWeight: 600, marginTop: 2 }}>
                               {paidToday} made up today
                             </div>
-                          ) : paid > 0 ? (
+                          ) : paidTotalP > 0 ? (
                             <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
-                              {paid} made up
+                              {paidTotalP} made up total
                             </div>
                           ) : null}
                         </div>
                         <div style={{ display: "flex", gap: 4 }}>
-                          {paid > 0 && (
+                          {/* − only undoes a makeup logged TODAY, so it's an
+                              exact inverse of + within the session — no phantom
+                              "made up today" from undoing an older makeup. */}
+                          {paidToday > 0 && (
                             <button onClick={() => undoOneQaza(p)}
-                              title="Undo last made-up qaza"
+                              title={`Undo a ${p} qaza made up today`}
                               style={{
                                 fontSize: 13,
                                 padding: "3px 8px",
@@ -420,17 +423,21 @@ export default function Prayer({
                                 cursor: "pointer",
                               }}>−</button>
                           )}
-                          <button onClick={() => payOneQaza(p)}
-                            title={`Mark one ${p} qaza as made up`}
+                          {/* + is disabled when nothing is owed, so you can't
+                              log a makeup against zero debt. */}
+                          <button onClick={() => owed > 0 && payOneQaza(p)}
+                            disabled={owed === 0}
+                            title={owed === 0 ? `No ${p} qaza outstanding` : `Mark one ${p} qaza as made up`}
                             style={{
                               fontSize: 13,
                               fontWeight: 600,
                               padding: "3px 10px",
                               borderRadius: 99,
-                              background: pColor,
-                              color: "#fff",
-                              border: `0.5px solid ${pColor}`,
-                              cursor: "pointer",
+                              background: owed === 0 ? "transparent" : pColor,
+                              color: owed === 0 ? "var(--text-muted)" : "#fff",
+                              border: `0.5px solid ${owed === 0 ? "var(--color-border-tertiary)" : pColor}`,
+                              cursor: owed === 0 ? "not-allowed" : "pointer",
+                              opacity: owed === 0 ? 0.5 : 1,
                             }}>+</button>
                         </div>
                       </div>

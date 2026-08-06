@@ -103,28 +103,6 @@ export function prayerDayFor(prayer, prayerTimes, todayStrFn, addDaysToStrFn, no
   return addDaysToStrFn(todayStrFn(), -1);
 }
 
-// Today's prayers whose window has already closed and haven't been logged.
-// "Closed" means the next-prayer-start (or Sunrise for Fajr) has passed.
-// Isha is excluded — its window doesn't close before midnight, so it can
-// only become a "missed today" once the day rolls over.
-export function prayersClosedUnpaid(prayerTimes, prayerLog, today, now = new Date()) {
-  if (!prayerTimes) return [];
-  const nowMins = now.getHours() * 60 + now.getMinutes();
-  const ended = [
-    { p: "Fajr", endKey: "Sunrise" },
-    { p: "Dhuhr", endKey: "Asr" },
-    { p: "Asr", endKey: "Maghrib" },
-    { p: "Maghrib", endKey: "Isha" },
-  ];
-  const out = [];
-  for (const { p, endKey } of ended) {
-    const end = parseHHMM(prayerTimes[endKey]);
-    if (end == null) continue;
-    if (nowMins >= end && !(prayerLog?.[p] || []).includes(today)) out.push(p);
-  }
-  return out;
-}
-
 // "Next thing to pray" with window awareness.
 //   - If a prayer's window is open and it isn't logged done → due now
 //   - Otherwise → next upcoming start time today

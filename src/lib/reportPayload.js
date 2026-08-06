@@ -27,7 +27,7 @@ import { addDaysToStr, todayStr, weekdayOf } from "./dates";
 import { PRAYERS, VOLUNTARY_PRAYERS } from "./constants";
 import { isRecurring, isDoneOn, isScheduledOn, recurringStreak, recurringCompletionRate } from "./goals";
 import { muhasabaStreak } from "./muhasaba";
-import { computeQazaOwed, QAZA_PRAYERS } from "./qaza";
+import { qazaOwed, QAZA_PRAYERS } from "./qaza";
 
 export function buildReportPayload(day, { goals, prayerLog, focusLog, muhasaba, qaza, prayerTimes, hijriDate }) {
   const entry = muhasaba[day] || {};
@@ -199,9 +199,9 @@ export function buildReportPayload(day, { goals, prayerLog, focusLog, muhasaba, 
   // Qaza ledger — outstanding makeups per prayer + total. Tells the
   // mentor where missed-prayer debt is accumulating, so a recurring miss
   // can be named directly instead of as an abstract "consistency" note.
-  const owed = computeQazaOwed(prayerLog, qaza, prayerTimes);
+  const owed = qazaOwed(qaza);
   const totalOwed = QAZA_PRAYERS.reduce((s, p) => s + (owed[p] || 0), 0);
-  const totalPaid = QAZA_PRAYERS.reduce((s, p) => s + (qaza?.paid?.[p] || 0), 0);
+  const totalPaid = QAZA_PRAYERS.reduce((s, p) => s + (qaza?.paidTotal?.[p] || 0), 0);
   const worst = QAZA_PRAYERS.reduce((acc, p) => (owed[p] || 0) > (owed[acc] || 0) ? p : acc, "Fajr");
   const qazaSummary = {
     owed,

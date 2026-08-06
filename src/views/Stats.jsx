@@ -3,7 +3,7 @@ import { CAT_COLORS, NIYYAH_LABELS, PRAYER_COLORS, VOLUNTARY_PRAYERS } from "../
 import { PrayerIcon, Icon } from "../components/icons";
 import { fmt, localDateStr, todayStr } from "../lib/dates";
 import { fmtMins } from "../lib/focus";
-import { computeQazaOwed, QAZA_PRAYERS } from "../lib/qaza";
+import { qazaOwed, QAZA_PRAYERS } from "../lib/qaza";
 import { isRecurring, isScheduledOn, recurringStreak, recurringCompletionRate, scheduleLabel } from "../lib/goals";
 import { goldA, S } from "../lib/styles";
 import EmptyState from "../components/EmptyState";
@@ -141,15 +141,15 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
     });
   })();
 
-  // ── qaza balance (per-prayer ledger). Outstanding = computeQazaOwed
-  //    (which already subtracts paid); Paid = raw paid count from the
-  //    ledger; Total missed = outstanding + paid (every paid was originally
-  //    a missed prayer). Sits below Prayer Health as a deeper drill-down. ──
+  // ── qaza balance (per-prayer ledger). Outstanding = stored owed counter;
+  //    Paid = lifetime makeups (paidTotal); Total missed = outstanding + paid
+  //    (every paid was originally a missed prayer). Now that owed is an
+  //    explicit counter, this sum is leak-free. Sits below Prayer Health. ──
   const qazaBalance = (() => {
-    const owed = computeQazaOwed(prayerLog, qaza, prayerTimes);
+    const owed = qazaOwed(qaza);
     const rows = QAZA_PRAYERS.map((p) => {
       const o = owed[p] || 0;
-      const paid = qaza?.paid?.[p] || 0;
+      const paid = qaza?.paidTotal?.[p] || 0;
       return { prayer: p, owed: o, paid, totalMissed: o + paid };
     });
     const totalOutstanding = rows.reduce((s, r) => s + r.owed, 0);

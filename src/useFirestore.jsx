@@ -65,6 +65,12 @@ export function useUserData(userId) {
   const [savedVerses, setSavedVerses] = useState(null);
   const [notifications, setNotifications] = useState(null);
   const [loading, setLoading] = useState(true);
+  // Mirrors loadedRef as reactive state: true only once the write gate has
+  // opened (a real snapshot — NOT a cold fromCache miss). Consumers that must
+  // not act on transiently-empty pre-load data (e.g. the qaza settle pass,
+  // which would otherwise manufacture phantom missed-prayer debt) gate on this
+  // rather than `loading`, which flips false even on a cache miss.
+  const [loaded, setLoaded] = useState(false);
   // Sync status surfaced to the UI (Phase R1 / R2). "synced" | "saving" |
   // "error". Ends the silent write-failure: a rejected write (rules/quota/
   // invalid data — network failures are absorbed by the offline queue and
@@ -336,7 +342,10 @@ export function useUserData(userId) {
       // fromCache:true on first load; opening the gate then would let a queued
       // write persist empty defaults over real server data on reconnect — the
       // exact data-wipe loadedRef exists to prevent.
-      if (gateOpenForDoc(exists, snap.metadata.fromCache)) loadedRef.current = true;
+      if (gateOpenForDoc(exists, snap.metadata.fromCache)) {
+        loadedRef.current = true;
+        setLoaded(true);
+      }
       setLoading(false);
     });
     return () => {
@@ -533,5 +542,5 @@ export function useUserData(userId) {
     save();
   }, [save]);
 
-  return { goals, prayerLog, focusLog, settings, muhasaba, qaza, savedVerses, notifications, loading, syncState, updateGoals, updatePrayerLog, updateFocusLog, updateSettings, updateMuhasaba, updateQaza, updateSavedVerses, updateNotifications };
+  return { goals, prayerLog, focusLog, settings, muhasaba, qaza, savedVerses, notifications, loading, loaded, syncState, updateGoals, updatePrayerLog, updateFocusLog, updateSettings, updateMuhasaba, updateQaza, updateSavedVerses, updateNotifications };
 }
