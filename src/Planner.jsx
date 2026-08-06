@@ -331,20 +331,35 @@ export default function Planner({ user }) {
   // owed-computation subtracts from the missed-days count.
   const payOneQaza = useCallback((prayer) => {
     if (!QAZA_PRAYERS.includes(prayer)) return;
+    const today = todayStr();
     applyQazaUpdate((q) => {
       const base = q?.startDate ? q : emptyQaza();
       const paid = { ...(base.paid || {}) };
       paid[prayer] = (paid[prayer] || 0) + 1;
-      return { ...base, paid };
+      // Record it under today so the ledger can show "made up today".
+      const paidLog = { ...(base.paidLog || {}) };
+      const todayCounts = { ...(paidLog[today] || {}) };
+      todayCounts[prayer] = (todayCounts[prayer] || 0) + 1;
+      paidLog[today] = todayCounts;
+      return { ...base, paid, paidLog };
     });
   }, [applyQazaUpdate]);
 
   const undoOneQaza = useCallback((prayer) => {
     if (!QAZA_PRAYERS.includes(prayer)) return;
+    const today = todayStr();
     applyQazaUpdate((q) => {
       if (!q?.paid?.[prayer]) return q;
       const paid = { ...q.paid, [prayer]: Math.max(0, q.paid[prayer] - 1) };
-      return { ...q, paid };
+      // Roll back today's tally too, if this prayer had any made-up today —
+      // so undoing a mistaken tap doesn't leave a phantom "made up today".
+      const paidLog = { ...(q.paidLog || {}) };
+      const todayCounts = { ...(paidLog[today] || {}) };
+      if (todayCounts[prayer] > 0) {
+        todayCounts[prayer] -= 1;
+        paidLog[today] = todayCounts;
+      }
+      return { ...q, paid, paidLog };
     });
   }, [applyQazaUpdate]);
 
@@ -802,7 +817,7 @@ export default function Planner({ user }) {
   // Next prayer — window-aware. A prayer is only "due now" while its window
   // is open (e.g. Fajr stops being due after Sunrise even if unprayed). See
   // lib/prayer.js for the window definitions.
-  const nextPrayer = computeNextPrayer(prayerTimes, prayerLog, todayStr());
+  const nextPrayer = computeNextPrayer(prayerTimes, prayerLog, todayStr(), new Date(), addDaysToStr(todayStr(), -1));
 
   const englishDate = new Date().toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
   const dateLine = hijriDate ? `${englishDate} · ${hijriDate}` : englishDate;

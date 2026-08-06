@@ -18,7 +18,21 @@ export const QAZA_PRAYERS = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
 export const emptyQaza = () => ({
   startDate: todayStr(),
   paid: { Fajr: 0, Dhuhr: 0, Asr: 0, Maghrib: 0, Isha: 0 },
+  // Per-day breakdown of makeups, keyed by YYYY-MM-DD → { Fajr: n, ... }.
+  // `paid` above stays the lifetime cumulative total (what owed subtracts);
+  // paidLog lets the UI show "N made up today" so the user doesn't re-mark a
+  // qaza they already paid earlier the same day out of forgetfulness.
+  paidLog: {},
 });
+
+// How many qaza the user has marked made-up on `day` (default today),
+// summed across all five prayers. Reads the per-day paidLog; returns 0 for a
+// legacy ledger that predates paidLog.
+export function paidOnDay(qaza, day = todayStr()) {
+  const byPrayer = qaza?.paidLog?.[day];
+  if (!byPrayer) return 0;
+  return QAZA_PRAYERS.reduce((s, p) => s + (byPrayer[p] || 0), 0);
+}
 
 // Returns { Fajr: n, Dhuhr: n, ... } — qaza still owed per prayer, never
 // negative. Past days (startDate to yesterday) are always counted; today's

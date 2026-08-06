@@ -130,17 +130,28 @@ export function prayersClosedUnpaid(prayerTimes, prayerLog, today, now = new Dat
 //   - Otherwise → next upcoming start time today
 //   - After Isha start → tomorrow's Fajr
 // Returns { name, time, due?, tomorrow? } or null.
-export function nextPrayer(prayerTimes, prayerLog, today, now = new Date()) {
+//
+// `prevDay` (yesterday's YYYY-MM-DD) is passed in so the done-check for a
+// night-crossing prayer matches prayerDayFor's attribution: Isha marked
+// between local midnight and Fajr lands on YESTERDAY, so the "due" card must
+// read yesterday too — otherwise it stays "Mark prayed" after the user has
+// already marked last night's Isha, and each tap just re-toggles the mark.
+export function nextPrayer(prayerTimes, prayerLog, today, now = new Date(), prevDay = null) {
   if (!prayerTimes) return null;
   const five = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"].filter((p) => prayerTimes[p]);
-  const isDone = (p) => (prayerLog?.[p] || []).includes(today);
+  const nowMins = now.getHours() * 60 + now.getMinutes();
 
   const active = currentPrayerWindow(prayerTimes, now);
-  if (active && !isDone(active)) {
-    return { name: active, time: prayerTimes[active], due: true };
+  if (active) {
+    const fajr = parseHHMM(prayerTimes.Fajr);
+    const activeDay = active === "Isha" && fajr != null && nowMins < fajr && prevDay
+      ? prevDay
+      : today;
+    if (!(prayerLog?.[active] || []).includes(activeDay)) {
+      return { name: active, time: prayerTimes[active], due: true };
+    }
   }
 
-  const nowMins = now.getHours() * 60 + now.getMinutes();
   for (const p of five) {
     const mins = parseHHMM(prayerTimes[p]);
     if (mins != null && mins > nowMins) {

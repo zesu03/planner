@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { PRAYERS, PRAYER_COLORS, VOLUNTARY_PRAYERS } from "../lib/constants";
 import { PrayerIcon } from "../components/icons";
 import { localDateStr } from "../lib/dates";
-import { QAZA_PRAYERS } from "../lib/qaza";
+import { QAZA_PRAYERS, paidOnDay } from "../lib/qaza";
 import { currentPrayerWindow, prayerDisplayName } from "../lib/prayer";
 import { S } from "../lib/styles";
 import { rewardPrayerMark } from "../lib/feedback";
@@ -47,7 +47,8 @@ export default function Prayer({
   // window has closed.
   const currentPrayerName = currentPrayerWindow(prayerTimes);
   const totalOwed = qazaOwed ? QAZA_PRAYERS.reduce((s, p) => s + (qazaOwed[p] || 0), 0) : 0;
-  const totalPaid = qaza?.paid ? QAZA_PRAYERS.reduce((s, p) => s + (qaza.paid[p] || 0), 0) : 0;
+  const todayKeyQaza = localDateStr();
+  const paidTodayTotal = paidOnDay(qaza, todayKeyQaza);
 
   // "Change city" used to call setPrayerTimes(null), which dumped the
   // user into the city-input form with no way back if they tapped it by
@@ -361,7 +362,9 @@ export default function Prayer({
                 <div style={{ fontSize: 15, fontWeight: 500 }}>Qaza ledger</div>
                 <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>
                   {totalOwed > 0 ? `${totalOwed} owed` : "All clear · alhamdulillah"}
-                  {totalPaid > 0 ? ` · ${totalPaid} made up` : ""}
+                  {paidTodayTotal > 0 ? (
+                    <span style={{ color: "var(--color-text-success)" }}> · {paidTodayTotal} made up today</span>
+                  ) : ""}
                 </div>
               </div>
               <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>
@@ -371,6 +374,7 @@ export default function Prayer({
                 {QAZA_PRAYERS.map((p) => {
                   const owed = qazaOwed[p] || 0;
                   const paid = qaza?.paid?.[p] || 0;
+                  const paidToday = qaza?.paidLog?.[todayKeyQaza]?.[p] || 0;
                   const pColor = PRAYER_COLORS[p];
                   const isClear = owed === 0;
                   return (
@@ -392,11 +396,15 @@ export default function Prayer({
                           <div style={{ fontSize: 22, fontWeight: 600, lineHeight: 1, color: isClear ? "var(--text-muted)" : "var(--text-primary)" }}>
                             {owed}
                           </div>
-                          {paid > 0 && (
-                            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
-                              {paid} paid
+                          {paidToday > 0 ? (
+                            <div style={{ fontSize: 11, color: "var(--color-text-success)", fontWeight: 600, marginTop: 2 }}>
+                              {paidToday} made up today
                             </div>
-                          )}
+                          ) : paid > 0 ? (
+                            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
+                              {paid} made up
+                            </div>
+                          ) : null}
                         </div>
                         <div style={{ display: "flex", gap: 4 }}>
                           {paid > 0 && (

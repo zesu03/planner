@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
-import { emptyQaza, computeQazaOwed, missedDaysForPrayer, QAZA_PRAYERS } from "./qaza";
+import { emptyQaza, computeQazaOwed, missedDaysForPrayer, paidOnDay, QAZA_PRAYERS } from "./qaza";
 import { todayStr, addDaysToStr } from "./dates";
 
 // Pin "now" so startDate/yesterday windows are deterministic.
@@ -10,10 +10,29 @@ beforeAll(() => {
 afterAll(() => vi.useRealTimers());
 
 describe("emptyQaza", () => {
-  it("seeds startDate to today with zeroed paid counters", () => {
+  it("seeds startDate to today with zeroed paid counters and empty paidLog", () => {
     const q = emptyQaza();
     expect(q.startDate).toBe(todayStr());
     expect(q.paid).toEqual({ Fajr: 0, Dhuhr: 0, Asr: 0, Maghrib: 0, Isha: 0 });
+    expect(q.paidLog).toEqual({});
+  });
+});
+
+describe("paidOnDay", () => {
+  it("sums today's makeups across all prayers", () => {
+    const q = { paidLog: { [todayStr()]: { Fajr: 2, Isha: 1 } } };
+    expect(paidOnDay(q)).toBe(3);
+    expect(paidOnDay(q, todayStr())).toBe(3);
+  });
+  it("counts only the requested day", () => {
+    const q = { paidLog: { [todayStr()]: { Fajr: 2 }, [addDaysToStr(todayStr(), -1)]: { Isha: 5 } } };
+    expect(paidOnDay(q, todayStr())).toBe(2);
+    expect(paidOnDay(q, addDaysToStr(todayStr(), -1))).toBe(5);
+  });
+  it("returns 0 for a legacy ledger without paidLog, or a null qaza", () => {
+    expect(paidOnDay({ paid: { Fajr: 9 } })).toBe(0);
+    expect(paidOnDay({})).toBe(0);
+    expect(paidOnDay(null)).toBe(0);
   });
 });
 
