@@ -109,6 +109,10 @@ src/
     DailyPanels.jsx    MorningPanel + EveningPanel (the Dashboard daily loop)
     CelebrationToast   fixed-position top toast (goal-complete / focus-streak /
                        muhasaba-streak variants; latest wins)
+    QazaLedger.jsx     the whole qaza feature UI (hero summary + make-up
+                       progress, per-prayer rows/stepper, completion
+                       projection, backlog estimator + excused-days modals).
+                       Rendered by the Prayer view; all writes via props.
     goal-form/         TypeToggle, CategoryTiles, DueChips, NiyyahChips
 
   views/               one file per tab
