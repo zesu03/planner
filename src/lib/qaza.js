@@ -205,6 +205,30 @@ export function addExcusedRange(qaza, from, to, reason = "", prayerLog = {}) {
   return { ...qaza, owed, excused: [...(qaza.excused || []), { from, to, reason }] };
 }
 
+// Remove the excused range at `index` and re-count any settled days it
+// covered that are no longer excused by a remaining range — the inverse of
+// addExcusedRange, so undoing a mistaken exemption restores the owed count.
+export function removeExcusedRange(qaza, index, prayerLog = {}) {
+  const excused = qaza?.excused || [];
+  if (index < 0 || index >= excused.length) return qaza;
+  const removed = excused[index];
+  const remaining = excused.filter((_, i) => i !== index);
+  const owed = qazaOwed(qaza);
+  if (qaza.startDate && qaza.lastSettledDate) {
+    const lo = removed.from < qaza.startDate ? qaza.startDate : removed.from;
+    const hi = removed.to > qaza.lastSettledDate ? qaza.lastSettledDate : removed.to;
+    if (lo <= hi) {
+      for (const day of eachDayBetween(lo, addDaysToStr(hi, 1))) {
+        if (isExcused(day, remaining)) continue; // still excused elsewhere
+        for (const p of QAZA_PRAYERS) {
+          if (!(prayerLog[p] || []).includes(day)) owed[p]++;
+        }
+      }
+    }
+  }
+  return { ...qaza, owed, excused: remaining };
+}
+
 // Returns the list of specific missed days for a given prayer (past days,
 // startDate→yesterday, not in prayerLog). Independent of the owed counter —
 // a raw prayerLog query, kept for the excused-day picker (Phase C).

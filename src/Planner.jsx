@@ -15,7 +15,7 @@ import { newId } from "./lib/ids";
 import { todayStr, localDateStr, daysLeft, addDaysToStr } from "./lib/dates";
 import { isGoalDone, pct } from "./lib/goals";
 import { emptyMuhasabaEntry, isMuhasabaFilled, muhasabaStreak } from "./lib/muhasaba";
-import { reconcileQaza, qazaOwed, payQaza, undoQaza, addQaza, qazaAfterRetroToggle, QAZA_PRAYERS } from "./lib/qaza";
+import { reconcileQaza, qazaOwed, payQaza, undoQaza, addQaza, qazaAfterRetroToggle, addExcusedRange, removeExcusedRange, QAZA_PRAYERS } from "./lib/qaza";
 import { nextPrayer as computeNextPrayer, prayerDayFor as computePrayerDayFor } from "./lib/prayer";
 import { dayPhase, prayersToday, focusToday, muhasabaState, yesterdayDua, firstOpenTask, istiqamahStreak, istiqamahActiveToday } from "./lib/daily";
 import { fmtTime, focusStreakDays, STREAK_MILESTONES } from "./lib/focus";
@@ -361,6 +361,19 @@ export default function Planner({ user }) {
     const target = Math.max(1, Math.floor(Number(n) || 1));
     updateSettings((prev) => ({ ...prev, qazaDailyTarget: target }));
   }, [updateSettings]);
+
+  // Excused days (hayd/nifas, travel, illness): obligatory prayers missed then
+  // aren't made up, so those days are excluded from accrual. addExcusedRange
+  // also un-counts any already-settled days the range covers; removeExcusedRange
+  // re-counts them. Both need prayerLog to know which days were unlogged.
+  const addExcused = useCallback((from, to, reason) => {
+    if (!from || !to) return;
+    applyQazaUpdate((q) => addExcusedRange(q, from, to, reason, prayerLog));
+  }, [applyQazaUpdate, prayerLog]);
+
+  const removeExcused = useCallback((index) => {
+    applyQazaUpdate((q) => removeExcusedRange(q, index, prayerLog));
+  }, [applyQazaUpdate, prayerLog]);
 
   // Saved verses — personal collection of bookmarked ayat from the
   // verse-of-day card. De-duped by verseKey so re-saving the same verse is
@@ -1086,6 +1099,8 @@ export default function Planner({ user }) {
           addQazaAll={addQazaAll}
           qazaDailyTarget={userSettings.qazaDailyTarget || 5}
           setQazaTarget={setQazaTarget}
+          addExcused={addExcused}
+          removeExcused={removeExcused}
           notifications={notifications}
           updateNotifications={updateNotifications}
         />

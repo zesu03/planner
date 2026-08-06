@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import {
   emptyQaza, qazaOwed, paidOnDay, isExcused,
   settleQaza, reconcileQaza,
-  payQaza, undoQaza, addQaza, qazaAfterRetroToggle, addExcusedRange,
+  payQaza, undoQaza, addQaza, qazaAfterRetroToggle, addExcusedRange, removeExcusedRange,
   missedDaysForPrayer, QAZA_PRAYERS, QAZA_VERSION,
 } from "./qaza";
 import { todayStr, addDaysToStr } from "./dates";
@@ -201,15 +201,37 @@ describe("qazaAfterRetroToggle", () => {
   });
 });
 
-describe("addExcusedRange", () => {
+describe("addExcusedRange / removeExcusedRange", () => {
+  const start = () => addDaysToStr(todayStr(), -3);
+  const three = { Fajr: 3, Dhuhr: 3, Asr: 3, Maghrib: 3, Isha: 3 };
+
   it("un-counts already-settled days that become excused", () => {
-    const start = addDaysToStr(todayStr(), -3);
-    // owed 3 each from settling -3,-2,-1 with empty log.
-    const q = mk({ startDate: start, owed: { Fajr: 3, Dhuhr: 3, Asr: 3, Maghrib: 3, Isha: 3 } });
+    const q = mk({ startDate: start(), owed: { ...three } });
     const d = addDaysToStr(todayStr(), -2);
     const out = addExcusedRange(q, d, d, "travel", {});
     for (const p of QAZA_PRAYERS) expect(out.owed[p]).toBe(2);
     expect(out.excused).toHaveLength(1);
+  });
+
+  it("round-trips: removing an excused range restores the owed count", () => {
+    const q = mk({ startDate: start(), owed: { ...three } });
+    const d = addDaysToStr(todayStr(), -2);
+    const excusedQ = addExcusedRange(q, d, d, "travel", {});
+    const back = removeExcusedRange(excusedQ, 0, {});
+    for (const p of QAZA_PRAYERS) expect(back.owed[p]).toBe(3);
+    expect(back.excused).toHaveLength(0);
+  });
+
+  it("does not double-restore a day still excused by another range", () => {
+    const q = mk({ startDate: start(), owed: { ...three } });
+    const d = addDaysToStr(todayStr(), -2);
+    // Two overlapping ranges both covering day -2.
+    let x = addExcusedRange(q, d, d, "travel", {});      // owed → 2
+    x = addExcusedRange(x, d, d, "illness", {});          // already excused → owed unchanged (2)
+    for (const p of QAZA_PRAYERS) expect(x.owed[p]).toBe(2);
+    const back = removeExcusedRange(x, 0, {});            // still excused by range 1 → no re-count
+    for (const p of QAZA_PRAYERS) expect(back.owed[p]).toBe(2);
+    expect(back.excused).toHaveLength(1);
   });
 });
 

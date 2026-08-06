@@ -58,6 +58,8 @@ export default function Prayer({
   addQazaAll,
   qazaDailyTarget,
   setQazaTarget,
+  addExcused,
+  removeExcused,
   notifications,
   updateNotifications,
 }) {
@@ -85,6 +87,7 @@ export default function Prayer({
   // animation; it auto-clears so the row settles back.
   const [burstKey, setBurstKey] = useState(null);
   const [estimatorOpen, setEstimatorOpen] = useState(false);
+  const [excusedOpen, setExcusedOpen] = useState(false);
   function markPrayer(p) {
     const wasDone = prayerDoneToday ? prayerDoneToday(p) : false;
     togglePrayerLog(p);
@@ -455,6 +458,24 @@ export default function Prayer({
                 }}>
                 + Add older missed prayers
               </button>
+
+              {/* Excused days — obligatory prayers missed during menstruation /
+                  post-natal bleeding are not made up (agreed across the
+                  madhahib); travel / illness / unconsciousness can also
+                  excuse. Marking a range removes those days from the ledger. */}
+              <button onClick={() => setExcusedOpen(true)}
+                style={{
+                  marginTop: 8,
+                  width: "100%",
+                  padding: "8px 12px",
+                  fontSize: 12,
+                  color: "var(--text-muted)",
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                }}>
+                Mark days excused{(qaza?.excused?.length || 0) > 0 ? ` (${qaza.excused.length})` : " — menstruation, travel, illness"}
+              </button>
             </div>
           )}
 
@@ -463,6 +484,15 @@ export default function Prayer({
             onClose={() => setEstimatorOpen(false)}
             currentTotal={totalOwed}
             onAdd={(perPrayer) => { addQazaAll(perPrayer); setEstimatorOpen(false); }}
+          />
+
+          <QazaExcused
+            open={excusedOpen}
+            onClose={() => setExcusedOpen(false)}
+            excused={qaza?.excused || []}
+            startDate={qaza?.startDate}
+            onAdd={addExcused}
+            onRemove={removeExcused}
           />
 
           {/* 7-day tracker */}
@@ -848,6 +878,85 @@ function QazaEstimator({ open, onClose, onAdd, currentTotal }) {
           Add to ledger
         </button>
       </div>
+    </Modal>
+  );
+}
+
+const EXCUSE_REASONS = ["Menstruation", "Post-natal bleeding", "Travel", "Illness", "Unconsciousness", "Other"];
+
+// Excused-days manager. Add a date range (with a reason) to remove those days
+// from qaza accrual, and review / undo existing ranges. Dates are native
+// YYYY-MM-DD inputs (matching storage); capped at today since you can't excuse
+// a day that hasn't happened. The heavy lifting (un-count / re-count of
+// already-settled days) lives in addExcusedRange / removeExcusedRange.
+function QazaExcused({ open, onClose, excused, startDate, onAdd, onRemove }) {
+  const today = localDateStr();
+  const [from, setFrom] = useState("");
+  const [to, setTo] = useState("");
+  const [reason, setReason] = useState(EXCUSE_REASONS[0]);
+  const valid = from && to && from <= to;
+  const field = { width: "100%", boxSizing: "border-box", fontSize: 15, padding: "8px 10px" };
+  const label = { fontSize: 13, color: "var(--text-secondary)", display: "block", marginBottom: 4 };
+  const submit = () => {
+    if (!valid) return;
+    onAdd(from, to, reason);
+    setFrom(""); setTo(""); setReason(EXCUSE_REASONS[0]);
+  };
+  return (
+    <Modal open={open} onClose={onClose} title="Excused days">
+      <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6, marginTop: 0 }}>
+        Obligatory prayers missed during <strong>menstruation</strong> or <strong>post-natal
+        bleeding</strong> are not made up. Travel, illness, or unconsciousness may also excuse
+        a period. Marking a range removes those days from the qaza ledger and stops future
+        days in it from accruing.
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+        <div>
+          <label style={label}>From</label>
+          <input type="date" max={to || today} value={from} onChange={(e) => setFrom(e.target.value)} min={startDate || undefined} style={field} />
+        </div>
+        <div>
+          <label style={label}>To</label>
+          <input type="date" max={today} min={from || startDate || undefined} value={to} onChange={(e) => setTo(e.target.value)} style={field} />
+        </div>
+      </div>
+      <div style={{ marginBottom: 14 }}>
+        <label style={label}>Reason</label>
+        <select value={reason} onChange={(e) => setReason(e.target.value)} style={field}>
+          {EXCUSE_REASONS.map((r) => <option key={r} value={r}>{r}</option>)}
+        </select>
+      </div>
+      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: excused.length ? 18 : 0 }}>
+        <button onClick={submit} disabled={!valid} className="btn-primary"
+          style={{ padding: "8px 16px", opacity: valid ? 1 : 0.5, cursor: valid ? "pointer" : "not-allowed" }}>
+          Mark excused
+        </button>
+      </div>
+
+      {excused.length > 0 && (
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 8, color: "var(--text-secondary)" }}>Excused ranges</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {excused.map((r, i) => (
+              <div key={`${r.from}-${r.to}-${i}`} style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "8px 10px", borderRadius: 8,
+                border: "0.5px solid var(--color-border-tertiary)", background: "var(--color-background-secondary)",
+              }}>
+                <div style={{ fontSize: 13 }}>
+                  <span style={{ color: "var(--text-primary)" }}>{r.from === r.to ? r.from : `${r.from} → ${r.to}`}</span>
+                  {r.reason ? <span style={{ color: "var(--text-muted)" }}> · {r.reason}</span> : null}
+                </div>
+                <button onClick={() => onRemove(i)} aria-label="Remove excused range"
+                  title="Remove — these days go back into the ledger"
+                  style={{ fontSize: 13, padding: "3px 10px", borderRadius: 8, background: "transparent", border: "0.5px solid var(--color-border-secondary)", color: "var(--text-secondary)", cursor: "pointer" }}>
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </Modal>
   );
 }
