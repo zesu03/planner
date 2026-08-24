@@ -96,6 +96,39 @@ export async function requestPermissionAndToken() {
   return { token, timezone };
 }
 
+// Silent, no-prompt token (re)acquisition for app startup. Returns
+// { token, timezone } when a token can be refreshed, else null — it NEVER
+// prompts (permission must already be granted) and never throws.
+//
+// Why this exists: web FCM tokens rotate and are invalidated by service-worker
+// updates (this app ships registerType:'autoUpdate'). The server prunes dead
+// tokens on a failed send, so a user who once opted in can silently end up with
+// prayer.enabled:true and an EMPTY fcmTokens — no pushes, no error, forever.
+// getToken with a live SW returns the current valid token (the same string if
+// still valid, a fresh one if it rotated), which the caller merges into
+// fcmTokens — self-healing the registration on every load.
+export async function silentTokenRefresh() {
+  try {
+    if (currentPermission() !== "granted") return null;
+    if (!(await isNotificationsSupported())) return null;
+    const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
+    if (!vapidKey) return null;
+    const swReg = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise((_, reject) => setTimeout(() => reject(new Error("sw-timeout")), 10000)),
+    ]);
+    const messaging = await getMessagingIfSupported();
+    if (!messaging) return null;
+    const { getToken } = await import("firebase/messaging");
+    const token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: swReg });
+    if (!token) return null;
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    return { token, timezone };
+  } catch {
+    return null; // best-effort — a failed refresh just leaves things unchanged
+  }
+}
+
 // Foreground push handler. FCM only fires the service worker's
 // onBackgroundMessage when the tab is hidden/closed; when the app is open
 // the SDK delivers to onMessage instead, and the browser does NOT show a

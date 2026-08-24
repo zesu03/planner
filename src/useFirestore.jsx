@@ -545,6 +545,10 @@ export function useUserData(userId) {
     const next = typeof updaterOrValue === "function"
       ? updaterOrValue(latestNotificationsRef.current)
       : updaterOrValue;
+    // No-op guard (mirrors updateQaza): a functional updater that returns the
+    // same reference — e.g. the startup token refresh finding its token already
+    // registered — shouldn't dirty the field or trigger a write.
+    if (next === latestNotificationsRef.current) return;
     latestNotificationsRef.current = next;
     dirtyRef.current.notifications = true;
     setNotifications(next);

@@ -23,7 +23,6 @@ export default function Onboarding({
   open,
   hasLocation,
   hasNotifications,
-  notifications,
   updateNotifications,
   onUseLocation,
   onDismiss,
@@ -49,14 +48,19 @@ export default function Onboarding({
     setNotifBusy(true); setNotifError("");
     try {
       const { token, timezone } = await requestPermissionAndToken();
-      const existingTokens = Array.isArray(notifications?.fcmTokens) ? notifications.fcmTokens : [];
-      const existingPerPrayer = notifications?.prayer?.perPrayer || {};
-      const nextPerPrayer = { Fajr: true, Dhuhr: true, Asr: true, Maghrib: true, Isha: true, ...existingPerPrayer };
-      updateNotifications({
-        ...notifications,
-        prayer: { enabled: true, perPrayer: nextPerPrayer },
-        fcmTokens: existingTokens.includes(token) ? existingTokens : [...existingTokens, token],
-        timezone,
+      // Functional updater (not a spread of the captured `notifications` prop)
+      // so a concurrent write still in the debounce window — usePrayer's
+      // prayerTimes mirror, or the startup token refresh — isn't clobbered.
+      updateNotifications((prev) => {
+        const existingTokens = Array.isArray(prev?.fcmTokens) ? prev.fcmTokens : [];
+        const existingPerPrayer = prev?.prayer?.perPrayer || {};
+        const nextPerPrayer = { Fajr: true, Dhuhr: true, Asr: true, Maghrib: true, Isha: true, ...existingPerPrayer };
+        return {
+          ...prev,
+          prayer: { enabled: true, perPrayer: nextPerPrayer },
+          fcmTokens: existingTokens.includes(token) ? existingTokens : [...existingTokens, token],
+          timezone,
+        };
       });
     } catch (e) {
       setNotifError(e?.message || "Couldn't enable reminders.");

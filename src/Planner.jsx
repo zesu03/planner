@@ -22,7 +22,7 @@ import { dayPhase, prayersToday, focusToday, muhasabaState, yesterdayDua, firstO
 import { fmtTime, focusStreakDays, STREAK_MILESTONES } from "./lib/focus";
 import { rewardMilestone } from "./lib/feedback";
 import { goldA, S } from "./lib/styles";
-import { attachForegroundHandler } from "./lib/notifications";
+import { attachForegroundHandler, silentTokenRefresh } from "./lib/notifications";
 import { setUser as setMonitoringUser } from "./lib/monitoring";
 import { buildReportPayload as buildReportPayloadLib } from "./lib/reportPayload";
 import CelebrationToast from "./components/CelebrationToast";
@@ -309,6 +309,32 @@ export default function Planner({ user }) {
     attachForegroundHandler().then((fn) => { if (!cancelled) detach = fn; });
     return () => { cancelled = true; if (typeof detach === "function") detach(); };
   }, []);
+
+  // Self-heal prayer-reminder push tokens. Web FCM tokens rotate and are
+  // invalidated by service-worker updates; the server prunes dead ones on a
+  // failed send, so a user who once opted in can silently end up with
+  // prayer.enabled:true and an EMPTY fcmTokens — enabled, but no push can ever
+  // land. Once the doc has resolved, if reminders are on and permission is
+  // granted, silently re-acquire the current token and add it if missing.
+  // getToken is idempotent for a live SW, so this no-ops (updateNotifications's
+  // reference guard drops the write) when the stored token is still valid.
+  // Gated on `loaded` so it never writes before the server snapshot returns.
+  useEffect(() => {
+    if (!loaded) return;
+    if (!notifications?.prayer?.enabled) return;
+    let cancelled = false;
+    (async () => {
+      const res = await silentTokenRefresh();
+      if (cancelled || !res?.token) return;
+      updateNotifications((prev) => {
+        const toks = Array.isArray(prev?.fcmTokens) ? prev.fcmTokens : [];
+        if (toks.includes(res.token)) return prev; // already registered — no write
+        return { ...prev, fcmTokens: [...toks, res.token], timezone: res.timezone };
+      });
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, notifications?.prayer?.enabled]);
 
   // Tag monitoring events with the signed-in uid so captured errors are
   // attributable. No-op until a Sentry DSN is configured.
@@ -958,7 +984,6 @@ export default function Planner({ user }) {
         open={showOnboarding}
         hasLocation={hasLocation}
         hasNotifications={hasNotificationsOn}
-        notifications={notifications}
         updateNotifications={updateNotifications}
         onUseLocation={fetchByGeo}
         onDismiss={dismissOnboarding}
