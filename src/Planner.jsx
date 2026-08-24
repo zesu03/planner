@@ -968,6 +968,10 @@ export default function Planner({ user }) {
             <span style={{ display: "flex", color: "var(--gold)" }}><BrandMark size={24} /></span>
             <span>Aakhirah</span>
           </div>
+          {/* Date lives in the sidebar on desktop (the main-header copy is
+              hidden >=1024px); on mobile the sidebar is gone, so the header
+              copy carries it. */}
+          <div className="sidebar-date">{dateLine}</div>
           <nav aria-label="Primary">
             {NAV_ITEMS.map(({ v, label }) => {
               const active = view === v;
