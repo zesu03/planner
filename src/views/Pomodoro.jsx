@@ -500,7 +500,7 @@ export default function Pomodoro({
                     </filter>
                   </defs>
                   <circle cx={DIAL / 2} cy={DIAL / 2} r={DIAL_R}
-                    fill="none" stroke="var(--color-background-secondary)" strokeWidth="13" opacity="0.7" />
+                    fill="none" stroke="color-mix(in srgb, var(--gold) 22%, transparent)" strokeWidth="13" opacity="0.9" />
                   <circle cx={DIAL / 2} cy={DIAL / 2} r={DIAL_R}
                     fill="none"
                     stroke="url(#dialGrad)"
@@ -798,6 +798,46 @@ export default function Pomodoro({
                   }}>
                     Start ›
                   </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Focus-on empty state — keeps the rail balanced when there are no open
+          tasks yet, and nudges toward creating one. */}
+      {upcoming.length === 0 && (
+        <div style={{ ...S.card, margin: 0 }}>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 8 }}>
+            Focus on
+          </div>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.55 }}>
+            No open tasks. Add a goal and its tasks appear here to focus on — or just hit <span style={{ color: "var(--text-secondary)" }}>Bismillah — Start</span> for a general block.
+          </div>
+        </div>
+      )}
+
+      {/* Recent sessions — recent focusLog entries, so the rail carries a
+          sense of momentum next to the dial. */}
+      {focusLog.length > 0 && (
+        <div style={{ ...S.card, margin: 0 }}>
+          <div style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 10 }}>
+            Recent sessions
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+            {focusLog.slice(0, 4).map((l) => {
+              const g = l.goalId ? goals.find((x) => x.id === l.goalId) : null;
+              const t = g && l.taskId ? g.tasks.find((x) => x.id === l.taskId) : null;
+              const cat = g ? CAT_COLORS[g.category] : "var(--text-muted)";
+              return (
+                <div key={l.id} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
+                  <span style={{ width: 7, height: 7, borderRadius: "50%", background: cat, flexShrink: 0 }} />
+                  <span style={{ flex: 1, minWidth: 0, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {t ? t.text : "General focus"}
+                  </span>
+                  <span style={{ color: "var(--text-secondary)", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{fmtMins(l.mins)}</span>
+                  <span style={{ color: "var(--text-muted)", flexShrink: 0, fontSize: 12 }}>{l.day === todayStr() ? "today" : (l.day || "").slice(5)}</span>
                 </div>
               );
             })}
