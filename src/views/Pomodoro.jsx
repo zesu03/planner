@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CAT_COLORS } from "../lib/constants";
 import { Icon } from "../components/icons";
+import Chip from "../components/Chip";
 import { todayStr, localDateStr } from "../lib/dates";
 import { fmtTime, fmtMins, getFocusSeconds, focusStreakDays } from "../lib/focus";
 import { isGoalDone, pct, isRecurring, isScheduledOn, isDoneOn } from "../lib/goals";
@@ -129,7 +130,7 @@ function SessionBanner({ lastSession, goals, dismissLastSession, updateLastSessi
             }}
             onBlur={() => { if (note.trim() && !saved) commit(); }}
             placeholder="e.g. drafted intro · fixed bug · distracted, slow"
-            style={{ flex: 1, fontSize: 14, padding: "8px 12px", boxSizing: "border-box" }}
+            style={{ flex: 1, fontSize: 16, padding: "8px 12px", boxSizing: "border-box" }}
           />
           {saved
             ? <span style={{ fontSize: 12, color: "var(--color-text-success)", fontWeight: 600, whiteSpace: "nowrap" }}>Saved ✓</span>
@@ -591,22 +592,14 @@ export default function Pomodoro({
                   {FOCUS_PRESETS.map((m) => {
                     const active = m === cur;
                     return (
-                      <button key={m}
-                        onClick={() => !pomRunning && updatePomDuration("defaultFocus", m)}
+                      <Chip key={m}
+                        active={active}
                         disabled={pomRunning}
+                        onClick={() => !pomRunning && updatePomDuration("defaultFocus", m)}
                         title={pomRunning ? "Pause to change focus length" : `Set focus to ${m} minutes`}
-                        style={{
-                          fontSize: 13,
-                          padding: "4px 10px",
-                          borderRadius: 99,
-                          background: active ? goldA(22) : "var(--color-background-secondary)",
-                          border: `0.5px solid ${active ? goldA(60) : "var(--color-border-tertiary)"}`,
-                          color: active ? "var(--gold)" : pomRunning ? "var(--text-muted)" : "var(--text-primary)",
-                          cursor: pomRunning ? "not-allowed" : "pointer",
-                          fontWeight: active ? 600 : 500,
-                        }}>
+                        style={{ fontSize: 13, padding: "4px 12px" }}>
                         {m}m
-                      </button>
+                      </Chip>
                     );
                   })}
                 </div>
@@ -754,7 +747,7 @@ export default function Pomodoro({
 
       {/* Up next */}
       {upcoming.length > 0 && (
-        <div style={{ ...S.card }}>
+        <div style={{ ...S.card, maxWidth: 560, margin: "0 auto" }}>
           <div style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 10 }}>
             Up next
           </div>
