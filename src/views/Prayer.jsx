@@ -389,6 +389,16 @@ function DayArc({ prayerTimes, prayerDoneToday }) {
         const color = PRAYER_COLORS[p];
         const info = p === "Sunrise";
         const done = !info && prayerDoneToday(p);
+        // End nodes (Fajr / Isha) sit at the baseline where the arc rises
+        // steeply beside them and the now-marker is largest, so a centred
+        // label crowds the line/marker. Push those up-and-outward (anchored
+        // away from the curve); middle nodes centre straight above.
+        const first = i === 0;
+        const last = i === nodes.length - 1;
+        const anchor = first ? "end" : last ? "start" : "middle";
+        const lx = first ? x - 16 : last ? x + 16 : x;
+        const nameY = first || last ? y - 24 : y - 38;
+        const timeY = first || last ? y - 10 : y - 24;
         return (
           <g key={p}>
             {info ? (
@@ -401,10 +411,8 @@ function DayArc({ prayerTimes, prayerDoneToday }) {
             ) : (
               <circle cx={x} cy={y} r="7" fill="rgba(0,0,0,0.32)" stroke={color} strokeWidth="2" />
             )}
-            {/* labels sit well above the node (clearing the r16 now-marker
-                glow on the current prayer) — always clear sky above the dome */}
-            <text x={x} y={y - 38} textAnchor="middle" fontSize={info ? 10 : 12} fontWeight="600" fill={info ? MUTED : color}>{prayerDisplayName(p, localDateStr())}</text>
-            <text x={x} y={y - 24} textAnchor="middle" fontSize="10" fill={MUTED}>{prayerTimes[p]}</text>
+            <text x={lx} y={nameY} textAnchor={anchor} fontSize={info ? 10 : 12} fontWeight="600" fill={info ? MUTED : color}>{prayerDisplayName(p, localDateStr())}</text>
+            <text x={lx} y={timeY} textAnchor={anchor} fontSize="10" fill={MUTED}>{prayerTimes[p]}</text>
           </g>
         );
       })}
