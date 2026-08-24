@@ -83,6 +83,17 @@ function SectionHeader({ icon, title, accent = "var(--gold)", right }) {
   );
 }
 
+// Sequential magnitude ramp for the focus heatmap: ONE hue, stepped from the
+// card surface up to the accent at full opacity. Opacity-only encoding (the
+// old approach) muddies the mid-tones — especially in light mode — and reads
+// as a smear; discrete color-mix steps stay distinguishable in both themes.
+// `a` is the 0..1 intensity from heatmap.intensity(mins).
+function heatFill(a) {
+  if (a <= 0) return "var(--color-background-secondary)";
+  const pct = a < 0.25 ? 32 : a < 0.5 ? 52 : a < 0.75 ? 74 : 100;
+  return `color-mix(in srgb, var(--gold) ${pct}%, var(--color-background-secondary))`;
+}
+
 // Pure presentation. Reads goals + focusLog + muhasaba + prayerLog + qaza,
 // derives every metric inline. The two top sections — Prayer Health and
 // Habit Health — set the page's identity as a spiritual dashboard before
@@ -889,8 +900,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
                   width={heatmap.cellSize}
                   height={heatmap.cellSize}
                   rx={3}
-                  fill={a === 0 ? "var(--color-background-secondary)" : "var(--gold)"}
-                  fillOpacity={a === 0 ? 1 : a}>
+                  fill={heatFill(a)}>
                   <title>{c.day} · {c.mins}m</title>
                 </rect>
               );
@@ -898,8 +908,8 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
           </svg>
           <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10, fontSize: 11, color: "var(--text-muted)" }}>
             Less
-            {[0, 0.22, 0.4, 0.6, 0.8, 1].map((a) => (
-              <div key={a} style={{ width: 11, height: 11, borderRadius: 2, background: a === 0 ? "var(--color-background-secondary)" : "var(--gold)", opacity: a === 0 ? 1 : a }} />
+            {[0, 0.24, 0.49, 0.74, 1].map((a) => (
+              <div key={a} style={{ width: 11, height: 11, borderRadius: 2, background: heatFill(a) }} />
             ))}
             More
           </div>
@@ -1015,6 +1025,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
                     {g.title}
                   </span>
                   <svg width={sparklines.sparkW} height={sparklines.sparkH} style={{ flexShrink: 0 }}>
+                    <line x1="0" y1={sparklines.sparkH - 0.5} x2={sparklines.sparkW} y2={sparklines.sparkH - 0.5} stroke="var(--color-border-tertiary)" strokeWidth="1" />
                     <polyline points={points} fill="none" stroke={catColor} strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
                   </svg>
                   <span style={{ fontSize: 13, color: "var(--text-secondary)", minWidth: 50, textAlign: "right" }}>
