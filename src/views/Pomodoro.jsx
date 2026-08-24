@@ -415,7 +415,7 @@ export default function Pomodoro({
   // the focusLog entry. Pomodoro just supplies the data and callbacks.
 
   return (
-    <div className="view-content">
+    <div className="view-content view-content--focus">
       <SessionBanner
         lastSession={lastSession}
         goals={goals}

@@ -913,7 +913,12 @@ select:focus-visible {
     overflow-y: auto;
     padding: 30px 44px 48px;
   }
-  .app-main > * { max-width: 880px; margin-inline: auto; }
+  .app-main > * { max-width: 1040px; margin-inline: auto; }
+  /* The Focus view is a centered meditative panel — narrow it so the dial,
+     controls and today-strip form a tight column instead of drifting in the
+     wide content area. Its centred title (app-header--center) lines up with
+     the dial because both centre on the same main-column axis. */
+  .app-main > .view-content--focus { max-width: 640px; }
   /* The sidebar replaces the tab bar and the top auth bar on desktop. */
   .tabbar { display: none; }
   .app-header-overline { display: none; }
