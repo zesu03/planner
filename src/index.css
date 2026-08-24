@@ -875,6 +875,8 @@ select:focus-visible {
    iPad landscape (≥1024) gets the sidebar; iPad portrait (768–834) keeps
    the top-tab layout. */
 .planner-root { padding: var(--page-padding); max-width: 1280px; margin: 0 auto; }
+/* Focus dial base size (mobile/tablet); the desktop shell scales it up. */
+.focus-dial { width: 280px; height: 280px; }
 .app-sidebar { display: none; }
 @media (min-width: 1024px) {
   /* Desktop is a fixed app frame: the page itself never scrolls. The sidebar
@@ -914,11 +916,10 @@ select:focus-visible {
     padding: 30px 44px 48px;
   }
   .app-main > * { max-width: 1040px; margin-inline: auto; }
-  /* The Focus view is a centered meditative panel — narrow it so the dial,
-     controls and today-strip form a tight column instead of drifting in the
-     wide content area. Its centred title (app-header--center) lines up with
-     the dial because both centre on the same main-column axis. */
-  .app-main > .view-content--focus { max-width: 640px; }
+  /* Enlarge the focus dial on desktop so it's a commanding focal point
+     instead of a small disc adrift in the card. The SVG scales via its
+     viewBox, so the ring and countdown grow proportionally. */
+  .focus-dial { width: 340px; height: 340px; }
   /* The sidebar replaces the tab bar and the top auth bar on desktop. */
   .tabbar { display: none; }
   .app-header-overline { display: none; }

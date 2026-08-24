@@ -415,7 +415,7 @@ export default function Pomodoro({
   // the focusLog entry. Pomodoro just supplies the data and callbacks.
 
   return (
-    <div className="view-content view-content--focus">
+    <div className="view-content">
       <SessionBanner
         lastSession={lastSession}
         goals={goals}
@@ -454,7 +454,7 @@ export default function Pomodoro({
               setEditingFocus(true);
             };
             return (
-              <div style={{ position: "relative", width: DIAL, height: DIAL, marginBottom: 4 }}>
+              <div className="focus-dial" style={{ position: "relative", marginBottom: 4 }}>
                 <div
                   aria-hidden
                   className={pomRunning ? "dial-breath" : ""}
@@ -462,8 +462,8 @@ export default function Pomodoro({
                     position: "absolute",
                     top: "50%",
                     left: "50%",
-                    width: DIAL + 60,
-                    height: DIAL + 60,
+                    width: "calc(100% + 56px)",
+                    height: "calc(100% + 56px)",
                     transform: "translate(-50%, -50%)",
                     borderRadius: "50%",
                     background: `radial-gradient(circle, color-mix(in srgb, ${ringColor} 22%, transparent) 0%, transparent 65%)`,
@@ -472,7 +472,7 @@ export default function Pomodoro({
                     transition: "opacity 0.4s ease, background 0.3s ease",
                   }}
                 />
-                <svg width={DIAL} height={DIAL} viewBox={`0 0 ${DIAL} ${DIAL}`}
+                <svg width="100%" height="100%" viewBox={`0 0 ${DIAL} ${DIAL}`}
                   role="timer"
                   aria-label={paused
                     ? `Focus timer paused: ${fmtTime(elapsedSecs)} elapsed, ${fmtTime(pomSeconds)} remaining`
