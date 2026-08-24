@@ -69,13 +69,13 @@ export default function GoalsList({
           <button onClick={() => setSearchTerm("")} style={{ fontSize: 14 }}>Clear</button>
         )}
       </div>
-      {/* Filters scroll horizontally inside their own group so the sort
-          widget never gets dragged off-screen with them. On narrow viewports
-          the outer container wraps and sort drops to its own row. Filter
-          chips show count badges so the user knows how many goals match
-          before clicking. */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
-        <div style={{ display: "flex", gap: 8, flex: "1 1 240px", overflowX: "auto", alignItems: "center", minWidth: 0 }}>
+      {/* Filter chips wrap to as many rows as they need (no horizontal
+          scroll that clipped "Completed" off the right edge). Sort sits at
+          the end of the row and drops below only when the chips fill the
+          width. Filter chips show count badges so the user knows how many
+          goals match before clicking. */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 16, flexWrap: "wrap", alignItems: "center", rowGap: 8 }}>
+        <div style={{ display: "flex", gap: 8, flex: "1 1 auto", flexWrap: "wrap", alignItems: "center", minWidth: 0 }}>
           {FILTERS.map((f) => {
             const count = goalCounts ? goalCounts[f.countKey] : null;
             const active = filter === f.v;
@@ -118,7 +118,7 @@ export default function GoalsList({
             );
           })}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, marginLeft: "auto" }}>
           <span style={{ fontSize: 13, color: "var(--text-secondary)", whiteSpace: "nowrap" }}>Sort:</span>
           <select value={goalSort} onChange={(e) => setGoalSort(e.target.value)} style={{ fontSize: 14, padding: "4px 8px", minWidth: 100, width: "auto" }}>
             <option value="due">Due date</option>

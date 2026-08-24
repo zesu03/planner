@@ -5,6 +5,7 @@ import { usePrayer } from "./hooks/usePrayer";
 import { useFocusTimer } from "./hooks/useFocusTimer";
 import { useGoals } from "./hooks/useGoals";
 import { auth } from "./firebase";
+import { signOut } from "firebase/auth";
 
 // Pure helpers and data — no React, no state. See src/lib/.
 import {
@@ -28,7 +29,7 @@ import CelebrationToast from "./components/CelebrationToast";
 import ConfirmDialog from "./components/ConfirmDialog";
 import Onboarding from "./components/Onboarding";
 import { GoalDetailProvider } from "./contexts/GoalDetailContext";
-import { TabIcon, BrandMark } from "./components/icons";
+import { TabIcon, BrandMark, Icon } from "./components/icons";
 
 // View components (one per tab).
 // Views are code-split (Phase 3 / J): only the active tab's chunk loads on
@@ -65,6 +66,20 @@ const NAV_ITEMS = [
   { v: "muhasaba", label: "Muhasaba" },
   { v: "stats", label: "Stats" },
 ];
+
+// Per-view page title for the main header. The Dashboard keeps the warm
+// "Salam, <name> · Bismillah" greeting; every other view shows its own title
+// so the greeting stays special to the home tab instead of repeating on
+// every page.
+const VIEW_TITLES = {
+  list: "Goals",
+  add: "New goal",
+  detail: "Goal",
+  prayer: "Prayer",
+  pomodoro: "Focus",
+  muhasaba: "Muhasaba",
+  stats: "Stats",
+};
 
 // ── main component ─────────────────────────────────────────────────────────
 export default function Planner({ user }) {
@@ -908,8 +923,25 @@ export default function Planner({ user }) {
     setCelebration(null);
   };
 
+  // Theme + sign-out live in the desktop sidebar footer (the top auth bar is
+  // hidden ≥1024px). On mobile/tablet the auth bar in AuthWrapper carries the
+  // same controls. Toggling here writes settings.theme; the effect above
+  // re-applies data-theme, and the setAttribute makes the switch feel instant.
+  const toggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    document.documentElement.setAttribute("data-theme", next);
+    try { localStorage.setItem("aakhirah_theme", next); } catch { /* private mode */ }
+    updateSettings((prev) => ({ ...prev, theme: next }));
+  };
+  const requestSignOut = () => requestConfirm({
+    title: "Sign out?",
+    message: "You'll need to sign in again to access your planner. Your data stays saved to your account.",
+    confirmLabel: "Sign out",
+    onConfirm: () => signOut(auth),
+  });
+
   return (
-    <div style={{padding:"var(--page-padding)",maxWidth:1280,margin:"0 auto"}}>
+    <div className="planner-root">
       <CelebrationToast
         celebration={celebration}
         onDismiss={() => setCelebration(null)}
@@ -951,8 +983,22 @@ export default function Planner({ user }) {
             })}
           </nav>
           <div className="sidebar-foot">
-            <span className="sidebar-avatar" aria-hidden="true">{(greetingName[0] || "?").toUpperCase()}</span>
-            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{greetingName}</span>
+            <div className="sidebar-foot-user">
+              <span className="sidebar-avatar" aria-hidden="true">{(greetingName[0] || "?").toUpperCase()}</span>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{greetingName}</span>
+            </div>
+            <div className="sidebar-foot-actions">
+              <button type="button" className="sidebar-foot-btn"
+                onClick={toggleTheme}
+                title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+                aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}>
+                <Icon name={theme === "dark" ? "sun" : "moon"} size={15} />
+              </button>
+              <button type="button" className="sidebar-foot-btn sidebar-foot-btn--wide"
+                onClick={requestSignOut}>
+                Sign out
+              </button>
+            </div>
           </div>
         </aside>
 
@@ -963,9 +1009,13 @@ export default function Planner({ user }) {
       <header className="app-header">
         <div className="app-header-text">
           <div className="app-header-overline">Aakhirah Planner</div>
-          <h2 className="app-header-greeting">
-            Salam, {greetingName} <span className="accent">·</span> <span className="bismillah">Bismillah</span>
-          </h2>
+          {view === "dashboard" ? (
+            <h2 className="app-header-greeting">
+              Salam, {greetingName} <span className="accent">·</span> <span className="bismillah">Bismillah</span>
+            </h2>
+          ) : (
+            <h2 className="app-header-greeting">{VIEW_TITLES[view] || ""}</h2>
+          )}
           <div className="app-header-date">{dateLine}</div>
         </div>
         <div className="app-header-actions">
