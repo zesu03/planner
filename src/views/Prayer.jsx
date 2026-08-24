@@ -417,9 +417,10 @@ function DayArc({ prayerTimes, prayerDoneToday }) {
             ) : (
               <circle cx={x} cy={y} r="7" fill="rgba(0,0,0,0.32)" stroke={color} strokeWidth="2" />
             )}
-            {/* labels centred above the node — always clear sky above the dome */}
-            <text x={x} y={y - 27} textAnchor="middle" fontSize={info ? 10 : 12} fontWeight="600" fill={info ? MUTED : color}>{prayerDisplayName(p, localDateStr())}</text>
-            <text x={x} y={y - 13} textAnchor="middle" fontSize="10" fill={MUTED}>{prayerTimes[p]}</text>
+            {/* labels sit well above the node (clearing the r16 now-marker
+                glow on the current prayer) — always clear sky above the dome */}
+            <text x={x} y={y - 38} textAnchor="middle" fontSize={info ? 10 : 12} fontWeight="600" fill={info ? MUTED : color}>{prayerDisplayName(p, localDateStr())}</text>
+            <text x={x} y={y - 24} textAnchor="middle" fontSize="10" fill={MUTED}>{prayerTimes[p]}</text>
           </g>
         );
       })}
