@@ -33,7 +33,6 @@ export default function Prayer({
   prayerLog,
   prayerLoading,
   prayerError,
-  hijriDate,
   cityInput,
   countryInput,
   nextPrayer,
@@ -128,16 +127,15 @@ export default function Prayer({
 
       {prayerTimes && !editingCity && (
         <div className="prayer-arc">
-          {/* location — the Hijri date lives here now (no floating banner) */}
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 16 }}>
-            <div style={{ fontSize: 15, fontWeight: 500 }}>{prayerCity}</div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-              {hijriDate && <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{hijriDate}</span>}
-              <button onClick={() => setEditingCity(true)}
-                style={{ fontSize: 13, color: "var(--gold)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-                Change
-              </button>
-            </div>
+          {/* location — a compact left-aligned line under the page title
+              (Hijri date lives in the sidebar, so it isn't repeated here) */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+            <Icon name="location" size={15} style={{ color: "var(--text-muted)" }} />
+            <span style={{ fontSize: 15, fontWeight: 500 }}>{prayerCity}</span>
+            <button onClick={() => setEditingCity(true)}
+              style={{ fontSize: 13, color: "var(--gold)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+              Change
+            </button>
           </div>
 
           {/* ARC CENTREPIECE + next-prayer hero, both on a dark "sky" card.
@@ -192,7 +190,7 @@ export default function Prayer({
                     {prayerDisplayName(p, localDateStr())}
                     <span className="arabic">{PRAYER_META[p]?.ar}</span>
                   </div>
-                  <div className="pbox-status">{done ? "✓ Prayed" : disabled ? "Not yet" : "Mark"}</div>
+                  <div className="pbox-status">{done ? "✓ Prayed" : disabled ? "Upcoming" : "Tap to log"}</div>
                 </button>
               );
             })}
@@ -371,11 +369,12 @@ function DayArc({ prayerTimes, prayerDoneToday }) {
     return m ? (+m[1]) * 60 + (+m[2]) : null;
   };
   const clamp01 = (n) => Math.max(0, Math.min(1, n));
-  // Point on the dome for fraction f (0 = Fajr at left, 1 = Isha at right).
-  const pt = (f) => {
-    const a = Math.PI * (1 - f);
-    return [CX + RX * Math.cos(a), CY - RY * Math.sin(a)];
-  };
+  // Time → horizontal position (linear), height from the dome equation. Using
+  // x-linear (not equal-angle) keeps equal time gaps equal in width, so the
+  // evening prayers no longer bunch up near the right horizon.
+  const xOf = (f) => CX - RX + f * 2 * RX;
+  const yOf = (x) => CY - RY * Math.sqrt(Math.max(0, 1 - ((x - CX) / RX) ** 2));
+  const pt = (f) => { const x = xOf(f); return [x, yOf(x)]; };
   const d2 = ([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`;
 
   const nodes = PRAYERS.filter((p) => prayerTimes[p]);
@@ -403,9 +402,6 @@ function DayArc({ prayerTimes, prayerDoneToday }) {
       {nodes.map((p, i) => {
         const f = fracOf(p, i);
         const [x, y] = pt(f);
-        const a = Math.PI * (1 - f);
-        const lx = CX + (RX + 30) * Math.cos(a);
-        const ly = CY - (RY + 26) * Math.sin(a);
         const color = PRAYER_COLORS[p];
         const info = p === "Sunrise";
         const done = !info && prayerDoneToday(p);
@@ -421,8 +417,9 @@ function DayArc({ prayerTimes, prayerDoneToday }) {
             ) : (
               <circle cx={x} cy={y} r="7" fill="rgba(0,0,0,0.32)" stroke={color} strokeWidth="2" />
             )}
-            <text x={lx} y={ly - 3} textAnchor="middle" fontSize={info ? 10 : 12} fontWeight="600" fill={info ? MUTED : color}>{prayerDisplayName(p, localDateStr())}</text>
-            <text x={lx} y={ly + 11} textAnchor="middle" fontSize="10" fill={MUTED}>{prayerTimes[p]}</text>
+            {/* labels centred above the node — always clear sky above the dome */}
+            <text x={x} y={y - 27} textAnchor="middle" fontSize={info ? 10 : 12} fontWeight="600" fill={info ? MUTED : color}>{prayerDisplayName(p, localDateStr())}</text>
+            <text x={x} y={y - 13} textAnchor="middle" fontSize="10" fill={MUTED}>{prayerTimes[p]}</text>
           </g>
         );
       })}
