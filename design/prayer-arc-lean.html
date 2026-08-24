@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Prayer — Day Arc (lean, de-duped)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --gold:#7cc39d; --noor:#e0c06a; --on-accent:#10160f;
+    --bg-primary:#0f1310; --bg-secondary:#1f271e; --bg-card:#171d17;
+    --border:rgba(210,180,99,0.3); --border-soft:rgba(210,180,99,0.16);
+    --text-primary:#f1efe4; --text-secondary:#c7c3b0; --text-muted:#a8a289;
+    --fajr:#6b74c4; --sunrise:#dd9a4e; --dhuhr:#d9b85e; --asr:#d38a4c; --maghrib:#cf6b47; --isha:#8a79c0;
+    --success:#3faa7e;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Space Grotesk",sans-serif;color:var(--text-primary);line-height:1.5;padding:34px 32px 100px;
+    background:radial-gradient(1100px 560px at 50% -12%, rgba(124,195,157,.06), transparent 60%), var(--bg-primary);}
+  .serif{font-family:"Fraunces",serif}.arabic{font-family:"Amiri",serif}
+  .wrap{max-width:900px;margin:0 auto}
+  .head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:18px}
+  .head .t{font-family:"Fraunces",serif;font-size:26px;font-weight:600}
+  .head .loc{font-size:13px;color:var(--text-muted)}
+  .head .loc b{color:var(--text-secondary);font-weight:500}
+  .head .loc button{background:none;border:none;color:var(--gold);font-size:13px;cursor:pointer;padding:0 0 0 8px;font-family:inherit}
+
+  /* ARC — pure visualization, no per-prayer text; marker carries "what's next" */
+  .arccard{position:relative;border-radius:22px;overflow:hidden;margin-bottom:26px;padding-bottom:6px;
+    border:1px solid var(--border-soft);
+    background:linear-gradient(180deg, #141a2e 0%, #1a1a22 42%, #241a18 78%, #2a1c14 100%);}
+  .arccard svg{display:block;width:100%;height:auto}
+
+  /* two-up prayer list — the single source of detail + action */
+  .plist{display:grid;grid-template-columns:1fr 1fr;gap:10px 22px;margin-bottom:30px}
+  .prow{display:grid;grid-template-columns:26px 1fr auto;align-items:center;gap:12px;
+    padding:13px 8px;border-top:1px solid var(--border-soft);position:relative}
+  .prow .ic{display:grid;place-items:center}
+  .prow .nm{font-family:"Fraunces",serif;font-size:18px;font-weight:500;display:flex;align-items:center;gap:7px}
+  .prow .nm .ar{font-family:"Amiri",serif;font-size:14px;color:var(--text-muted);font-weight:400}
+  .prow .meta{display:flex;align-items:center;gap:12px}
+  .prow .tm{font-size:13px;color:var(--text-secondary);font-variant-numeric:tabular-nums;text-align:right}
+  .prow .tm .st{display:block;font-size:11px;color:var(--text-muted)}
+  .mk{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--border);background:transparent;cursor:pointer;display:grid;place-items:center;color:#fff;font-size:14px;flex:none}
+  /* the due prayer's row carries the sole "Mark prayed" CTA (no separate hero) */
+  .prow.now{grid-column:1 / -1;background:linear-gradient(90deg,color-mix(in srgb,var(--maghrib) 14%,transparent),transparent);border-radius:12px;border-top-color:transparent;padding:14px 12px}
+  .prow.now::before{content:"";position:absolute;left:-2px;top:8px;bottom:8px;width:3px;border-radius:99px;background:var(--maghrib)}
+  .nowtag{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--maghrib);margin-left:6px}
+  .cta{border:none;border-radius:99px;padding:8px 18px;font-size:13px;font-weight:600;color:#fff;background:var(--maghrib);cursor:pointer;font-family:inherit;white-space:nowrap}
+  .prow.info .nm{font-size:15px;font-weight:400;font-style:italic;color:var(--text-secondary)}
+
+  .strip{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;background:var(--bg-card);border:1px solid var(--border-soft);margin-bottom:12px}
+  .strip .lab{font-size:14px;font-weight:500}.strip .sub{font-size:12px;color:var(--text-muted)}
+  .week{display:flex;gap:4px;margin-left:auto}
+  .week span{width:16px;height:22px;border-radius:4px;background:var(--bg-primary);border:1px solid var(--border-soft)}
+  .week span.on{background:var(--isha);border-color:var(--isha)}
+  .toggle{width:44px;height:24px;border-radius:99px;background:var(--gold);position:relative;flex:none;margin-left:auto}
+  .toggle::after{content:"";position:absolute;top:1px;left:22px;width:20px;height:20px;border-radius:50%;background:#fff}
+  .card{background:var(--bg-card);border:1px solid var(--border-soft);border-radius:16px;padding:16px 18px;margin-bottom:12px}
+  .k{font-size:14px;font-weight:500;margin-bottom:4px}.ksub{font-size:12px;color:var(--text-muted);margin-bottom:12px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{color:var(--text-secondary);font-weight:400;padding-bottom:8px;text-align:center}th.l{text-align:left}
+  td{text-align:center;padding-bottom:6px}td.l{text-align:left;color:var(--text-primary);white-space:nowrap}
+  .cell{width:24px;height:24px;border-radius:5px;margin:0 auto;display:grid;place-items:center;font-size:11px;color:#fff}
+  .cell.on{background:var(--gold)}.cell.off{background:var(--bg-primary);border:1px solid var(--border-soft);color:var(--text-muted)}
+  @media (max-width:640px){ .plist{grid-template-columns:1fr} body{padding:24px 16px 90px} }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div class="t serif">Prayer</div>
+    <div class="loc"><b>Hyderabad, India</b> · 11 Rabīʿ al-awwal 1448 AH<button>Change</button></div>
+  </div>
+
+  <!-- ARC: dots + progress + marker only. No text labels (they'd repeat the list). -->
+  <div class="arccard">
+    <svg id="arc" viewBox="0 0 820 250" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>
+  </div>
+
+  <!-- LIST: the only place with names / times / streaks / mark controls -->
+  <div class="plist">
+    <div class="prow"><span class="ic" style="color:var(--fajr)">☼</span><div class="nm" style="color:var(--fajr)">Fajr<span class="ar">فجر</span></div><div class="meta"><span class="tm">05:00<span class="st">🔥 12-day streak</span></span><button class="mk" style="background:var(--fajr);border-color:var(--fajr)">✓</button></div></div>
+    <div class="prow info"><span class="ic">◐</span><div class="nm">Sunrise<span class="ar">شروق</span></div><div class="meta"><span class="tm">06:12</span></div></div>
+    <div class="prow"><span class="ic" style="color:var(--dhuhr)">☀</span><div class="nm" style="color:var(--dhuhr)">Dhuhr<span class="ar">ظهر</span></div><div class="meta"><span class="tm">12:19</span><button class="mk">○</button></div></div>
+    <div class="prow"><span class="ic" style="color:var(--asr)">⛅</span><div class="nm" style="color:var(--asr)">Asr<span class="ar">عصر</span></div><div class="meta"><span class="tm">16:46</span><button class="mk">○</button></div></div>
+    <!-- due prayer spans full width and carries the sole Mark CTA + countdown -->
+    <div class="prow now"><span class="ic" style="color:var(--maghrib)">☾</span><div class="nm" style="color:var(--maghrib)">Maghrib<span class="ar">مغرب</span><span class="nowtag">due now</span></div><div class="meta"><span class="tm">18:36<span class="st">closes in 42 min</span></span><button class="cta">Mark prayed</button></div></div>
+    <div class="prow"><span class="ic" style="color:var(--isha)">✦</span><div class="nm" style="color:var(--isha)">Isha<span class="ar">عشاء</span></div><div class="meta"><span class="tm">19:30</span><button class="mk">○</button></div></div>
+  </div>
+
+  <div class="strip">
+    <span style="color:var(--isha)">☾</span>
+    <div><div class="lab">Tahajjud <span class="sub">· voluntary</span></div><div class="sub">Best after 02:14 · 🔥 3-day · tap tonight's cell to log</div></div>
+    <div class="week"><span></span><span class="on"></span><span class="on"></span><span></span><span class="on"></span><span class="on"></span><span class="on"></span></div>
+  </div>
+
+  <div class="card">
+    <div class="k">7-day tracker</div>
+    <div class="ksub">Tap any cell to mark / unmark — for when you prayed but forgot to log it.</div>
+    <table>
+      <thead><tr><th class="l">Prayer</th><th>18</th><th>19</th><th>20</th><th>21</th><th>22</th><th>23</th><th>24</th><th>%</th></tr></thead>
+      <tbody>
+        <tr><td class="l">Fajr</td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell off"></span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td style="color:var(--success)">86%</td></tr>
+        <tr><td class="l">Dhuhr</td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell off"></span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td style="color:var(--success)">86%</td></tr>
+        <tr><td class="l">Asr</td><td><span class="cell on">✓</span></td><td><span class="cell off"></span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell off"></span></td><td style="color:var(--success)">71%</td></tr>
+        <tr><td class="l">Maghrib</td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell off"></span></td><td style="color:var(--success)">86%</td></tr>
+        <tr><td class="l">Isha</td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell off"></span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell off"></span></td><td><span class="cell off"></span></td><td style="color:var(--text-secondary)">57%</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="strip">
+    <span style="color:var(--gold)">🔔</span>
+    <div><div class="lab">Prayer reminders</div><div class="sub">Push at the start of each prayer</div></div>
+    <div class="toggle"></div>
+  </div>
+</div>
+
+<script>
+  // Arc = pure visualization. Dots (filled=prayed, hollow=pending), a gold
+  // progress trail, and a sun/moon marker that carries the ONLY "what's next"
+  // callout. No per-prayer labels — the list below owns names/times.
+  const cx = 410, cy = 200, rx = 350, ry = 132;
+  const pt = (f) => { const a = Math.PI * (1 - f); return [cx + rx * Math.cos(a), cy - ry * Math.sin(a)]; };
+  const fmt = ([x, y]) => x.toFixed(1) + " " + y.toFixed(1);
+
+  const P = [
+    { v: "--fajr",    f: 0.00, done: true },
+    { v: "--sunrise", f: 0.13, info: true },
+    { v: "--dhuhr",   f: 0.44, done: false },
+    { v: "--asr",     f: 0.63, done: false },
+    { v: "--maghrib", f: 0.82, done: false },
+    { v: "--isha",    f: 1.00, done: false },
+  ];
+  const nowF = 0.86, nextName = "Maghrib", nextIn = "in 42 min";
+
+  let s = "";
+  s += `<line x1="56" y1="${cy}" x2="764" y2="${cy}" stroke="var(--border-soft)" stroke-width="1" stroke-dasharray="3 5"/>`;
+  s += `<path d="M ${fmt(pt(0))} A ${rx} ${ry} 0 0 1 ${fmt(pt(1))}" fill="none" stroke="var(--border-soft)" stroke-width="2"/>`;
+  s += `<path d="M ${fmt(pt(0))} A ${rx} ${ry} 0 0 1 ${fmt(pt(nowF))}" fill="none" stroke="var(--noor)" stroke-width="2.5" opacity="0.85"/>`;
+
+  for (const p of P) {
+    const [x, y] = pt(p.f);
+    const col = `var(${p.v})`;
+    if (p.done) {
+      s += `<circle cx="${x}" cy="${y}" r="7" fill="${col}"/>`;
+      s += `<text x="${x}" y="${y + 3.5}" text-anchor="middle" font-size="9" fill="#10160f" font-family="Space Grotesk">✓</text>`;
+    } else if (p.info) {
+      s += `<circle cx="${x}" cy="${y}" r="4" fill="var(--text-muted)"/>`;
+    } else {
+      s += `<circle cx="${x}" cy="${y}" r="7" fill="var(--bg-primary)" stroke="${col}" stroke-width="2"/>`;
+    }
+  }
+
+  // now marker + the single "what's next" callout (above the marker)
+  const [nx, ny] = pt(nowF);
+  s += `<line x1="${nx}" y1="${ny}" x2="${nx}" y2="${cy}" stroke="var(--noor)" stroke-width="1" opacity="0.4"/>`;
+  s += `<circle cx="${nx}" cy="${ny}" r="18" fill="var(--noor)" opacity="0.16"/>`;
+  s += `<circle cx="${nx}" cy="${ny}" r="11" fill="#20242f" stroke="var(--noor)" stroke-width="1.5"/>`;
+  s += `<text x="${nx}" y="${ny + 5}" text-anchor="middle" font-size="14" fill="var(--noor)">☾</text>`;
+  s += `<text x="${nx}" y="${ny - 30}" text-anchor="middle" font-size="13" font-weight="600" fill="var(--noor)" font-family="Space Grotesk">${nextName}</text>`;
+  s += `<text x="${nx}" y="${ny - 16}" text-anchor="middle" font-size="11" fill="var(--text-muted)" font-family="Space Grotesk">${nextIn}</text>`;
+
+  document.getElementById("arc").innerHTML = s;
+</script>
+</body>
+</html>

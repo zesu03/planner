@@ -127,97 +127,73 @@ export default function Prayer({
       )}
 
       {prayerTimes && !editingCity && (
-        <div className="prayer-serene">
+        <div className="prayer-arc">
           {/* location — the Hijri date lives here now (no floating banner) */}
-          <div style={{ marginBottom: 22 }}>
-            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
-              <div style={{ fontSize: 15, fontWeight: 500 }}>{prayerCity}</div>
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 16 }}>
+            <div style={{ fontSize: 15, fontWeight: 500 }}>{prayerCity}</div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
+              {hijriDate && <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{hijriDate}</span>}
               <button onClick={() => setEditingCity(true)}
                 style={{ fontSize: 13, color: "var(--gold)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
                 Change
               </button>
             </div>
-            {hijriDate && <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{hijriDate}</div>}
           </div>
 
-          {/* HERO — the calm focal point: what's next, and mark it when due */}
-          {nextPrayer && (() => {
-            const due = !!nextPrayer.due;
-            const accent = PRAYER_COLORS[nextPrayer.name] || "#7cc39d";
-            const eyebrow = due ? "Due now · not prayed" : nextPrayer.tomorrow ? "Tomorrow's first prayer" : "Next prayer";
-            return (
-              <div style={{
-                position: "relative", overflow: "hidden", textAlign: "center",
-                borderRadius: 20, padding: "24px 22px 22px", marginBottom: 28,
-                background: `linear-gradient(180deg, ${accent}26 0%, ${accent}0a 100%)`,
-                border: `1px solid ${accent}66`,
-              }}>
-                <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.13em", textTransform: "uppercase", color: accent }}>{eyebrow}</div>
-                <div className="serif" style={{ fontSize: 32, fontWeight: 600, marginTop: 8, lineHeight: 1.15 }}>
-                  {prayerDisplayName(nextPrayer.name, localDateStr())}
-                  <span className="arabic" style={{ fontSize: 22, color: accent, marginLeft: 8, fontWeight: 400 }}>{PRAYER_META[nextPrayer.name]?.ar}</span>
-                </div>
-                <div style={{ fontSize: 15, color: "var(--text-secondary)", marginTop: 4, fontVariantNumeric: "tabular-nums" }}>{nextPrayer.time}</div>
-                {due && (
-                  <button onClick={() => markPrayer(nextPrayer.name)} className="pop-in"
-                    style={{ marginTop: 16, border: "none", borderRadius: 99, padding: "10px 26px", fontSize: 14, fontWeight: 600, color: "#fff", background: accent, cursor: "pointer" }}>
-                    Mark prayed
-                  </button>
-                )}
-              </div>
-            );
-          })()}
-
-          {/* THE FIVE PRAYERS — aligned rows, hairline dividers, no boxes.
-              Sunrise is an informational row (not a prayer you log). */}
-          <div style={{ marginBottom: 28 }}>
-            {PRAYERS.filter((p) => prayerTimes[p]).map((p) => {
-              const isSunrise = p === "Sunrise";
-              const pColor = PRAYER_COLORS[p];
-              if (isSunrise) {
-                return (
-                  <div key={p} className="prayer-srow prayer-srow--info">
-                    <span className="prayer-srow__ic"><PrayerIcon name={p} size={18} /></span>
-                    <div className="prayer-srow__nm serif">
-                      {prayerDisplayName(p, localDateStr())}
-                      <span className="arabic">{PRAYER_META[p]?.ar}</span>
-                    </div>
-                    <div className="prayer-srow__meta">{prayerTimes[p]}</div>
+          {/* ARC CENTREPIECE + next-prayer hero, both on a dark "sky" card.
+              The card is always dark, so text/marks here use fixed light
+              colours — theme vars would invert to dark-on-dark in light mode. */}
+          <div className="day-arc-card">
+            <DayArc prayerTimes={prayerTimes} prayerDoneToday={prayerDoneToday} />
+            {nextPrayer && (() => {
+              const due = !!nextPrayer.due;
+              const accent = PRAYER_COLORS[nextPrayer.name] || "#e0c06a";
+              const eyebrow = due ? "Due now · not prayed" : nextPrayer.tomorrow ? "Tomorrow's first prayer" : "Next prayer";
+              return (
+                <div className="day-arc-next">
+                  <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.13em", textTransform: "uppercase", color: accent }}>{eyebrow}</div>
+                  <div className="serif" style={{ fontSize: 30, fontWeight: 600, marginTop: 4, lineHeight: 1.15, color: "#f1efe4" }}>
+                    {prayerDisplayName(nextPrayer.name, localDateStr())}
+                    <span className="arabic" style={{ fontSize: 22, color: accent, marginLeft: 8, fontWeight: 400 }}>{PRAYER_META[nextPrayer.name]?.ar}</span>
                   </div>
-                );
-              }
+                  <div style={{ fontSize: 15, color: "#c7c3b0", marginTop: 2, fontVariantNumeric: "tabular-nums" }}>{nextPrayer.time}</div>
+                  {due && (
+                    <button onClick={() => markPrayer(nextPrayer.name)} className="pop-in"
+                      style={{ marginTop: 14, border: "none", borderRadius: 99, padding: "10px 26px", fontSize: 14, fontWeight: 600, color: "#fff", background: accent, cursor: "pointer" }}>
+                      Mark prayed
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* THE FIVE FARD PRAYERS as compact boxes in a line. Whole box taps
+              to mark/unmark; times aren't shown here — they're on the arc. */}
+          <div className="pboxes">
+            {PRAYERS.filter((p) => p !== "Sunrise" && prayerTimes[p]).map((p) => {
+              const color = PRAYER_COLORS[p];
               const done = prayerDoneToday(p);
-              const streak = prayerStreak(p);
               const isCurrent = p === currentPrayerName && !done;
               const canMark = canMarkPrayer ? canMarkPrayer(p) : true;
               const disabled = !done && !canMark;
               return (
-                <div key={p}
-                  className={`prayer-srow${isCurrent ? " prayer-srow--now" : ""}${burstKey === p ? " mark-burst" : ""}`}
-                  style={isCurrent ? { "--nowc": pColor } : undefined}>
-                  <span className="prayer-srow__ic" style={{ color: pColor }}><PrayerIcon name={p} size={18} /></span>
-                  <div className="prayer-srow__nm serif" style={{ color: pColor }}>
+                <button key={p} type="button"
+                  onClick={() => !disabled && markPrayer(p)}
+                  disabled={disabled}
+                  aria-pressed={done}
+                  title={disabled ? `${p} time hasn't started yet (${prayerTimes[p]})` : done ? `${p} prayed — tap to unmark` : `Mark ${p} prayed`}
+                  className={`pbox ${done ? "done" : "pending"}${isCurrent ? " now" : ""}${burstKey === p ? " mark-burst" : ""}`}
+                  style={{ "--c": color, opacity: disabled ? 0.5 : 1 }}>
+                  {isCurrent && <span className="pbox-now">now</span>}
+                  <span className="pbox-top" />
+                  <span className="pbox-ic"><PrayerIcon name={p} size={20} /></span>
+                  <div className="pbox-nm serif">
                     {prayerDisplayName(p, localDateStr())}
                     <span className="arabic">{PRAYER_META[p]?.ar}</span>
-                    {isCurrent && <span className="prayer-srow__now" style={{ color: pColor }}>now</span>}
                   </div>
-                  <div className="prayer-srow__meta">
-                    {prayerTimes[p]}
-                    {streak > 0 && (
-                      <span className="prayer-srow__streak">
-                        <Icon name="flame" size={11} style={{ verticalAlign: "-1px", color: "var(--gold)" }} /> {streak}-day streak
-                      </span>
-                    )}
-                  </div>
-                  <button onClick={() => !disabled && markPrayer(p)}
-                    disabled={disabled}
-                    aria-label={done ? `${p} prayed — tap to unmark` : `Mark ${p} prayed`}
-                    title={disabled ? `${p} time hasn't started yet (${prayerTimes[p]})` : undefined}
-                    className={`prayer-mk${done ? " done" : ""}`}
-                    style={done ? { background: pColor, borderColor: pColor } : disabled ? { opacity: 0.4, cursor: "not-allowed" } : undefined}>
-                    {done ? <span className="pop-in" style={{ display: "inline-block" }}>✓</span> : ""}
-                  </button>
-                </div>
+                  <div className="pbox-status">{done ? "✓ Prayed" : disabled ? "Not yet" : "Mark"}</div>
+                </button>
               );
             })}
           </div>
@@ -379,6 +355,82 @@ export default function Prayer({
         </div>
       )}
     </div>
+  );
+}
+
+// The day drawn as the sun's path: an elliptical dome from Fajr (dawn) to
+// Isha (night). Each prayer sits along it by its real time; a gold trail +
+// marker show how far through the day we are. Pure visualization — the boxes
+// below own the mark actions. Rendered on the always-dark "sky" card, so
+// colours here are fixed literals (theme vars would invert in light mode).
+function DayArc({ prayerTimes, prayerDoneToday }) {
+  const CX = 410, CY = 250, RX = 340, RY = 150;
+  const GOLD = "#e0c06a", MUTED = "#a8a289", LINE = "rgba(210,180,99,0.18)";
+  const toMin = (s) => {
+    const m = /^(\d{1,2}):(\d{2})/.exec(String(s || ""));
+    return m ? (+m[1]) * 60 + (+m[2]) : null;
+  };
+  const clamp01 = (n) => Math.max(0, Math.min(1, n));
+  // Point on the dome for fraction f (0 = Fajr at left, 1 = Isha at right).
+  const pt = (f) => {
+    const a = Math.PI * (1 - f);
+    return [CX + RX * Math.cos(a), CY - RY * Math.sin(a)];
+  };
+  const d2 = ([x, y]) => `${x.toFixed(1)} ${y.toFixed(1)}`;
+
+  const nodes = PRAYERS.filter((p) => prayerTimes[p]);
+  const fajr = toMin(prayerTimes.Fajr);
+  const isha = toMin(prayerTimes.Isha);
+  const span = fajr != null && isha != null && isha > fajr ? isha - fajr : null;
+  // Position by true time within the Fajr→Isha span; even spacing as a
+  // fallback if a time can't be parsed.
+  const fracOf = (p, i) => {
+    const t = toMin(prayerTimes[p]);
+    if (span && t != null) return clamp01((t - fajr) / span);
+    return nodes.length > 1 ? i / (nodes.length - 1) : 0;
+  };
+
+  const now = new Date();
+  const nowF = span ? clamp01((now.getHours() * 60 + now.getMinutes() - fajr) / span) : 0;
+  const [nx, ny] = pt(nowF);
+
+  return (
+    <svg viewBox="0 0 820 300" preserveAspectRatio="xMidYMid meet" role="img"
+      aria-label="Today's prayers along the arc of the day.">
+      <line x1="46" y1={CY} x2="774" y2={CY} stroke={LINE} strokeWidth="1" strokeDasharray="3 5" />
+      <path d={`M ${d2(pt(0))} A ${RX} ${RY} 0 0 1 ${d2(pt(1))}`} fill="none" stroke={LINE} strokeWidth="2" />
+      <path d={`M ${d2(pt(0))} A ${RX} ${RY} 0 0 1 ${d2(pt(nowF))}`} fill="none" stroke={GOLD} strokeWidth="2.5" opacity="0.85" />
+      {nodes.map((p, i) => {
+        const f = fracOf(p, i);
+        const [x, y] = pt(f);
+        const a = Math.PI * (1 - f);
+        const lx = CX + (RX + 30) * Math.cos(a);
+        const ly = CY - (RY + 26) * Math.sin(a);
+        const color = PRAYER_COLORS[p];
+        const info = p === "Sunrise";
+        const done = !info && prayerDoneToday(p);
+        return (
+          <g key={p}>
+            {info ? (
+              <circle cx={x} cy={y} r="4" fill={MUTED} />
+            ) : done ? (
+              <>
+                <circle cx={x} cy={y} r="7" fill={color} />
+                <text x={x} y={y + 3.5} textAnchor="middle" fontSize="9" fill="#10160f">✓</text>
+              </>
+            ) : (
+              <circle cx={x} cy={y} r="7" fill="rgba(0,0,0,0.32)" stroke={color} strokeWidth="2" />
+            )}
+            <text x={lx} y={ly - 3} textAnchor="middle" fontSize={info ? 10 : 12} fontWeight="600" fill={info ? MUTED : color}>{prayerDisplayName(p, localDateStr())}</text>
+            <text x={lx} y={ly + 11} textAnchor="middle" fontSize="10" fill={MUTED}>{prayerTimes[p]}</text>
+          </g>
+        );
+      })}
+      {/* now marker — a glowing gold disc; its position reads the time of day */}
+      <line x1={nx} y1={ny} x2={nx} y2={CY} stroke={GOLD} strokeWidth="1" opacity="0.35" />
+      <circle cx={nx} cy={ny} r="16" fill={GOLD} opacity="0.16" />
+      <circle cx={nx} cy={ny} r="7" fill={GOLD} stroke="#141a2e" strokeWidth="2" />
+    </svg>
   );
 }
 
