@@ -180,7 +180,7 @@ export default function AuthWrapper({ children }) {
           borderBottom: "0.5px solid var(--border)",
         }}
       >
-        <div style={{ fontSize: 12, color: "var(--text-secondary)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        <div className="auth-bar-user" style={{ fontSize: 12, color: "var(--text-secondary)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           Signed in as{" "}
           <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>
             {user.displayName || user.email}

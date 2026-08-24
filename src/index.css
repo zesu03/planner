@@ -882,8 +882,10 @@ select:focus-visible {
     position: sticky;
     top: 56px;
     align-self: start;
-    max-height: calc(100dvh - 72px);
+    height: calc(100dvh - 72px);
     overflow-y: auto;
+    padding-right: 20px;
+    border-right: 1px solid var(--border);
   }
   /* Cap the reading column so cards stay tight and editorial instead of
      sprawling the full width — matches the mockup's proportions. */
@@ -892,6 +894,9 @@ select:focus-visible {
   .tabbar { display: none; }
   /* Brand overline is redundant next to the sidebar wordmark on desktop. */
   .app-header-overline { display: none; }
+  /* The signed-in user moves to the sidebar footer on desktop, so the
+     top auth bar carries only the theme + sign-out controls (mockup). */
+  .auth-bar-user { display: none; }
 }
 .sidebar-brand {
   display: flex;
@@ -929,4 +934,28 @@ select:focus-visible {
   background: color-mix(in srgb, var(--gold) 14%, transparent);
   color: var(--gold);
   font-weight: 600;
+}
+/* Sidebar footer — the signed-in user, pinned bottom-left (margin-top:auto). */
+.sidebar-foot {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+  padding: 14px 10px 2px;
+  border-top: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+.sidebar-avatar {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--gold) 20%, transparent);
+  color: var(--gold);
+  font-weight: 700;
+  font-size: 13px;
 }

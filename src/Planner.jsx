@@ -950,6 +950,10 @@ export default function Planner({ user }) {
               );
             })}
           </nav>
+          <div className="sidebar-foot">
+            <span className="sidebar-avatar" aria-hidden="true">{(greetingName[0] || "?").toUpperCase()}</span>
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{greetingName}</span>
+          </div>
         </aside>
 
         <div className="app-main">
