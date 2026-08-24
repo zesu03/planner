@@ -2,14 +2,19 @@ import { addDays, endOfYear } from "./dates";
 
 // ── goal taxonomy ──
 export const CATEGORIES = ["Health", "Career", "Learning", "Finance", "Personal", "Deen", "Other"];
+// Category accents — retuned to harmonise with the Sand & Jade palette
+// (warmer, slightly muted; Health echoes the jade primary, Deen the warm
+// gold secondary). Single mid-tone hexes chosen to read on both the
+// green-black dark base and the sand light base. Consumed both directly and
+// via hex+alpha concatenation (e.g. `catColor + "22"`), so these stay hex.
 export const CAT_COLORS = {
-  Health: "#1D9E75",
-  Career: "#7F77DD",
-  Learning: "#378ADD",
-  Finance: "#BA7517",
-  Personal: "#D85A30",
-  Deen: "#d4b65e",
-  Other: "#9a988f",
+  Health: "#3faa7e",   // jade-green
+  Career: "#8378d0",   // soft violet
+  Learning: "#4f95c9", // sky
+  Finance: "#c79338",  // ochre gold
+  Personal: "#d4744a", // terracotta
+  Deen: "#d9b85e",     // warm gold
+  Other: "#9a9078",    // warm taupe
 };
 export const PRIORITIES = ["Low", "Medium", "High"];
 
@@ -26,13 +31,13 @@ export const PRAYER_ICONS = { Fajr: "🌙", Sunrise: "🌅", Dhuhr: "☀️", As
 // charcoal-era hues so the cool indigo/violet prayers (Fajr, Isha, Tahajjud)
 // stay legible on the Midnight Noor indigo base instead of sinking into it.
 export const PRAYER_COLORS = {
-  Fajr:    "#5163c9",
-  Sunrise: "#e0894a",
-  Dhuhr:   "#d4b65e",
-  Asr:     "#d88e4a",
-  Maghrib: "#c75a3a",
-  Isha:    "#7a66b8",
-  Tahajjud: "#4c4894",
+  Fajr:    "#6b74c4",  // muted periwinkle dawn
+  Sunrise: "#dd9a4e",  // warm amber
+  Dhuhr:   "#d9b85e",  // midday gold (matches the secondary accent)
+  Asr:     "#d38a4c",  // warm afternoon
+  Maghrib: "#cf6b47",  // terracotta sunset
+  Isha:    "#8a79c0",  // muted violet night
+  Tahajjud: "#5f5ba6", // deep indigo
 };
 
 // ── spiritual content ──

@@ -46,19 +46,25 @@ body {
      brighter gold, and a cyan "noor" (light) secondary accent. The
      palette harmonises with the time-of-day prayer colours (indigo dawn,
      violet night) and gives the gold somewhere luminous to sit. */
-  --gold: #d4b65e;
-  --gold-light: rgba(212,182,94,0.12);
-  /* Noor — the cyan light accent. Use via var(--noor) / noorA() for
-     secondary highlights (progress, focus, "light" reward moments). */
-  --noor: #6fd3e0;
-  --noor-soft: rgba(111,211,224,0.14);
-  --bg-primary: #0d1024;
-  --bg-secondary: #181d38;
-  --bg-card: #11152e;
-  --border: rgba(212,182,94,0.34);
-  --text-primary: #f2f4fb; /* ~16:1 on the indigo cards */
-  --text-secondary: #bcc2db; /* ~10:1 — clearly legible, still below primary */
-  --text-muted: #a1a7c8; /* ~7.6:1 on the indigo cards — WCAG AAA (was #868db0, 5.4:1) */
+  /* ── Sand & Jade (dark) ──────────────────────────────────────────────
+     NOTE: --gold/--noor are kept as the accent VARIABLE NAMES to avoid a
+     mass rename right now, but their VALUES are the Sand & Jade accents:
+     --gold = jade (primary), --noor = warm gold (secondary). These names
+     will be migrated to --accent/--accent-2 during the component-kit phase. */
+  --gold: #7cc39d;           /* primary accent — jade */
+  --gold-light: rgba(124,195,157,0.14);
+  /* Secondary accent — warm gold. Use via var(--noor) / noorA(). */
+  --noor: #e0c06a;
+  --noor-soft: rgba(224,192,106,0.16);
+  /* Text colour on a filled accent button (dark ink on the light jade). */
+  --on-accent: #10160f;
+  --bg-primary: #0f1310;
+  --bg-secondary: #1f271e;
+  --bg-card: #171d17;
+  --border: rgba(210,180,99,0.3);
+  --text-primary: #f1efe4; /* warm near-white */
+  --text-secondary: #c7c3b0; /* ~9:1 on the cards */
+  --text-muted: #a8a289; /* ~7:1 on the cards — WCAG AAA */
   --radius: 14px;
   --radius-sm: 10px;
   --card-padding: 20px 22px;
@@ -113,8 +119,8 @@ body {
      (--color-background-secondary is theme-specific in light mode, so it is
      NOT a plain alias of --bg-secondary — keep using it as-is.) */
   --color-background-secondary: var(--bg-secondary);
-  --color-border-tertiary: rgba(212,182,94,0.34);
-  --color-border-secondary: rgba(212,182,94,0.5);
+  --color-border-tertiary: rgba(210,180,99,0.3);
+  --color-border-secondary: rgba(210,180,99,0.46);
   --color-border-danger: rgba(214,95,82,0.4);
   --color-border-warning: rgba(214,168,95,0.45);
   --color-border-success: rgba(127,190,143,0.45);
@@ -128,11 +134,11 @@ body {
   --border-radius-md: 12px;
   --border-radius-sm: 8px;
 
-  --body-bg-base: #090b1a;
-  --body-glow-1: rgba(212,182,94,0.16);  /* gold, top-left */
-  --body-glow-2: rgba(111,211,224,0.16); /* noor cyan, top-right */
-  --input-bg: rgba(24, 29, 56, 0.9);
-  --btn-default-bg: rgba(20, 25, 52, 0.72);
+  --body-bg-base: #0a0d0a;
+  --body-glow-1: rgba(124,195,157,0.16);  /* jade, top-left */
+  --body-glow-2: rgba(224,192,106,0.14);  /* warm gold, top-right */
+  --input-bg: rgba(31, 39, 30, 0.9);
+  --btn-default-bg: rgba(23, 29, 23, 0.72);
 
   /* Elevation tokens — theme-aware. Deeper + softer than the old charcoal
      theme because the indigo base swallows shadow; cards need more lift to
@@ -145,22 +151,24 @@ body {
 
 /* Light theme — warm parchment palette. Deep ochre + olive on cream. */
 [data-theme="light"] {
-  --gold: #7a5810;
-  --gold-light: rgba(122,88,16,0.14);
-  /* Noor reads as a deep teal on parchment so it stays legible. */
-  --noor: #1f7d8f;
-  --noor-soft: rgba(31,125,143,0.12);
-  --bg-primary: #f5ecd6;
-  --bg-secondary: #e6dcbf;
-  --bg-card: #fbf6e6;
-  --border: rgba(96,70,18,0.34);
-  --text-primary: #1a1308;
-  --text-secondary: #4f3f12; /* deepened from #5a4818 for extra presence (~9:1) */
-  --text-muted: #5f4f1f; /* deepened from #6b5a2a — now ~7.4:1 on bg-card (WCAG AAA) */
+  /* ── Sand & Jade (light) — sand base, deep emerald primary, ochre gold
+     secondary. Same variable-name caveat as the dark block above. */
+  --gold: #2f6b53;           /* primary accent — deep emerald */
+  --gold-light: rgba(47,107,83,0.12);
+  --noor: #a8802f;           /* secondary accent — ochre gold */
+  --noor-soft: rgba(168,128,47,0.14);
+  --on-accent: #f6f1e4;      /* light text on the dark emerald button */
+  --bg-primary: #f1e9d8;
+  --bg-secondary: #ece1c4;
+  --bg-card: #fbf6ea;
+  --border: rgba(60,90,60,0.3);
+  --text-primary: #1e1a12;
+  --text-secondary: #4a4327; /* ~9:1 on bg-card */
+  --text-muted: #5c5334; /* ~7:1 on bg-card — WCAG AAA */
 
-  --color-background-secondary: #ece1c4;
-  --color-border-tertiary: rgba(96,70,18,0.34);
-  --color-border-secondary: rgba(96,70,18,0.5);
+  --color-background-secondary: #efe6cf;
+  --color-border-tertiary: rgba(60,90,60,0.28);
+  --color-border-secondary: rgba(60,90,60,0.44);
   --color-border-danger: rgba(154,52,40,0.4);
   --color-border-warning: rgba(192,140,40,0.5);
   --color-border-success: rgba(58,107,52,0.45);
@@ -176,11 +184,11 @@ body {
   --focus-ring-color: color-mix(in srgb, var(--gold) 60%, transparent);
   --focus-ring-halo:  color-mix(in srgb, var(--gold) 22%, transparent);
 
-  --body-bg-base: #ece3c8;
-  --body-glow-1: rgba(122,88,16,0.16);
-  --body-glow-2: rgba(31,125,143,0.12); /* cool dawn — noor teal */
-  --input-bg: rgba(255,251,238,0.92);
-  --btn-default-bg: rgba(255,249,231,0.85);
+  --body-bg-base: #ece3cf;
+  --body-glow-1: rgba(47,107,83,0.14);   /* emerald */
+  --body-glow-2: rgba(168,128,47,0.14);  /* ochre gold */
+  --input-bg: rgba(255,251,240,0.92);
+  --btn-default-bg: rgba(251,246,234,0.85);
 
   /* Light-mode shadows: lighter + smaller spread, since dark shadows on
      cream backgrounds quickly read as muddy stains. */
@@ -197,16 +205,16 @@ body {
    `background`, so phase changes cross-fade. Dark theme only — light mode
    keeps its static parchment glow. */
 [data-theme="dark"][data-phase="morning"] {
-  --body-glow-1: rgba(216,168,74,0.22);   /* warm amber dawn */
-  --body-glow-2: rgba(111,211,224,0.10);
+  --body-glow-1: rgba(224,192,106,0.22);   /* warm gold dawn */
+  --body-glow-2: rgba(124,195,157,0.10);
 }
 [data-theme="dark"][data-phase="midday"] {
-  --body-glow-1: rgba(212,182,94,0.16);
-  --body-glow-2: rgba(111,211,224,0.17);
+  --body-glow-1: rgba(124,195,157,0.16);   /* jade */
+  --body-glow-2: rgba(224,192,106,0.16);
 }
 [data-theme="dark"][data-phase="evening"] {
-  --body-glow-1: rgba(123,99,168,0.20);   /* violet dusk */
-  --body-glow-2: rgba(111,211,224,0.22);  /* stronger noor */
+  --body-glow-1: rgba(90,120,95,0.20);     /* dusky green */
+  --body-glow-2: rgba(124,195,157,0.22);   /* stronger jade */
 }
 
 h1, h2, h3 {
@@ -270,16 +278,16 @@ select:focus-visible {
 
 .btn-gold {
   background: var(--gold);
-  color: #0f0f0f;
+  color: var(--on-accent);
   border-color: var(--gold);
   font-weight: 500;
 }
-.btn-gold:hover { background: #d4af5a; color: #0f0f0f; border-color: #d4af5a; }
+.btn-gold:hover { background: color-mix(in srgb, var(--gold) 86%, #fff); color: var(--on-accent); border-color: color-mix(in srgb, var(--gold) 86%, #fff); }
 
 /* Primary CTA — used for Create / Save / Start. Sturdier than .btn-gold. */
 .btn-primary {
   background: var(--gold);
-  color: #0f0f0f;
+  color: var(--on-accent);
   border: 0.5px solid var(--gold);
   border-radius: var(--border-radius-md);
   font-weight: 600;
@@ -289,7 +297,7 @@ select:focus-visible {
   box-shadow: 0 8px 22px color-mix(in srgb, var(--gold) 18%, transparent);
   transition: transform 0.12s ease, box-shadow 0.15s ease, background 0.15s ease;
 }
-.btn-primary:hover { background: #d4af5a; border-color: #d4af5a; color: #0f0f0f; transform: translateY(-1px); box-shadow: 0 10px 26px color-mix(in srgb, var(--gold) 28%, transparent); }
+.btn-primary:hover { background: color-mix(in srgb, var(--gold) 86%, #fff); border-color: color-mix(in srgb, var(--gold) 86%, #fff); color: var(--on-accent); transform: translateY(-1px); box-shadow: 0 10px 26px color-mix(in srgb, var(--gold) 28%, transparent); }
 .btn-primary:active { transform: translateY(0); box-shadow: 0 4px 12px color-mix(in srgb, var(--gold) 18%, transparent); }
 .btn-primary:disabled { background: color-mix(in srgb, var(--gold) 35%, transparent); border-color: color-mix(in srgb, var(--gold) 35%, transparent); box-shadow: none; transform: none; cursor: not-allowed; }
 
@@ -313,7 +321,7 @@ select:focus-visible {
   height: 56px;
   border-radius: 50%;
   background: var(--gold);
-  color: #fff;
+  color: var(--on-accent);
   border: none;
   font-size: 26px;
   line-height: 1;

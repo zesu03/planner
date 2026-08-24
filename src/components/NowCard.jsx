@@ -21,9 +21,9 @@ import { goldA, noorA, tintA } from "../lib/styles";
 const OBLIGATORY = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
 
 const PHASE = {
-  morning: { eyebrow: "Morning", title: "Begin with intention", glow: "rgba(201,168,76,0.16)" },
-  midday:  { eyebrow: "Midday",  title: "Carry the niyyah forward", glow: "rgba(63,140,160,0.13)" },
-  evening: { eyebrow: "Evening", title: "Close the day in account", glow: "rgba(123,99,168,0.18)" },
+  morning: { eyebrow: "Morning", title: "Begin with intention", glow: "rgba(224,192,106,0.18)" },   // warm gold dawn
+  midday:  { eyebrow: "Midday",  title: "Carry the niyyah forward", glow: "rgba(124,195,157,0.15)" }, // jade
+  evening: { eyebrow: "Evening", title: "Close the day in account", glow: "rgba(90,120,95,0.20)" },   // dusky green
 };
 
 function parseHHMM(s) {

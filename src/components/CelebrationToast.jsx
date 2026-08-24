@@ -55,7 +55,7 @@ function variantFor(celebration) {
       eyebrow: "Focus streak", sub: "Consistency over intensity.", actionLabel: "Open Focus ›" };
   }
   if (celebration.kind === "muhasabaStreak") {
-    return { ...streakBase, accent: "#7BB6C7", glyph: "moon", unit: "nights",
+    return { ...streakBase, accent: "#5fa8aa", glyph: "moon", unit: "nights",
       eyebrow: "Muhasaba streak", sub: "Accounting for yourself before you're brought to account.", actionLabel: "Open Muhasaba ›" };
   }
   if (celebration.kind === "istiqamahStreak") {

@@ -414,7 +414,7 @@ export default function Muhasaba({
           <Collapsible
             key={`dua-${day}`}
             title="Yesterday's du'a"
-            accent="#7BB6C7"
+            accent="#5fa8aa"
             cardStyle={{ background: "rgba(63,140,160,0.08)", borderColor: "rgba(63,140,160,0.32)" }}
             defaultOpen={!!dc.status}
             summary={verdictLabel || "today is its test"}
@@ -467,7 +467,7 @@ export default function Muhasaba({
           <Collapsible
             key={`goals-${day}`}
             title="Tonight's goal check"
-            accent="#9B92F2"
+            accent="#8378d0"
             cardStyle={{ background: "rgba(127,119,221,0.05)", borderColor: "rgba(127,119,221,0.28)" }}
             defaultOpen={answered > 0}
             summary={answered > 0 ? `${answered}/${activeGoals.length} answered` : `${activeGoals.length} ${activeGoals.length === 1 ? "goal" : "goals"} to review`}
@@ -528,7 +528,7 @@ export default function Muhasaba({
       })()}
 
       {/* 1. Fara'id */}
-      <Section n="1" title="Fara'id — Obligations" hint="The first thing accounted for on the Day of Judgement is the prayer." accent="#1D9E75">
+      <Section n="1" title="Fara'id — Obligations" hint="The first thing accounted for on the Day of Judgement is the prayer." accent="#3faa7e">
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 10 }}>
           {PRAYERS.map((p) => {
             const done = dayPrayersDone.includes(p);
@@ -599,7 +599,7 @@ export default function Muhasaba({
       </Section>
 
       {/* 2. Manhiyat */}
-      <Section n="2" title="Manhiyat — Forbidden acts" hint="Repent sincerely, with the intention not to return." accent="#D85A30">
+      <Section n="2" title="Manhiyat — Forbidden acts" hint="Repent sincerely, with the intention not to return." accent="#d4744a">
         <textarea rows={3} value={entry.repentText}
           onChange={(e) => updateEntry({ repentText: e.target.value })}
           placeholder="What do I seek Allah's forgiveness for today?"
@@ -613,7 +613,7 @@ export default function Muhasaba({
                 style={{
                   fontSize: 13, padding: "4px 11px", borderRadius: 99, cursor: "pointer",
                   background: active ? "rgba(216,90,48,0.18)" : "var(--color-background-secondary)",
-                  border: `0.5px solid ${active ? "#D85A30" : "var(--color-border-tertiary)"}`,
+                  border: `0.5px solid ${active ? "#d4744a" : "var(--color-border-tertiary)"}`,
                   color: active ? "#E88B7C" : "var(--text-secondary)",
                 }}>
                 {tag}
@@ -640,7 +640,7 @@ export default function Muhasaba({
             {RELATION_OPTIONS.map((r) => {
               const active = Object.prototype.hasOwnProperty.call(entry.relations || {}, r.slug);
               const isAllah = r.slug === "allah";
-              const activeColor = isAllah ? "var(--gold)" : "#D85A30";
+              const activeColor = isAllah ? "var(--gold)" : "#d4744a";
               const activeBg = isAllah ? "rgba(201,168,76,0.18)" : "rgba(216,90,48,0.18)";
               return (
                 <button key={r.slug} type="button" onClick={() => toggleRelation(r.slug)}
@@ -664,7 +664,7 @@ export default function Muhasaba({
               {Object.entries(entry.relations || {}).map(([slug, note]) => {
                 const meta = RELATION_OPTIONS.find((r) => r.slug === slug) || { label: slug };
                 const isAllah = slug === "allah";
-                const accent = isAllah ? "var(--gold)" : "#D85A30";
+                const accent = isAllah ? "var(--gold)" : "#d4744a";
                 return (
                   <div key={slug} style={{
                     padding: "10px 12px",
@@ -710,7 +710,7 @@ export default function Muhasaba({
               borderRadius: "var(--border-radius-md)",
               borderLeft: "3px solid rgba(216,90,48,0.55)",
             }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#D85A30", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 4 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#d4744a", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 4 }}>
                 Tawbah · the four conditions
               </div>
               <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12, fontStyle: "italic", lineHeight: 1.5 }}>
@@ -729,7 +729,7 @@ export default function Muhasaba({
                     }}>
                       <input type="checkbox" checked={checked}
                         onChange={(e) => setT(key, e.target.checked)}
-                        style={{ width: 16, height: 16, marginTop: 3, cursor: "pointer", accentColor: "#D85A30", flexShrink: 0 }} />
+                        style={{ width: 16, height: 16, marginTop: 3, cursor: "pointer", accentColor: "#d4744a", flexShrink: 0 }} />
                       <span style={{ color: checked ? "var(--text-primary)" : "var(--text-secondary)", fontWeight: checked ? 500 : 400 }}>
                         {label}
                       </span>
@@ -743,9 +743,9 @@ export default function Muhasaba({
       </Section>
 
       {/* 3. Ghaflah */}
-      <Section n="3" title="Ghaflah — Heedlessness & distractions" hint="Time spent in non-beneficial things." accent="#7F77DD">
+      <Section n="3" title="Ghaflah — Heedlessness & distractions" hint="Time spent in non-beneficial things." accent="#8378d0">
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
-          <span style={S.pill("rgba(127,119,221,0.18)", "#9B92F2")}>Focus today: {fmtMins(dayFocusMins)}</span>
+          <span style={S.pill("rgba(131,120,208,0.18)", "#8378d0")}>Focus today: {fmtMins(dayFocusMins)}</span>
           <span style={{ fontSize: 13, color: "var(--text-muted)" }}>(auto from focus log)</span>
         </div>
         <textarea rows={3} value={entry.ghaflahNote}
@@ -788,7 +788,7 @@ export default function Muhasaba({
       </Section>
 
       {/* 5. Shukr */}
-      <Section n="5" title="Shukr — Gratitude" hint="Three blessings to thank Allah for." accent="#378ADD">
+      <Section n="5" title="Shukr — Gratitude" hint="Three blessings to thank Allah for." accent="#4f95c9">
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {[0, 1, 2].map((idx) => (
             <input key={idx} value={(entry.shukr || ["", "", ""])[idx] || ""}

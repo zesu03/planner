@@ -119,7 +119,7 @@ export default function Planner({ user }) {
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
     try { localStorage.setItem("aakhirah_theme", theme); } catch { /* private mode */ }
-    const color = theme === "light" ? "#ece3c8" : "#0d1024";
+    const color = theme === "light" ? "#f1e9d8" : "#0f1310";
     // Find any existing theme-color meta (with or without media) and
     // either update it, or insert a fresh one if there's none plain.
     const metas = document.head.querySelectorAll('meta[name="theme-color"]');

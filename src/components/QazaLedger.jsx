@@ -13,9 +13,10 @@ import { S, tintA, goldA } from "../lib/styles";
 // progress + stepper, a completion projection, and actions to add a historical
 // backlog or mark excused days. All state-touching behaviour arrives as props.
 //
-// The qaza accent (#BA7517) matches the Stats "Qaza balance" card so the two
-// surfaces read as the same feature; per-prayer marks use PRAYER_COLORS.
-const ACCENT = "#BA7517";
+// The qaza accent (#c79338, harmonised ochre gold) matches the Stats "Qaza
+// balance" card so the two surfaces read as the same feature; per-prayer marks
+// use PRAYER_COLORS.
+const ACCENT = "#c79338";
 
 const roundBtn = {
   width: 28, height: 28, padding: 0, borderRadius: 99, fontSize: 16, lineHeight: 1,

@@ -65,16 +65,16 @@ export default function ContinuityStrip({
 }) {
   const beats = [];
   if (yDua) {
-    beats.push({ key: "ydua", icon: <Icon name="dua" size={16} />, accent: "#7BB6C7", eyebrow: "Yesterday's du'a · today is the test", label: truncate(yDua.text), onClick: onOpenYesterday });
+    beats.push({ key: "ydua", icon: <Icon name="dua" size={16} />, accent: "#5fa8aa", eyebrow: "Yesterday's du'a · today is the test", label: truncate(yDua.text), onClick: onOpenYesterday });
   }
   if (yMirrorTomorrow) {
     beats.push({ key: "mirror", icon: <Icon name="mirror" size={16} />, accent: "var(--gold)", eyebrow: "Last night's mirror set this", label: truncate(yMirrorTomorrow.text), onClick: () => onOpenMirrorDay?.(yMirrorTomorrow.day) });
   }
   if (qazaOwedTotal > 0) {
-    beats.push({ key: "qaza", icon: <Icon name="repeat" size={16} />, accent: "#BA7517", eyebrow: "Qaza ledger", label: `${qazaOwedTotal} prayer${qazaOwedTotal === 1 ? "" : "s"} owed — a small payback honours them`, onClick: onOpenPrayer });
+    beats.push({ key: "qaza", icon: <Icon name="repeat" size={16} />, accent: "#c79338", eyebrow: "Qaza ledger", label: `${qazaOwedTotal} prayer${qazaOwedTotal === 1 ? "" : "s"} owed — a small payback honours them`, onClick: onOpenPrayer });
   }
   if (todayDua && todayDua.trim()) {
-    beats.push({ key: "tdua", icon: <Icon name="mail" size={16} />, accent: "#7BB6C7", eyebrow: "For tomorrow", label: truncate(todayDua), onClick: onOpenMuhasaba });
+    beats.push({ key: "tdua", icon: <Icon name="mail" size={16} />, accent: "#5fa8aa", eyebrow: "For tomorrow", label: truncate(todayDua), onClick: onOpenMuhasaba });
   }
 
   if (beats.length === 0) return null;

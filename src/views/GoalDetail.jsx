@@ -420,8 +420,8 @@ export default function GoalDetail({ selected, goBack }) {
             shows each number once instead of three times. */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
           {[
-            ["ETA", fmtMins(totalEta), "#378ADD"],
-            ["Logged", fmtMins(totalLogged), "#1D9E75"],
+            ["ETA", fmtMins(totalEta), "#4f95c9"],
+            ["Logged", fmtMins(totalLogged), "#3faa7e"],
           ].map(([l, v, c]) => (
             <div key={l} style={{ background: "var(--color-background-secondary)", borderRadius: "var(--border-radius-md)", padding: "12px 14px" }}>
               <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 4 }}>{l}</div>

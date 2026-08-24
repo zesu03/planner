@@ -383,11 +383,11 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
     cutoffDate.setDate(cutoffDate.getDate() - DAYS);
     const cutoffKey = localDateStr(cutoffDate);
     const KIND_META = {
-      recurring_sin:     { color: "#D85A30", label: "Recurring sin" },
-      stalling_dua:      { color: "#7F77DD", label: "Stalling du'a" },
-      niyyah_drift:      { color: "#BA7517", label: "Niyyah drift" },
-      momentum:          { color: "#1D9E75", label: "Momentum" },
-      neglected_prayer:  { color: "#c75a3a", label: "Neglected prayer" },
+      recurring_sin:     { color: "#d4744a", label: "Recurring sin" },
+      stalling_dua:      { color: "#8378d0", label: "Stalling du'a" },
+      niyyah_drift:      { color: "#c79338", label: "Niyyah drift" },
+      momentum:          { color: "#3faa7e", label: "Momentum" },
+      neglected_prayer:  { color: "#cf6b47", label: "Neglected prayer" },
       scripture_call:    { color: "var(--gold)", label: "Scripture" },
     };
     const groupMap = new Map();
@@ -459,7 +459,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
   const DigestRow = ({ icon, label, value, deltaLabel, direction, last }) => {
     const good = direction === "up_good" || direction === "down_good";
     const bad = direction === "down_bad" || direction === "up_bad";
-    const color = good ? "var(--color-text-success)" : bad ? "#BA7517" : "var(--text-muted)";
+    const color = good ? "var(--color-text-success)" : bad ? "#c79338" : "var(--text-muted)";
     const arrow = direction === "up_good" || direction === "up_bad" ? "↑"
       : direction === "down_good" || direction === "down_bad" ? "↓"
       : direction === "missing" ? "" : "→";
@@ -648,7 +648,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
           nothing's been paid (fresh user has nothing to say here). */}
       {(qazaBalance.totalMissed > 0 || qazaBalance.totalPaid > 0) && (
         <div style={{ ...S.card, marginBottom: 16 }}>
-          <SectionHeader icon={<Icon name="repeat" size={16} />} title="Qaza balance" accent="#BA7517"
+          <SectionHeader icon={<Icon name="repeat" size={16} />} title="Qaza balance" accent="#c79338"
             right={qazaBalance.startDate ? `since ${qazaBalance.startDate}` : "lifetime"} />
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 320 }}>
@@ -670,10 +670,10 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
                         <span style={{ marginRight: 6, display: "inline-flex", verticalAlign: "middle" }}><PrayerIcon name={r.prayer} size={14} /></span>
                         {r.prayer}
                       </td>
-                      <td style={{ padding: "6px 0 6px 8px", textAlign: "right", fontWeight: 600, color: clear ? "var(--text-muted)" : "#BA7517" }}>
+                      <td style={{ padding: "6px 0 6px 8px", textAlign: "right", fontWeight: 600, color: clear ? "var(--text-muted)" : "#c79338" }}>
                         {r.owed}
                       </td>
-                      <td style={{ padding: "6px 0 6px 8px", textAlign: "right", color: r.paid > 0 ? "#1D9E75" : "var(--text-muted)" }}>
+                      <td style={{ padding: "6px 0 6px 8px", textAlign: "right", color: r.paid > 0 ? "#3faa7e" : "var(--text-muted)" }}>
                         {r.paid}
                       </td>
                       <td style={{ padding: "6px 0 6px 8px", textAlign: "right", color: "var(--text-secondary)" }}>
@@ -686,10 +686,10 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
               <tfoot>
                 <tr>
                   <td style={{ paddingTop: 10, fontWeight: 500, borderTop: "0.5px solid var(--color-border-tertiary)" }}>Total</td>
-                  <td style={{ paddingTop: 10, paddingLeft: 8, textAlign: "right", fontWeight: 600, borderTop: "0.5px solid var(--color-border-tertiary)", color: qazaBalance.totalOutstanding > 0 ? "#BA7517" : "var(--color-text-success)" }}>
+                  <td style={{ paddingTop: 10, paddingLeft: 8, textAlign: "right", fontWeight: 600, borderTop: "0.5px solid var(--color-border-tertiary)", color: qazaBalance.totalOutstanding > 0 ? "#c79338" : "var(--color-text-success)" }}>
                     {qazaBalance.totalOutstanding}
                   </td>
-                  <td style={{ paddingTop: 10, paddingLeft: 8, textAlign: "right", fontWeight: 600, borderTop: "0.5px solid var(--color-border-tertiary)", color: "#1D9E75" }}>
+                  <td style={{ paddingTop: 10, paddingLeft: 8, textAlign: "right", fontWeight: 600, borderTop: "0.5px solid var(--color-border-tertiary)", color: "#3faa7e" }}>
                     {qazaBalance.totalPaid}
                   </td>
                   <td style={{ paddingTop: 10, paddingLeft: 8, textAlign: "right", fontWeight: 600, borderTop: "0.5px solid var(--color-border-tertiary)", color: "var(--text-secondary)" }}>
@@ -751,7 +751,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
           parent goal so the user can edit/tick from one click. */}
       {habitHealth.length > 0 && (
         <div style={{ ...S.card, marginBottom: 16 }}>
-          <SectionHeader icon={<Icon name="repeat" size={16} />} title="Habit health" accent="#1D9E75"
+          <SectionHeader icon={<Icon name="repeat" size={16} />} title="Habit health" accent="#3faa7e"
             right={`${habitHealth.length} habit${habitHealth.length === 1 ? "" : "s"} · 30-day window`} />
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {habitHealth.map((h) => {
@@ -810,7 +810,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
           dropping into productivity history. Stays expanded always. */}
       {mirrorPatterns.groups.length > 0 && (
         <div style={{ ...S.card, marginBottom: 16 }}>
-          <SectionHeader icon={<Icon name="mirror" size={16} />} title="Patterns from the mirror" accent="#7BB6C7"
+          <SectionHeader icon={<Icon name="mirror" size={16} />} title="Patterns from the mirror" accent="#5fa8aa"
             right={`across ${mirrorPatterns.reportsScanned} report${mirrorPatterns.reportsScanned === 1 ? "" : "s"} · last ${mirrorPatterns.windowDays} days`} />
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {mirrorPatterns.groups.map((g) => {

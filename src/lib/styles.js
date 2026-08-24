@@ -3,10 +3,10 @@
 // THEME-AWARE GOLD
 // ----------------
 // CSS doesn't let you concatenate a CSS variable with a hex-alpha suffix.
-// In dark mode the gold is `#c9a84c`; in light mode it's `#7a5810`. The
-// old approach — exporting `gold = "#c9a84c"` and doing `gold + "55"` —
-// painted dark-theme gold dots/borders onto cream backgrounds in light
-// mode. Wrong colour on the wrong palette.
+// The primary accent (--gold, now Sand & Jade) is jade `#7cc39d` in dark
+// mode and emerald `#2f6b53` in light mode. The old approach — exporting a
+// single hex and doing `gold + "55"` — painted one theme's accent onto the
+// other's background. Wrong colour on the wrong palette.
 //
 // `goldA(percent)` returns a `color-mix()` expression that blends the
 // theme's current `--gold` with transparent. The CSS engine resolves
@@ -15,8 +15,9 @@
 //
 // `gold` is preserved for the rare case where a JS-side hex string is
 // genuinely needed (e.g. SVG stroke attribute). Prefer `goldA(N)` or
-// `"var(--gold)"` for everything else.
-export const gold = "#d4b65e";
+// `"var(--gold)"` for everything else. NOTE: name kept for churn reasons,
+// but the value is the Sand & Jade PRIMARY accent (jade), matching --gold.
+export const gold = "#7cc39d";
 // General-purpose opacity tint for ANY colour (hex, named, CSS var,
 // color-mix). Replaces both the `gold + "55"` and the `pColor + "33"`
 // patterns with a single helper that works for theme-aware tokens too.
