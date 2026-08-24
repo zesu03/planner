@@ -877,6 +877,11 @@ select:focus-visible {
 .planner-root { padding: var(--page-padding); max-width: 1280px; margin: 0 auto; }
 /* Focus dial base size (mobile/tablet); the desktop shell scales it up. */
 .focus-dial { width: 280px; height: 280px; }
+/* Focus console: stacked (main, then rail) on mobile; two columns on desktop
+   via the media query below. */
+.focus-console { display: flex; flex-direction: column; gap: 18px; }
+.focus-console-main { min-width: 0; }
+.focus-console-rail { min-width: 0; display: flex; flex-direction: column; gap: 16px; }
 .app-sidebar { display: none; }
 @media (min-width: 1024px) {
   /* Desktop is a fixed app frame: the page itself never scrolls. The sidebar
@@ -920,6 +925,9 @@ select:focus-visible {
      instead of a small disc adrift in the card. The SVG scales via its
      viewBox, so the ring and countdown grow proportionally. */
   .focus-dial { width: 340px; height: 340px; }
+  /* Focus console → two columns: dial + controls on the left, the Today /
+     weekly / task-picker rail on the right. */
+  .focus-console { display: grid; grid-template-columns: 1.3fr 1fr; gap: 26px; align-items: start; }
   /* The sidebar replaces the tab bar and the top auth bar on desktop. */
   .tabbar { display: none; }
   .app-header-overline { display: none; }

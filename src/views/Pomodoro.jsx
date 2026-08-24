@@ -428,6 +428,10 @@ export default function Pomodoro({
         Make your intention before you begin — this effort is for Allah.
       </div>
 
+      {/* Focus Console — two columns on desktop (dial + controls | companion
+          rail), stacked on mobile. See .focus-console in index.css. */}
+      <div className="focus-console">
+        <div className="focus-console-main">
       {/* Hero — the dial is the single focal point, centered with breathing
           room. Daily progress moved below the controls as a slim strip so
           nothing competes with the timer. */}
@@ -733,7 +737,9 @@ export default function Pomodoro({
           Focus mode <Icon name="maximize" size={13} />
         </button>
       </div>
+        </div>{/* .focus-console-main */}
 
+        <div className="focus-console-rail">
       {/* Today — slim progress strip (no competing ring) */}
       <TodayStrip
         focusLog={focusLog}
@@ -742,14 +748,15 @@ export default function Pomodoro({
         streak={streak}
         goalMins={dailyFocusGoalMins}
         onEditGoal={updateDailyFocusGoal}
-        style={{ maxWidth: 560, margin: "0 auto 16px" }}
+        style={{ margin: 0 }}
       />
 
-      {/* Up next */}
+      {/* Focus on — pick an open task to run a session against (its ETA drives
+          the dial); click starts immediately. */}
       {upcoming.length > 0 && (
-        <div style={{ ...S.card, maxWidth: 560, margin: "0 auto" }}>
+        <div style={{ ...S.card, margin: 0 }}>
           <div style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 10 }}>
-            Up next
+            Focus on
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {upcoming.map(({ g, t }) => {
@@ -797,6 +804,8 @@ export default function Pomodoro({
           </div>
         </div>
       )}
+        </div>{/* .focus-console-rail */}
+      </div>{/* .focus-console */}
 
       {/* PiP portal — only rendered when the pop-out window is open. The
           portal lives in the parent React tree, so timer state updates
