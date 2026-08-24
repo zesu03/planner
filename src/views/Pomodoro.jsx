@@ -729,8 +729,8 @@ export default function Pomodoro({
         <button
           onClick={enterFullscreen}
           title="Hide everything else — just the dial, the task, and the niyyah"
-          style={{ fontSize: 13, padding: "7px 14px", color: "var(--text-muted)" }}>
-          Focus mode ⛶
+          style={{ fontSize: 13, padding: "7px 14px", color: "var(--text-muted)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+          Focus mode <Icon name="maximize" size={13} />
         </button>
       </div>
 

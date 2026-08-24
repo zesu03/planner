@@ -1,5 +1,6 @@
 import { Component } from "react";
 import { captureError } from "../lib/monitoring";
+import { BrandMark } from "./icons";
 
 // Client resilience (Phase R1 / R3). Without a boundary, an exception thrown
 // while rendering ANY view white-screens the whole PWA — unacceptable for
@@ -53,7 +54,7 @@ export default class ErrorBoundary extends Component {
           background: "var(--bg, #0d1024)",
         }}
       >
-        <div style={{ fontSize: 30 }}>🕌</div>
+        <div style={{ color: "var(--gold, #7cc39d)" }} aria-hidden="true"><BrandMark size={36} /></div>
         <div style={{ fontSize: 18, fontWeight: 600, color: "var(--text-primary, #f2f0e6)" }}>
           Something went wrong
         </div>
