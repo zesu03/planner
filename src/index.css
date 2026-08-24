@@ -957,44 +957,44 @@ select:focus-visible {
   font-weight: 600;
 }
 /* Sidebar footer — the signed-in user + theme/sign-out controls, pinned to
-   the bottom (margin-top:auto). Two rows: identity, then the utility actions
-   that used to live in the top auth bar. */
+   the bottom (margin-top:auto). One quiet row: avatar, name, then two ghost
+   icon buttons. The buttons stay borderless at rest so the footer reads as
+   an identity strip, not a toolbar; they lift on hover. */
 .sidebar-foot {
   margin-top: auto;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
   min-width: 0;
   padding: 14px 4px 2px;
   border-top: 1px solid var(--border);
   color: var(--text-secondary);
   font-size: 13px;
 }
-.sidebar-foot-user {
-  display: flex;
-  align-items: center;
-  gap: 11px;
+.sidebar-foot-name {
+  flex: 1;
   min-width: 0;
-  padding: 0 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+  color: var(--text-secondary);
 }
-.sidebar-foot-actions { display: flex; align-items: center; gap: 8px; }
 .sidebar-foot-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  font-size: 13px;
-  padding: 7px 10px;
-  min-height: 34px;
-  border-radius: 9px;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 8px;
   background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-secondary);
+  border: none;
+  color: var(--text-muted);
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
 .sidebar-foot-btn:hover { background: var(--color-background-secondary); color: var(--text-primary); }
-.sidebar-foot-btn--wide { flex: 1; }
 .sidebar-avatar {
   width: 30px;
   height: 30px;

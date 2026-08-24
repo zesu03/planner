@@ -983,22 +983,19 @@ export default function Planner({ user }) {
             })}
           </nav>
           <div className="sidebar-foot">
-            <div className="sidebar-foot-user">
-              <span className="sidebar-avatar" aria-hidden="true">{(greetingName[0] || "?").toUpperCase()}</span>
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{greetingName}</span>
-            </div>
-            <div className="sidebar-foot-actions">
-              <button type="button" className="sidebar-foot-btn"
-                onClick={toggleTheme}
-                title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
-                aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}>
-                <Icon name={theme === "dark" ? "sun" : "moon"} size={15} />
-              </button>
-              <button type="button" className="sidebar-foot-btn sidebar-foot-btn--wide"
-                onClick={requestSignOut}>
-                Sign out
-              </button>
-            </div>
+            <span className="sidebar-avatar" aria-hidden="true">{(greetingName[0] || "?").toUpperCase()}</span>
+            <span className="sidebar-foot-name">{greetingName}</span>
+            <button type="button" className="sidebar-foot-btn"
+              onClick={toggleTheme}
+              title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}
+              aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}>
+              <Icon name={theme === "dark" ? "sun" : "moon"} size={16} />
+            </button>
+            <button type="button" className="sidebar-foot-btn"
+              onClick={requestSignOut}
+              title="Sign out" aria-label="Sign out">
+              <Icon name="logout" size={16} />
+            </button>
           </div>
         </aside>
 
