@@ -6,7 +6,7 @@ import {
   SIN_TAGS,
   NIYYAH_LABELS,
 } from "../lib/constants";
-import { PrayerIcon } from "../components/icons";
+import { PrayerIcon, Icon } from "../components/icons";
 import { fmt, todayStr, addDays, addDaysToStr } from "../lib/dates";
 import { fmtMins } from "../lib/focus";
 import {
@@ -817,7 +817,7 @@ export default function Muhasaba({
           padding: "20px 16px", borderStyle: "dashed",
           borderColor: "var(--color-border-tertiary)",
         }}>
-          <div style={{ fontSize: 30, marginBottom: 6, opacity: 0.7 }}>🪞</div>
+          <div style={{ marginBottom: 8, color: "var(--gold)", display: "flex", justifyContent: "center" }}><Icon name="mirror" size={26} /></div>
           <div style={{ fontSize: 14, color: "var(--text-secondary)", fontWeight: 500, marginBottom: 3 }}>
             The mirror needs something to read
           </div>
@@ -875,8 +875,8 @@ export default function Muhasaba({
         return (
           <div style={{ ...S.card, marginBottom: 14 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-              <div style={{ fontSize: 13, color: "var(--gold)", fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase" }}>
-                🪞 Past reflections
+              <div style={{ fontSize: 13, color: "var(--gold)", fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 7 }}>
+                <Icon name="mirror" size={14} /> Past reflections
               </div>
               <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{past.length}</div>
             </div>

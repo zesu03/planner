@@ -66,6 +66,22 @@ export function MosqueIcon(props) {
   return <Mosque {...props} />;
 }
 
+// Brand mark — an 8-point star (rub el hizb): two overlapped rounded squares
+// with a centre point. Stroked with currentColor so callers tint it via the
+// CSS `color` property (accent in dark/light). Used on the login screen and
+// the desktop sidebar in place of the old 🕌 emoji.
+export function BrandMark({ size = 32, strokeWidth = 1.8, style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 32 32" fill="none" style={style} aria-hidden="true">
+      <g stroke="currentColor" strokeWidth={strokeWidth} strokeLinejoin="round">
+        <rect x="6.5" y="6.5" width="19" height="19" rx="3.5" />
+        <rect x="6.5" y="6.5" width="19" height="19" rx="3.5" transform="rotate(45 16 16)" />
+      </g>
+      <circle cx="16" cy="16" r="3" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 // Generic app icon by semantic name — the single place UI glyphs are mapped,
 // so sizing/stroke stay consistent. Add here rather than reaching for an emoji.
 // (Some names reuse a close lucide glyph where no exact match exists — e.g.
@@ -90,6 +106,7 @@ const ICON = {
   dua: HandHeart,        // supplication
   mail: Mail,            // yesterday's du'a note
   moon: Moon,
+  sun: Sun,              // light-theme toggle
   night: MoonStar,       // voluntary / night practice
   warning: AlertTriangle,
   trend: TrendingUp,     // niyyah trend

@@ -540,7 +540,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
     const dF = w.focus.thisMins - w.focus.priorMins;
     if (w.focus.thisMins > 0 || w.focus.priorMins > 0) {
       rows.push({
-        icon: "⏱",
+        icon: <Icon name="clock" size={16} />,
         label: "Focus",
         value: fmtMins(w.focus.thisMins),
         deltaLabel: w.focus.priorMins === 0 && w.focus.thisMins > 0 ? "new this week" : fmtMinsDelta(dF),
@@ -733,7 +733,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <div style={{ fontSize: 16, fontWeight: 600, color: v.streak > 0 ? color : "var(--text-muted)" }}>
-                        {v.streak > 0 ? `🔥 ${v.streak}` : "—"}
+                        {v.streak > 0 ? (<><Icon name="flame" size={13} style={{ verticalAlign: "-2px" }} /> {v.streak}</>) : "—"}
                       </div>
                       <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>streak</div>
                     </div>
@@ -870,7 +870,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
 
       {/* Focus heatmap (collapsed by default) */}
       <CollapsibleSection
-        icon="⏱"
+        icon={<Icon name="clock" size={16} />}
         title="Focus heatmap"
         right={`${heatmap.totalDays} active day${heatmap.totalDays === 1 ? "" : "s"} · last ${heatmap.weeks} weeks`}>
         <div style={{ overflowX: "auto" }}>

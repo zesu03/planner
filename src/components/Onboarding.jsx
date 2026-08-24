@@ -1,5 +1,6 @@
 import { useState } from "react";
 import Modal from "./Modal";
+import { Icon } from "./icons";
 import {
   currentPermission,
   isIosNeedsInstall,
@@ -70,7 +71,7 @@ export default function Onboarding({
       </div>
 
       <SetupRow
-        icon="📍"
+        icon={<Icon name="location" size={26} />}
         title="Use my location"
         description="So today's prayer times are accurate for where you are. Your city stays on this device — only the coordinates go to Aladhan."
         done={hasLocation}
@@ -81,7 +82,7 @@ export default function Onboarding({
       />
 
       <SetupRow
-        icon="🔔"
+        icon={<Icon name="bell" size={26} />}
         title="Prayer reminders"
         description="A short push notification at the start of each prayer. Per-prayer toggles live in the Prayer tab once enabled."
         done={hasNotifications}
@@ -128,7 +129,7 @@ function SetupRow({
       padding: "14px 0",
       borderTop: "0.5px solid var(--color-border-tertiary)",
     }}>
-      <div style={{ fontSize: 28, lineHeight: 1, flexShrink: 0 }}>{icon}</div>
+      <div style={{ lineHeight: 1, flexShrink: 0, color: "var(--gold)", display: "flex", alignItems: "center" }}>{icon}</div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 15, fontWeight: 500, color: "var(--text-primary)", marginBottom: 4 }}>
           {title}

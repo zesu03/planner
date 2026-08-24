@@ -24,12 +24,10 @@ export const PRAYERS = ["Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha"];
 // they're excluded from qaza, "prayers today" counts, and Prayer Health.
 // Kept in prayerLog under the same shape so the streak/cell helpers reuse.
 export const VOLUNTARY_PRAYERS = ["Tahajjud"];
-export const PRAYER_ICONS = { Fajr: "🌙", Sunrise: "🌅", Dhuhr: "☀️", Asr: "🌤️", Maghrib: "🌇", Isha: "✨", Tahajjud: "🌃" };
-// Colours mirror the time of day each prayer falls in: deep indigo dawn,
-// rising amber, gold midday, warm afternoon, sunset red, indigo night.
-// Tahajjud sits in the deepest part of night. Brightened from the original
-// charcoal-era hues so the cool indigo/violet prayers (Fajr, Isha, Tahajjud)
-// stay legible on the Midnight Noor indigo base instead of sinking into it.
+// Colours mirror the time of day each prayer falls in (cool dawn → warm
+// midday → terracotta sunset → violet night), retuned for the Sand & Jade
+// palette so they read on both the green-black dark base and the sand light
+// base. Consumed as hex (incl. hex+alpha concatenation), so kept as hex.
 export const PRAYER_COLORS = {
   Fajr:    "#6b74c4",  // muted periwinkle dawn
   Sunrise: "#dd9a4e",  // warm amber

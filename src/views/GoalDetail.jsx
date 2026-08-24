@@ -6,6 +6,7 @@ import { fmtMins, fmtTime } from "../lib/focus";
 import { goldA, goldLight, S } from "../lib/styles";
 import ProgressBar from "../components/ProgressBar";
 import EmptyState from "../components/EmptyState";
+import { Icon } from "../components/icons";
 import TypeToggle from "../components/goal-form/TypeToggle";
 import CategoryTiles from "../components/goal-form/CategoryTiles";
 import DueChips from "../components/goal-form/DueChips";
@@ -840,7 +841,7 @@ export default function GoalDetail({ selected, goBack }) {
                                         {scheduleLabel(t.recurring)}
                                       </span>
                                       {recurringStreak(t) > 0 && (
-                                        <span>· 🔥 {recurringStreak(t)} in a row</span>
+                                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>· <Icon name="flame" size={12} style={{ color: "var(--gold)" }} /> {recurringStreak(t)} in a row</span>
                                       )}
                                       {!isScheduledOn(t) && (
                                         <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>· not today</span>
@@ -919,12 +920,12 @@ export default function GoalDetail({ selected, goBack }) {
                   );
                 })}
                 {selected.tasks.length === 0 && (
-                  <EmptyState icon="✏️" title="Break this goal into 1–3 first steps"
+                  <EmptyState icon={<Icon name="pencil" size={26} />} title="Break this goal into 1–3 first steps"
                     hint="Tasks are where focus blocks attach. Smaller is better — keep each one under an hour."
                     padY={20} />
                 )}
                 {selected.tasks.length > 0 && filteredTasks.length === 0 && (
-                  <EmptyState icon="🔍" title="No tasks match your filters" padY={16} />
+                  <EmptyState icon={<Icon name="search" size={26} />} title="No tasks match your filters" padY={16} />
                 )}
               </div>
             </SortableContext>

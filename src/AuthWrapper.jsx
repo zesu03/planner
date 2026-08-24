@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { auth, provider } from "./firebase";
 import { signInWithPopup, signOut, onAuthStateChanged } from "firebase/auth";
 import ConfirmDialog from "./components/ConfirmDialog";
+import { BrandMark, Icon } from "./components/icons";
 
 export default function AuthWrapper({ children }) {
   const [user, setUser] = useState(undefined); // undefined = loading
@@ -77,55 +78,86 @@ export default function AuthWrapper({ children }) {
       <div
         style={{
           minHeight: "100vh",
+          minHeight: "100dvh",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
           padding: "24px",
+          /* A soft accent halo top, warm secondary bottom — the login is the
+             one full-bleed brand moment, so give it ambient depth. */
+          background:
+            "radial-gradient(720px 380px at 30% 0%, color-mix(in srgb, var(--gold) 15%, transparent), transparent 60%)," +
+            "radial-gradient(640px 420px at 100% 100%, color-mix(in srgb, var(--noor) 12%, transparent), transparent 60%)",
         }}
       >
         <div
           style={{
-            maxWidth: 460,
+            maxWidth: 400,
             width: "100%",
             background: "var(--bg-card)",
             border: "0.5px solid var(--border)",
-            borderRadius: "var(--radius)",
-            padding: "28px 24px",
+            borderRadius: "var(--border-radius-lg)",
+            padding: "36px 28px 30px",
             textAlign: "center",
+            boxShadow: "var(--shadow-card)",
           }}
         >
-          <div style={{ fontSize: 28, marginBottom: 6 }}>🕌</div>
+          {/* Brand mark — an 8-point star in the accent, framed. Replaces the
+              old 🕌 emoji so the first impression reads as a crafted product. */}
           <div
             style={{
-              fontSize: 20,
-              fontWeight: 600,
-              color: "var(--text-primary)",
-              marginBottom: 6,
+              width: 60,
+              height: 60,
+              margin: "0 auto 22px",
+              display: "grid",
+              placeItems: "center",
+              borderRadius: "var(--border-radius-md)",
+              background: "var(--color-background-secondary)",
+              border: "0.5px solid var(--color-border-secondary)",
+              color: "var(--gold)",
             }}
           >
-            Aakhirah Planner
+            <BrandMark size={32} />
           </div>
-          <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 12 }}>
+          <h1
+            style={{
+              fontFamily: "'Fraunces', serif",
+              fontSize: 30,
+              fontWeight: 600,
+              letterSpacing: "-0.4px",
+              color: "var(--text-primary)",
+              lineHeight: 1.1,
+            }}
+          >
+            Aakhirah
+          </h1>
+          <div style={{ fontSize: 15, color: "var(--text-secondary)", marginTop: 8 }}>
             Plan your dunya, earn your Aakhirah.
           </div>
           <div
             style={{
-              fontSize: 12,
-              color: "var(--text-muted)",
-              fontStyle: "italic",
-              marginBottom: 18,
+              margin: "22px auto 26px",
+              maxWidth: 320,
             }}
           >
-            "Verily, with every hardship comes ease." — Quran 94:5
+            <div className="arabic" style={{ fontSize: 24, color: "var(--gold)", lineHeight: 1.9 }}>
+              فَإِنَّ مَعَ ٱلْعُسْرِ يُسْرًا
+            </div>
+            <div style={{ fontSize: 13, color: "var(--text-muted)", fontStyle: "italic", marginTop: 8 }}>
+              "Verily, with every hardship comes ease." — Quran 94:5
+            </div>
           </div>
           <button
             onClick={handleGoogle}
             className="btn-primary"
-            style={{ width: "100%" }}
+            style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}
           >
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path fill="currentColor" d="M12 11v2.6h4.3c-.2 1.1-1.4 3.2-4.3 3.2-2.6 0-4.7-2.1-4.7-4.8S9.4 7.2 12 7.2c1.5 0 2.4.6 3 1.2l2-2C15.7 5.2 14 4.5 12 4.5 7.9 4.5 4.6 7.8 4.6 12S7.9 19.5 12 19.5c4.3 0 7.1-3 7.1-7.2 0-.5 0-.9-.1-1.3H12z" />
+            </svg>
             Continue with Google
           </button>
-          <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 12 }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 14 }}>
             Your data is private and synced to your account.
           </div>
         </div>
@@ -172,7 +204,7 @@ export default function AuthWrapper({ children }) {
               borderRadius: "50%",
             }}
           >
-            {theme === "dark" ? "☀" : "☾"}
+            <Icon name={theme === "dark" ? "sun" : "moon"} size={15} />
           </button>
           <button
             // Styled confirm so a stray tap doesn't drop the user out. Sign-out

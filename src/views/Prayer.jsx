@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { PRAYERS, PRAYER_COLORS, VOLUNTARY_PRAYERS } from "../lib/constants";
-import { PrayerIcon } from "../components/icons";
+import { PrayerIcon, Icon } from "../components/icons";
 import { localDateStr } from "../lib/dates";
 import QazaLedger from "../components/QazaLedger";
 import { currentPrayerWindow, prayerDisplayName } from "../lib/prayer";
@@ -237,7 +237,7 @@ export default function Prayer({
                       )}
                     </div>
                     <div style={{ fontSize: 14, color: "var(--text-secondary)" }}>
-                      {prayerTimes[p]}{streak > 0 && !isSunrise ? ` · 🔥 ${streak} day streak` : ""}
+                      {prayerTimes[p]}{streak > 0 && !isSunrise && (<> · <Icon name="flame" size={12} style={{ verticalAlign: "-2px", color: "var(--gold)" }} /> {streak} day streak</>)}
                     </div>
                   </div>
                   {!isSunrise && (() => {
@@ -297,7 +297,7 @@ export default function Prayer({
                       <div style={{ fontSize: 15, fontWeight: 500, color }}>Voluntary · {vp}</div>
                       <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
                         {lastThird ? `Best after ${lastThird} (last third of the night)` : "Pray in the last third of the night"}
-                        {streak > 0 ? ` · 🔥 ${streak} day streak` : ""}
+                        {streak > 0 && (<> · <Icon name="flame" size={12} style={{ verticalAlign: "-2px", color: "var(--gold)" }} /> {streak} day streak</>)}
                       </div>
                     </div>
                   </div>

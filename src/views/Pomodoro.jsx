@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CAT_COLORS } from "../lib/constants";
+import { Icon } from "../components/icons";
 import { todayStr, localDateStr } from "../lib/dates";
 import { fmtTime, fmtMins, getFocusSeconds, focusStreakDays } from "../lib/focus";
 import { isGoalDone, pct, isRecurring, isScheduledOn, isDoneOn } from "../lib/goals";
@@ -78,8 +79,8 @@ function SessionBanner({ lastSession, goals, dismissLastSession, updateLastSessi
           background: goldA(22),
           border: `0.5px solid ${goldA(44)}`,
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 22, flexShrink: 0,
-        }}>✨</span>
+          fontSize: 22, flexShrink: 0, color: "var(--gold)",
+        }}><Icon name="sparkles" size={22} /></span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 700, letterSpacing: "0.6px", textTransform: "uppercase", marginBottom: 3 }}>
             {eyebrow} · Alhamdulillah
@@ -206,7 +207,7 @@ function TodayStrip({ focusLog, todayMins, streak, goalMins, onEditGoal, style, 
           </span>
         </div>
         {streak > 0 && (
-          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--gold)" }}>🔥 {streak}-day streak</span>
+          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--gold)", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="flame" size={14} /> {streak}-day streak</span>
         )}
       </div>
 
