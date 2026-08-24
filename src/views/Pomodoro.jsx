@@ -17,6 +17,31 @@ function minsForDay(focusLog, dayKey) {
   return focusLog.reduce((s, l) => (l.day === dayKey ? s + (l.mins || 0) : s), 0);
 }
 
+// Parse a duration the user typed into minutes. Accepts plain minutes ("90"),
+// hours ("2h", "1.5h"), and hours+minutes ("2h30", "2:30"). Returns null when
+// it can't parse, so callers can fall back to the previous value.
+function parseDuration(str) {
+  if (str == null) return null;
+  const s = String(str).trim().toLowerCase().replace(/\s+/g, "");
+  if (!s) return null;
+  let m;
+  // "2h30", "2:30", "2h30m"
+  if ((m = s.match(/^(\d+)(?:h|:)(\d+)m?$/))) return (+m[1]) * 60 + (+m[2]);
+  // "2h", "1.5h"
+  if ((m = s.match(/^(\d*\.?\d+)h$/))) return Math.round(parseFloat(m[1]) * 60);
+  // "90m", "90"
+  if ((m = s.match(/^(\d+)m?$/))) return +m[1];
+  return null;
+}
+
+// Format minutes as a compact duration for an input value: "90" stays "90",
+// but 120 -> "2h", 150 -> "2h30". Keeps the edit field friendly.
+function durationInputValue(mins) {
+  if (mins % 60 === 0 && mins >= 60) return `${mins / 60}h`;
+  if (mins > 60) return `${Math.floor(mins / 60)}h${mins % 60}`;
+  return String(mins);
+}
+
 // Session-complete celebration with a "What moved forward?" prompt. The
 // note saves on Enter or on blur (when non-empty), persists onto the
 // focusLog entry, and surfaces a brief "Saved ✓" confirmation. Owns its
@@ -158,7 +183,8 @@ function TodayStrip({ focusLog, todayMins, streak, goalMins, onEditGoal, style, 
   const met = todayMins >= goalMins && goalMins > 0;
 
   const commit = () => {
-    const v = Math.max(1, Math.min(720, Number(draft) || goalMins));
+    const parsed = parseDuration(draft);
+    const v = Math.max(1, Math.min(720, parsed ?? goalMins));
     onEditGoal(v);
     setEditing(false);
   };
@@ -191,13 +217,13 @@ function TodayStrip({ focusLog, todayMins, streak, goalMins, onEditGoal, style, 
           <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
             /{" "}
             {editing ? (
-              <input type="number" min="1" max="720" value={draft} autoFocus
+              <input type="text" inputMode="text" value={draft} autoFocus placeholder="2h"
                 onChange={(e) => setDraft(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") commit(); else if (e.key === "Escape") setEditing(false); }}
                 onBlur={() => draft && commit()}
-                style={{ width: 56, fontSize: 14, padding: "1px 4px", textAlign: "center", background: "transparent", color: "var(--gold)", border: "none", borderBottom: "1.5px solid var(--gold)", outline: "none" }} />
+                style={{ width: 64, fontSize: 14, padding: "1px 4px", textAlign: "center", background: "transparent", color: "var(--gold)", border: "none", borderBottom: "1.5px solid var(--gold)", outline: "none" }} />
             ) : (
-              <button onClick={() => { setDraft(String(goalMins)); setEditing(true); }} title="Set daily goal"
+              <button onClick={() => { setDraft(durationInputValue(goalMins)); setEditing(true); }} title="Set daily goal"
                 style={{ fontSize: 13, color: "var(--gold)", background: "transparent", border: "none", borderBottom: "1px dashed transparent", padding: 0, cursor: "pointer", fontFamily: "inherit" }}
                 onMouseEnter={(e) => { e.currentTarget.style.borderBottomColor = goldA(50); }}
                 onMouseLeave={(e) => { e.currentTarget.style.borderBottomColor = "transparent"; }}>
@@ -228,13 +254,16 @@ function TodayStrip({ focusLog, todayMins, streak, goalMins, onEditGoal, style, 
               const active = m === goalMins;
               const label = m >= 60 && m % 60 === 0 ? `${m / 60}h` : `${m}m`;
               return (
-                <button key={m} onClick={() => apply(m)} title={`${m} minutes daily goal`}
-                  style={{ fontSize: 13, padding: "4px 10px", borderRadius: 99, background: active ? "var(--gold)" : "var(--color-background-secondary)", border: `0.5px solid ${active ? "var(--gold)" : "var(--color-border-tertiary)"}`, color: active ? "#0f0f0f" : "var(--text-primary)", cursor: "pointer", fontWeight: active ? 600 : 500 }}>
+                // onMouseDown preventDefault so clicking a preset doesn't blur
+                // the input first (which would commit the typed draft and close
+                // the editor before this click registers).
+                <button key={m} onMouseDown={(e) => e.preventDefault()} onClick={() => apply(m)} title={`${m} minutes daily goal`}
+                  style={{ fontSize: 13, padding: "4px 10px", borderRadius: 99, background: active ? "var(--gold)" : "var(--color-background-secondary)", border: `0.5px solid ${active ? "var(--gold)" : "var(--color-border-tertiary)"}`, color: active ? "var(--on-accent)" : "var(--text-primary)", cursor: "pointer", fontWeight: active ? 600 : 500 }}>
                   {label}
                 </button>
               );
             })}
-            <button onClick={() => setEditing(false)} style={{ fontSize: 13, padding: "4px 10px", marginLeft: 4 }}>Close</button>
+            <button onMouseDown={(e) => e.preventDefault()} onClick={() => setEditing(false)} style={{ fontSize: 13, padding: "4px 10px", marginLeft: 4 }}>Close</button>
           </div>
         );
       })()}
@@ -405,7 +434,8 @@ export default function Pomodoro({
   }, [pomRunning, stopTimer, setPomRunning, endFocusEarly, fullscreen]);
 
   const commitFocusLength = () => {
-    const v = Math.max(1, Number(focusDraft) || pomDurations.defaultFocus);
+    const parsed = parseDuration(focusDraft);
+    const v = Math.max(1, parsed ?? pomDurations.defaultFocus);
     updatePomDuration("defaultFocus", v);
     setEditingFocus(false);
   };
@@ -539,7 +569,7 @@ export default function Pomodoro({
                       transition: "fill 0.3s",
                       cursor: canEditDial && !editingFocus ? "pointer" : "default",
                     }}>
-                    {editingFocus ? "set length" : paused ? `paused · ${fmtTime(pomSeconds)} left` : canEditDial ? "focus · tap to edit" : "focus"}
+                    {editingFocus ? "set length · 90 or 2h" : paused ? `paused · ${fmtTime(pomSeconds)} left` : canEditDial ? "focus · tap to edit" : "focus"}
                   </text>
                 </svg>
                 {editingFocus && (
@@ -549,9 +579,10 @@ export default function Pomodoro({
                     display: "flex", alignItems: "center", gap: 4,
                   }}>
                     <input
-                      type="number"
-                      min="1"
+                      type="text"
+                      inputMode="text"
                       value={focusDraft}
+                      placeholder="90 or 2h"
                       onChange={(e) => setFocusDraft(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") commitFocusLength();
@@ -560,7 +591,7 @@ export default function Pomodoro({
                       onBlur={() => focusDraft && commitFocusLength()}
                       autoFocus
                       style={{
-                        width: 90,
+                        width: 150,
                         fontSize: 44,
                         fontWeight: 500,
                         textAlign: "center",
@@ -573,7 +604,6 @@ export default function Pomodoro({
                         outline: "none",
                       }}
                     />
-                    <span style={{ fontSize: 18, color: "var(--text-muted)" }}>m</span>
                   </div>
                 )}
               </div>
