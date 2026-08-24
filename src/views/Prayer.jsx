@@ -3,8 +3,20 @@ import { PRAYERS, PRAYER_COLORS, VOLUNTARY_PRAYERS } from "../lib/constants";
 import { PrayerIcon, Icon } from "../components/icons";
 import { localDateStr } from "../lib/dates";
 import QazaLedger from "../components/QazaLedger";
+import SectionLabel from "../components/SectionLabel";
 import { currentPrayerWindow, prayerDisplayName } from "../lib/prayer";
 import { S } from "../lib/styles";
+
+// Arabic name + time-of-day descriptor per prayer, for the tile subtitles.
+const PRAYER_META = {
+  Fajr: { ar: "فجر", phase: "Dawn" },
+  Sunrise: { ar: "شروق", phase: "Sunrise" },
+  Dhuhr: { ar: "ظهر", phase: "Midday" },
+  Asr: { ar: "عصر", phase: "Afternoon" },
+  Maghrib: { ar: "مغرب", phase: "Sunset" },
+  Isha: { ar: "عشاء", phase: "Night" },
+  Tahajjud: { ar: "تهجد", phase: "Last third of the night" },
+};
 import { rewardPrayerMark } from "../lib/feedback";
 import {
   currentPermission,
@@ -182,6 +194,7 @@ export default function Prayer({
             );
           })()}
 
+          <SectionLabel>Daily Salah</SectionLabel>
           <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
             {PRAYERS.filter((p) => prayerTimes[p]).map((p) => {
               const done = prayerDoneToday(p);
@@ -223,6 +236,7 @@ export default function Prayer({
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 500, fontSize: 16, color: pColor, display: "flex", alignItems: "center", gap: 8 }}>
                       {prayerDisplayName(p, localDateStr())}
+                      <span className="arabic" style={{ fontSize: 15, color: "var(--text-muted)", fontWeight: 400 }}>{PRAYER_META[p]?.ar}</span>
                       {isCurrent && (
                         <span style={{
                           fontSize: 11,
@@ -356,6 +370,7 @@ export default function Prayer({
             );
           })}
 
+          <SectionLabel>Accountability</SectionLabel>
           <QazaLedger
             qaza={qaza}
             qazaOwed={qazaOwed}
