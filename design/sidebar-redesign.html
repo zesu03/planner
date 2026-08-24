@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sidebar — redesign options</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --gold:#7cc39d; --noor:#e0c06a; --on-accent:#10160f;
+    --bg-primary:#0f1310; --bg-secondary:#1f271e; --bg-card:#171d17;
+    --border:rgba(210,180,99,0.3); --border-soft:rgba(210,180,99,0.16);
+    --text-primary:#f1efe4; --text-secondary:#c7c3b0; --text-muted:#a8a289;
+    --maghrib:#cf6b47;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Space Grotesk",sans-serif;color:var(--text-primary);background:var(--bg-primary);padding:30px;line-height:1.5}
+  .serif{font-family:"Fraunces",serif}.arabic{font-family:"Amiri",serif}
+  h1{font-family:"Fraunces",serif;font-weight:600;font-size:22px;margin-bottom:4px}
+  .lede{color:var(--text-muted);font-size:14px;margin-bottom:24px}
+  .row{display:flex;gap:28px;align-items:flex-start;flex-wrap:wrap}
+  .col{display:flex;flex-direction:column;gap:10px}
+  .cap{font-size:13px;font-weight:600;color:var(--noor);letter-spacing:.04em}
+  .cap small{display:block;color:var(--text-muted);font-weight:400;letter-spacing:0;margin-top:2px}
+
+  /* base sidebar shell */
+  .sb{width:264px;height:730px;border:1px solid var(--border);border-radius:16px;
+    background:linear-gradient(180deg,#12160f,var(--bg-primary));display:flex;flex-direction:column;padding:22px 16px 16px;overflow:hidden}
+  .brand{display:flex;align-items:center;gap:11px;padding:2px 8px}
+  .brand .mk{color:var(--gold);display:flex}
+  .brand .nm{font-family:"Fraunces",serif;font-weight:600;font-size:19px}
+  .nav{display:flex;flex-direction:column;gap:3px;margin-top:6px}
+  .item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:11px;color:var(--text-secondary);
+    font-size:14.5px;font-weight:500;cursor:pointer;position:relative}
+  .item svg{width:19px;height:19px;flex:none}
+  .item:hover{background:var(--bg-card);color:var(--text-primary)}
+  .foot{margin-top:auto;display:flex;align-items:center;gap:8px;padding:14px 4px 2px;border-top:1px solid var(--border);font-size:13px;color:var(--text-secondary)}
+  .avatar{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,var(--gold) 20%,transparent);color:var(--gold);font-weight:700;font-size:13px;flex:none}
+  .foot .nm{flex:1;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fbtn{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;color:var(--text-secondary);cursor:pointer}
+  .fbtn:hover{background:var(--bg-card);color:var(--text-primary)}
+  .fbtn svg{width:16px;height:16px}
+  .rule{height:1px;background:var(--border-soft);margin:14px 6px}
+
+  /* ── Variant A: Refined — active pill + gold left-bar + icon tint ── */
+  .a .date{padding:12px 12px 4px}
+  .a .date .g{font-size:13px;font-weight:600;color:var(--text-secondary)}
+  .a .date .h{font-size:12px;color:var(--text-muted);margin-top:2px}
+  .a .item.active{background:color-mix(in srgb,var(--gold) 13%,transparent);color:var(--gold);font-weight:600}
+  .a .item.active::before{content:"";position:absolute;left:-16px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--gold)}
+
+  /* ── Variant B: Glanceable — next-prayer card + today stats ── */
+  .b .np{margin:14px 6px 6px;border-radius:13px;padding:12px 13px;
+    background:linear-gradient(135deg,color-mix(in srgb,var(--maghrib) 18%,transparent),transparent);
+    border:1px solid color-mix(in srgb,var(--maghrib) 40%,transparent)}
+  .b .np .k{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--maghrib);font-weight:600}
+  .b .np .r{display:flex;align-items:baseline;justify-content:space-between;margin-top:5px}
+  .b .np .nm{font-family:"Fraunces",serif;font-size:18px;font-weight:600;color:var(--text-primary)}
+  .b .np .nm .ar{font-family:"Amiri",serif;font-size:14px;color:var(--maghrib);margin-left:5px}
+  .b .np .pill{font-size:11px;font-weight:700;color:#fff;background:var(--maghrib);border-radius:99px;padding:2px 9px}
+  .b .np .tm{font-size:12px;color:var(--text-muted);margin-top:3px}
+  .b .stats{display:flex;gap:8px;margin:8px 6px 4px}
+  .b .stat{flex:1;background:var(--bg-card);border:1px solid var(--border-soft);border-radius:10px;padding:8px 10px}
+  .b .stat .n{font-family:"Fraunces",serif;font-size:16px;font-weight:600}
+  .b .stat .l{font-size:10.5px;color:var(--text-muted)}
+  .b .datemini{font-size:11.5px;color:var(--text-muted);padding:8px 8px 2px}
+  .b .item.active{background:color-mix(in srgb,var(--gold) 13%,transparent);color:var(--gold);font-weight:600}
+
+  /* ── Variant C: Editorial — big date stamp + roomy nav, dot indicator ── */
+  .c{padding-top:26px}
+  .c .brand .nm{font-size:21px}
+  .c .stamp{display:flex;align-items:baseline;gap:10px;padding:16px 10px 6px}
+  .c .stamp .d{font-family:"Fraunces",serif;font-size:40px;font-weight:600;line-height:.9;color:var(--noor)}
+  .c .stamp .my{font-size:13px;color:var(--text-secondary);font-weight:500}
+  .c .stamp .my small{display:block;color:var(--text-muted);font-weight:400}
+  .c .stamp-h{font-size:11.5px;color:var(--text-muted);padding:0 12px 10px}
+  .c .nav{gap:2px}
+  .c .item{padding:12px 12px;font-size:15px}
+  .c .item.active{color:var(--noor);font-weight:600}
+  .c .item.active::before{content:"";position:absolute;left:-16px;top:0;bottom:0;width:3px;background:var(--noor)}
+  .c .item .dot{margin-left:auto;width:6px;height:6px;border-radius:50%;background:var(--noor);opacity:0;flex:none}
+  .c .item.active .dot{opacity:1}
+</style>
+</head>
+<body>
+  <h1 class="serif">Left pane — three directions</h1>
+  <div class="lede">Same nav + identity; different treatment of the date, active state, and whether the pane shows a live glance. All include the year in the date.</div>
+
+  <div class="row" id="row"></div>
+
+<script>
+  const I = {
+    dashboard:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>',
+    goals:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4" fill="currentColor"/></svg>',
+    prayer:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2c.7.6.7 1.4 0 2-.7-.6-.7-1.4 0-2z"/><path d="M5 11a7 7 0 0 1 14 0"/><path d="M5 11v9"/><path d="M19 11v9"/><path d="M3 20h18"/><path d="M10 20v-3a2 2 0 0 1 4 0v3"/></svg>',
+    focus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"/><path d="M12 13V9"/><path d="M9 2h6"/></svg>',
+    muhasaba:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8z"/></svg>',
+    mizan:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M8 17v-5"/><path d="M13 17V8"/><path d="M18 17v-3"/></svg>',
+  };
+  const NAV = [['dashboard','Dashboard'],['goals','Goals'],['prayer','Prayer'],['focus','Focus'],['muhasaba','Muhasaba'],['mizan','Mizan']];
+  const star = '<svg width="24" height="24" viewBox="0 0 32 32" fill="none"><g stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="6.5" y="6.5" width="19" height="19" rx="3.5"/><rect x="6.5" y="6.5" width="19" height="19" rx="3.5" transform="rotate(45 16 16)"/></g><circle cx="16" cy="16" r="3" fill="currentColor"/></svg>';
+  const sun = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4 12H2M22 12h-2M5 5l1.5 1.5M17.5 17.5 19 19M19 5l-1.5 1.5M6.5 17.5 5 19"/></svg>';
+  const out = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>';
+  const nav = (active) => '<div class="nav">' + NAV.map(([k,l]) =>
+    `<div class="item${k===active?' active':''}">${I[k]}<span>${l}</span><span class="dot"></span></div>`).join('') + '</div>';
+  const foot = '<div class="foot"><span class="avatar">Z</span><span class="nm">Zeeshan</span><span class="fbtn">'+sun+'</span><span class="fbtn">'+out+'</span></div>';
+  const brand = '<div class="brand"><span class="mk">'+star+'</span><span class="nm">Aakhirah</span></div>';
+
+  const A = `<div class="sb a">${brand}
+    <div class="date"><div class="g">Mon 24 Aug 2026</div><div class="h">11 Rabīʿ al-awwal 1448 AH</div></div>
+    ${nav('dashboard')}${foot}</div>`;
+
+  const B = `<div class="sb b">${brand}
+    <div class="np"><div class="k">Next prayer</div><div class="r"><span class="nm serif">Maghrib<span class="ar">مغرب</span></span><span class="pill">42m</span></div><div class="tm">18:36 · 3 of 5 prayed today</div></div>
+    <div class="stats"><div class="stat"><div class="n">45m</div><div class="l">focus today</div></div><div class="stat"><div class="n">12🔥</div><div class="l">Fajr streak</div></div></div>
+    <div class="datemini">Mon 24 Aug 2026 · 11 Rabīʿ 1448</div>
+    ${nav('dashboard')}${foot}</div>`;
+
+  const C = `<div class="sb c">${brand}
+    <div class="stamp"><span class="d serif">24</span><span class="my">Aug 2026<small>Monday</small></span></div>
+    <div class="stamp-h">11 Rabīʿ al-awwal 1448 AH</div>
+    ${nav('dashboard')}${foot}</div>`;
+
+  document.getElementById('row').innerHTML = `
+    <div class="col"><div class="cap">A · Refined<small>current, polished: active pill + gold left-bar + icon tint</small></div>${A}</div>
+    <div class="col"><div class="cap">B · Glanceable<small>adds a live next-prayer card + today stats</small></div>${B}</div>
+    <div class="col"><div class="cap">C · Editorial<small>big date stamp, roomy nav, quiet dot indicator</small></div>${C}</div>`;
+</script>
+</body>
+</html>

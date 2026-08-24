@@ -871,7 +871,7 @@ export default function Planner({ user }) {
   // lib/prayer.js for the window definitions.
   const nextPrayer = computeNextPrayer(prayerTimes, prayerLog, todayStr(), new Date(), addDaysToStr(todayStr(), -1));
 
-  const englishDate = new Date().toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short"});
+  const englishDate = new Date().toLocaleDateString("en-GB",{weekday:"short",day:"numeric",month:"short",year:"numeric"});
   const dateLine = hijriDate ? `${englishDate} · ${hijriDate}` : englishDate;
 
   // ── dashboard daily loop ───────────────────────────────────────────────
