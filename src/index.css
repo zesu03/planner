@@ -885,9 +885,13 @@ select:focus-visible {
     max-height: calc(100dvh - 72px);
     overflow-y: auto;
   }
-  .app-main { min-width: 0; }
+  /* Cap the reading column so cards stay tight and editorial instead of
+     sprawling the full width — matches the mockup's proportions. */
+  .app-main { min-width: 0; max-width: 880px; }
   /* The sidebar replaces the tab bar on desktop. */
   .tabbar { display: none; }
+  /* Brand overline is redundant next to the sidebar wordmark on desktop. */
+  .app-header-overline { display: none; }
 }
 .sidebar-brand {
   display: flex;

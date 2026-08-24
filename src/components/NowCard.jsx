@@ -2,12 +2,11 @@
 // "what do I do right now?" so the home screen has one place for the eye to
 // land instead of a wall of equal-weight cards.
 //
-// Three zones:
-//   1. Phase header (morning / midday / evening) + a live clock.
-//   2. Prayer status — next prayer + live countdown (or "due now"), plus the
-//      five-prayer dot row as glanceable daily progress, and a focus bar.
-//   3. ONE primary action, chosen by phase + state, and the istiqāmah streak
-//      footer (the ethical "don't break the chain" hook).
+// Composition (matches the Sand & Jade mockup):
+//   • The next/ due prayer is the serif HEADLINE — this is a prayer-first app.
+//   • A circular focus ring (today's minutes vs the daily goal), top-right.
+//   • A labelled five-prayer dot row as glanceable daily progress.
+//   • ONE primary action, chosen by phase + state, and the istiqāmah streak.
 //
 // Presentational: all data + callbacks come from the Dashboard as props.
 
@@ -16,7 +15,7 @@ import { PRAYER_COLORS } from "../lib/constants";
 import { PrayerIcon, Icon } from "./icons";
 import { localDateStr } from "../lib/dates";
 import { prayerDisplayName } from "../lib/prayer";
-import { goldA, noorA, tintA } from "../lib/styles";
+import { goldA } from "../lib/styles";
 
 const OBLIGATORY = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
 
@@ -68,10 +67,8 @@ export default function NowCard({
   }, []);
 
   const phase = PHASE[dayPhase] || PHASE.midday;
-  const clock = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
   const doneSet = new Set(prayersTodaySummary?.done || []);
-  const doneCount = prayersTodaySummary?.doneCount ?? doneSet.size;
   const nextName = nextPrayer && !nextPrayer.tomorrow ? nextPrayer.name : null;
 
   const focusMins = focusTodaySummary?.mins || 0;
@@ -85,8 +82,7 @@ export default function NowCard({
     if (t != null) {
       let diff = t - (now.getHours() * 60 + now.getMinutes());
       // Only tomorrow's first prayer wraps past midnight. A today prayer
-      // whose minute just passed stays <=0 so fmtCountdown reads "now"
-      // (instead of flipping to "in 23h 59m" before the prop recomputes).
+      // whose minute just passed stays <=0 so fmtCountdown reads "now".
       if (diff < 0 && nextPrayer.tomorrow) diff += 1440;
       countdown = diff;
     }
@@ -109,7 +105,7 @@ export default function NowCard({
     return { label: "Start a focus block", onClick: onOpenFocus };
   })();
 
-  // Prayer headline (the tappable status line).
+  // Prayer headline (the serif focal line) + its eyebrow.
   let prayerEyebrow, prayerLabel, prayerColor = "var(--gold)", urgent = false;
   if (!prayerTimesSet) {
     prayerEyebrow = "Prayer times"; prayerLabel = "Not set yet";
@@ -123,8 +119,10 @@ export default function NowCard({
     prayerLabel = `${prayerDisplayName(nextPrayer.name, localDateStr())} · ${fmtCountdown(countdown)}`;
     prayerColor = PRAYER_COLORS[nextPrayer.name] || "var(--gold)";
   }
-  // Icon rendered as an element beside the label (only when a prayer is set).
   const prayerIconName = prayerTimesSet && nextPrayer ? nextPrayer.name : null;
+  const RC = 2 * Math.PI * 32; // focus-ring circumference
+
+  const openPrayer = prayerTimesSet ? onOpenPrayer : onOpenAddPrayer;
 
   return (
     <div style={{
@@ -132,89 +130,71 @@ export default function NowCard({
       overflow: "hidden",
       borderRadius: "var(--border-radius-lg)",
       border: `0.5px solid ${goldA(38)}`,
-      background: `radial-gradient(120% 100% at 100% 0%, ${phase.glow} 0%, transparent 55%), var(--bg-card)`,
-      padding: "18px 20px 16px",
+      background: `radial-gradient(120% 120% at 100% 0%, ${phase.glow} 0%, transparent 55%), var(--bg-card)`,
+      padding: "22px 24px 18px",
       marginBottom: 18,
       boxShadow: "var(--shadow-card)",
     }}>
-      {/* Header: phase greeting + live clock */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--gold)", letterSpacing: "0.7px", textTransform: "uppercase", marginBottom: 3 }}>
-            {phase.eyebrow}
+      {/* Top: prayer headline (tap → Prayer) + focus ring (tap → Focus) */}
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+        <div
+          onClick={openPrayer}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openPrayer?.(); } }}
+          style={{ cursor: "pointer", minWidth: 0, flex: 1 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.7px", textTransform: "uppercase", color: urgent ? prayerColor : "var(--gold)", marginBottom: 6, display: "flex", alignItems: "center", gap: 7 }}>
+            {prayerIconName && <span style={{ display: "flex", color: prayerColor }}><PrayerIcon name={prayerIconName} size={15} /></span>}
+            {prayerEyebrow || phase.eyebrow}
           </div>
-          <div style={{ fontFamily: "'Fraunces', serif", fontSize: 21, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.2 }}>
-            {phase.title}
-          </div>
-        </div>
-        <div style={{ fontSize: 13, color: "var(--text-muted)", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap", paddingTop: 2 }}>
-          {clock}
-        </div>
-      </div>
-
-      {/* Prayer status — tappable to the Prayer tab */}
-      <div
-        onClick={prayerTimesSet ? onOpenPrayer : onOpenAddPrayer}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); (prayerTimesSet ? onOpenPrayer : onOpenAddPrayer)?.(); } }}
-        className="tap-card"
-        style={{
-          display: "flex", alignItems: "center", gap: 12,
-          padding: "11px 13px",
-          borderRadius: "var(--border-radius-md)",
-          background: urgent ? tintA(prayerColor, 12) : "var(--color-background-secondary)",
-          border: `0.5px solid ${urgent ? tintA(prayerColor, 45) : "var(--color-border-tertiary)"}`,
-          cursor: "pointer",
-          marginBottom: 12,
-        }}>
-        {prayerIconName && (
-          <span style={{ display: "flex", flexShrink: 0, color: prayerColor }}>
-            <PrayerIcon name={prayerIconName} size={22} />
-          </span>
-        )}
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 10, fontWeight: 600, color: urgent ? prayerColor : "var(--text-muted)", letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 2 }}>
-            {prayerEyebrow}
-          </div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {prayerLabel}
+          <div className="serif" style={{ fontSize: 27, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.12, letterSpacing: "-0.3px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            {prayerLabel || phase.title}
           </div>
           {prayerCity && prayerTimesSet && (
-            <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 1 }}>{prayerCity}</div>
+            <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
+              <Icon name="location" size={14} /> {prayerCity}
+            </div>
           )}
         </div>
-        {/* Five-prayer dot row — glanceable daily progress */}
-        {prayerTimesSet && (
-          <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
-            {OBLIGATORY.map((p) => {
-              const done = doneSet.has(p);
-              const isNext = p === nextName;
-              return (
-                <span key={p} title={`${p}${done ? " · prayed" : ""}`} style={{
-                  width: 9, height: 9, borderRadius: "50%",
-                  background: done ? (PRAYER_COLORS[p] || "var(--gold)") : "transparent",
-                  border: `1.5px solid ${done ? "transparent" : isNext ? goldA(70) : "var(--color-border-secondary)"}`,
-                  boxShadow: isNext && !done ? `0 0 0 3px ${goldA(15)}` : "none",
-                }} />
-              );
-            })}
+
+        {/* Focus ring — today's minutes vs the daily goal. */}
+        <button
+          onClick={onOpenFocus}
+          aria-label={`Focus ${focusMins} of ${focusGoal} minutes today`}
+          style={{ background: "none", border: "none", boxShadow: "none", padding: 0, cursor: "pointer", flexShrink: 0, position: "relative", width: 78, height: 78 }}>
+          <svg width="78" height="78" style={{ transform: "rotate(-90deg)" }}>
+            <circle cx="39" cy="39" r="32" fill="none" stroke="var(--color-background-secondary)" strokeWidth="7" />
+            <circle cx="39" cy="39" r="32" fill="none" stroke="var(--noor)" strokeWidth="7" strokeLinecap="round"
+              strokeDasharray={RC} strokeDashoffset={RC * (1 - focusPct / 100)}
+              style={{ transition: "stroke-dashoffset 0.5s ease" }} />
+          </svg>
+          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>
+            <span className="serif" style={{ fontSize: 18, fontWeight: 600, color: focusPct >= 100 ? "var(--color-text-success)" : "var(--text-primary)" }}>{focusMins}</span>
+            <span style={{ fontSize: 9.5, color: "var(--text-muted)", marginTop: 3 }}>/ {focusGoal}m</span>
           </div>
-        )}
+        </button>
       </div>
 
-      {/* Focus progress — quiet secondary signal */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-        <span style={{ fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap" }}>
-          Focus {focusMins}m{focusGoal ? ` / ${focusGoal}m` : ""}
-        </span>
-        <div style={{ flex: 1, height: 5, background: "var(--color-background-secondary)", borderRadius: 99, overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${focusPct}%`, background: `linear-gradient(90deg, ${noorA(85)}, var(--noor))`, borderRadius: 99, boxShadow: `0 0 8px ${noorA(45)}`, transition: "width 0.4s ease" }} />
+      {/* Labelled five-prayer dot row */}
+      {prayerTimesSet && (
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 20, marginBottom: 18, maxWidth: 380 }}>
+          {OBLIGATORY.map((p) => {
+            const done = doneSet.has(p);
+            const isNext = p === nextName;
+            return (
+              <div key={p} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, flex: 1 }}>
+                <span title={`${p}${done ? " · prayed" : ""}`} style={{
+                  width: 12, height: 12, borderRadius: "50%",
+                  background: done ? (PRAYER_COLORS[p] || "var(--gold)") : "transparent",
+                  border: `2px solid ${done ? "transparent" : isNext ? goldA(70) : "var(--color-border-secondary)"}`,
+                  boxShadow: isNext && !done ? `0 0 0 4px ${goldA(15)}` : "none",
+                }} />
+                <span style={{ fontSize: 10.5, color: done ? "var(--text-secondary)" : "var(--text-muted)", fontWeight: done ? 600 : 400, letterSpacing: "0.2px" }}>{p}</span>
+              </div>
+            );
+          })}
         </div>
-        <span style={{ fontSize: 12, color: focusPct >= 100 ? "var(--color-text-success)" : "var(--text-muted)", fontWeight: 600, whiteSpace: "nowrap" }}>
-          {focusPct}%
-        </span>
-      </div>
+      )}
 
       {/* Primary action */}
       <button className="btn-primary" onClick={cta.onClick} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
@@ -222,7 +202,7 @@ export default function NowCard({
       </button>
 
       {/* Istiqāmah streak — the "don't break the chain" footer */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 7, marginTop: 13, fontSize: 13 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 7, marginTop: 14, fontSize: 13 }}>
         {streak > 0 ? (
           <>
             <span style={{ display: "inline-flex", color: "var(--gold)" }}><Icon name="flame" size={15} /></span>
