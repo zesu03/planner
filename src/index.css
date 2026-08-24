@@ -998,6 +998,7 @@ select:focus-visible {
   color: var(--text-primary);
 }
 .sidebar-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1009,8 +1010,10 @@ select:focus-visible {
   border: none;
   box-shadow: none;
   color: var(--text-secondary);
-  font-family: inherit;
-  font-size: 14.5px;
+  /* Serif labels so the nav reads as refined "headings" alongside the
+     Aakhirah wordmark, not plain UI chrome. */
+  font-family: "Fraunces", serif;
+  font-size: 15px;
   font-weight: 500;
   letter-spacing: 0.1px;
   cursor: pointer;
@@ -1021,6 +1024,17 @@ select:focus-visible {
   background: color-mix(in srgb, var(--gold) 14%, transparent);
   color: var(--gold);
   font-weight: 600;
+}
+/* Gold accent bar in the gutter left of the active pill (Variant A). */
+.sidebar-item--active::before {
+  content: "";
+  position: absolute;
+  left: -14px;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--gold);
 }
 /* Sidebar footer — the signed-in user + theme/sign-out controls, pinned to
    the bottom (margin-top:auto). One quiet row: avatar, name, then two ghost
