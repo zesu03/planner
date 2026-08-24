@@ -116,7 +116,7 @@ export default function Planner({ user }) {
   const {
     prayerTimes, prayerCity, cityInput, countryInput,
     prayerLoading, prayerError, hijriDate,
-    setPrayerTimes, setCityInput, setCountryInput,
+    setCityInput, setCountryInput,
     fetchPrayers, fetchByGeo,
   } = usePrayer({ settingsFromDb, userSettings, updateSettings, notifications, updateNotifications });
 
