@@ -436,7 +436,7 @@ export default function GoalDetail({ selected, goBack }) {
           </div>
           <span style={{ fontSize: 14, fontWeight: 600, color: CAT_COLORS[selected.category], fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{p}%</span>
         </div>
-        <div style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 5, marginBottom: 16 }}>
+        <div style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 5, marginBottom: 0 }}>
           {(() => {
             const oneShots = selected.tasks.filter((t) => !isRecurring(t));
             const habits = selected.tasks.filter((t) => isRecurring(t));
@@ -470,7 +470,7 @@ export default function GoalDetail({ selected, goBack }) {
               background: "var(--color-background-secondary)",
               borderRadius: "var(--border-radius-md)",
               padding: "12px 14px",
-              marginBottom: 16,
+              marginTop: 16,
               border: "0.5px solid var(--color-border-tertiary)",
             }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10, gap: 10, flexWrap: "wrap" }}>
@@ -543,7 +543,7 @@ export default function GoalDetail({ selected, goBack }) {
               background: "var(--color-background-secondary)",
               borderRadius: "var(--border-radius-md)",
               padding: "12px 14px",
-              marginBottom: 16,
+              marginTop: 16,
               border: "0.5px solid var(--color-border-tertiary)",
             }}>
               <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10, gap: 10, flexWrap: "wrap" }}>
@@ -584,12 +584,13 @@ export default function GoalDetail({ selected, goBack }) {
             </div>
           );
         })()}
+        </div>
 
         {/* tasks */}
-        <div style={{ borderTop: "0.5px solid var(--color-border-tertiary)", paddingTop: 14, marginBottom: 14 }}>
+        <div style={{ ...S.card, marginBottom: 14 }}>
           <div className="task-toolbar" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, marginBottom: 10 }}>
-            <div style={{ fontSize: 15, fontWeight: 500 }}>
-              Tasks <span style={{ color: "var(--text-muted)", fontWeight: 400, fontSize: 13 }}>— use Start to begin focus</span>
+            <div style={{ fontSize: 18, fontWeight: 600 }}>
+              <span className="serif">Tasks</span> <span style={{ color: "var(--text-muted)", fontWeight: 400, fontSize: 13 }}>— use Start to begin focus</span>
             </div>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {["all", "open", "done"].map((f) => (
@@ -827,8 +828,10 @@ export default function GoalDetail({ selected, goBack }) {
                                   display: "flex", alignItems: "center", gap: 6, minWidth: 0,
                                 }}>
                                   {isRecurring(t) && (
-                                    <span aria-hidden title="Recurring habit"
-                                      style={{ fontSize: 13, color: "var(--gold)", flexShrink: 0 }}>🔁</span>
+                                    <span title="Recurring habit"
+                                      style={{ display: "inline-flex", color: "var(--gold)", flexShrink: 0 }}>
+                                      <Icon name="repeat" size={13} />
+                                    </span>
                                   )}
                                   <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                     {t.text}
@@ -934,9 +937,9 @@ export default function GoalDetail({ selected, goBack }) {
         </div>
 
         {/* notes */}
-        <div style={{ borderTop: "0.5px solid var(--color-border-tertiary)", paddingTop: 14 }}>
+        <div style={{ ...S.card, marginBottom: 14 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-            <span style={{ fontSize: 15, fontWeight: 500 }}>Notes</span>
+            <span className="serif" style={{ fontSize: 18, fontWeight: 600 }}>Notes</span>
             {!editingNotes && (
               <button onClick={() => { setNotesVal(selected.notes || ""); setEditingNotes(true); }} style={{ fontSize: 14 }}>
                 Edit
@@ -963,7 +966,7 @@ export default function GoalDetail({ selected, goBack }) {
           )}
         </div>
 
-        <div style={{ borderTop: "0.5px solid var(--color-border-tertiary)", paddingTop: 14, marginTop: 14 }}>
+        <div style={{ marginTop: 4 }}>
           <button onClick={() => deleteGoal(selected.id)}
             style={{
               fontSize: 15, color: "var(--color-text-danger)", background: "none",
@@ -973,7 +976,6 @@ export default function GoalDetail({ selected, goBack }) {
             Delete goal
           </button>
         </div>
-      </div>
     </div>
   );
 }
