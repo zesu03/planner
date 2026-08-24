@@ -3,11 +3,12 @@ import { CAT_COLORS, NIYYAH_LABELS, PRAYER_COLORS, VOLUNTARY_PRAYERS } from "../
 import { PrayerIcon, Icon } from "../components/icons";
 import { fmt, localDateStr, todayStr } from "../lib/dates";
 import { fmtMins } from "../lib/focus";
-import { qazaOwed, QAZA_PRAYERS } from "../lib/qaza";
+import { qazaOwed } from "../lib/qaza";
 import { isRecurring, isScheduledOn, recurringStreak, recurringCompletionRate, scheduleLabel } from "../lib/goals";
 import { goldA, S } from "../lib/styles";
 import EmptyState from "../components/EmptyState";
 import Modal from "../components/Modal";
+import QazaLedger from "../components/QazaLedger";
 
 // Collapsible card for the long-tail productivity sections. Renders a
 // click-anywhere header with a chevron + optional right-side metric, and
@@ -98,7 +99,7 @@ function heatFill(a) {
 // derives every metric inline. The two top sections — Prayer Health and
 // Habit Health — set the page's identity as a spiritual dashboard before
 // the productivity stats follow.
-export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, qaza = {}, prayerTimes = null, onSelectGoal, onDeleteFocusEntry, onExport }) {
+export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, qaza = {}, payOneQaza, undoOneQaza, adjustQaza, addQazaAll, qazaDailyTarget = 5, setQazaTarget, addExcused, removeExcused, prayerTimes = null, onSelectGoal, onDeleteFocusEntry, onExport }) {
   const [niyyahDrilldownOpen, setNiyyahDrilldownOpen] = useState(false);
   const [showAllSessions, setShowAllSessions] = useState(false);
   // ── prayer health (last 30 days) ──
@@ -152,22 +153,10 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
     });
   })();
 
-  // ── qaza balance (per-prayer ledger). Outstanding = stored owed counter;
-  //    Paid = lifetime makeups (paidTotal); Total missed = outstanding + paid
-  //    (every paid was originally a missed prayer). Now that owed is an
-  //    explicit counter, this sum is leak-free. Sits below Prayer Health. ──
-  const qazaBalance = (() => {
-    const owed = qazaOwed(qaza);
-    const rows = QAZA_PRAYERS.map((p) => {
-      const o = owed[p] || 0;
-      const paid = qaza?.paidTotal?.[p] || 0;
-      return { prayer: p, owed: o, paid, totalMissed: o + paid };
-    });
-    const totalOutstanding = rows.reduce((s, r) => s + r.owed, 0);
-    const totalPaid = rows.reduce((s, r) => s + r.paid, 0);
-    const totalMissed = rows.reduce((s, r) => s + r.totalMissed, 0);
-    return { rows, totalOutstanding, totalPaid, totalMissed, startDate: qaza?.startDate || null };
-  })();
+  // Outstanding makeups per prayer, from the stored owed counter — feeds the
+  // interactive Qaza ledger below (relocated here from the Prayer tab so all
+  // accountability lives in Mizan).
+  const qazaOwedMap = qazaOwed(qaza);
 
   // ── "This week" digest. Pinned to the top of the Stats view so the
   //    "how am I doing" question is answered before any grid loads.
@@ -653,68 +642,23 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
 
       </div>
 
-      {/* QAZA BALANCE — per-prayer ledger. Sits right after Prayer Health
-          so the "how am I doing" question and "what's outstanding" question
-          are answered side-by-side. Hidden if the ledger is empty AND
-          nothing's been paid (fresh user has nothing to say here). */}
-      {(qazaBalance.totalMissed > 0 || qazaBalance.totalPaid > 0) && (
-        <div style={{ ...S.card, marginBottom: 16 }}>
-          <SectionHeader icon={<Icon name="repeat" size={16} />} title="Qaza balance" accent="#c79338"
-            right={qazaBalance.startDate ? `since ${qazaBalance.startDate}` : "lifetime"} />
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14, minWidth: 320 }}>
-              <thead>
-                <tr>
-                  <th style={{ textAlign: "left", fontWeight: 400, color: "var(--text-muted)", paddingBottom: 8 }}>Prayer</th>
-                  <th style={{ textAlign: "right", fontWeight: 400, color: "var(--text-muted)", paddingBottom: 8, paddingLeft: 8 }}>Outstanding</th>
-                  <th style={{ textAlign: "right", fontWeight: 400, color: "var(--text-muted)", paddingBottom: 8, paddingLeft: 8 }}>Made up</th>
-                  <th style={{ textAlign: "right", fontWeight: 400, color: "var(--text-muted)", paddingBottom: 8, paddingLeft: 8 }}>Total missed</th>
-                </tr>
-              </thead>
-              <tbody>
-                {qazaBalance.rows.map((r) => {
-                  const color = PRAYER_COLORS[r.prayer];
-                  const clear = r.owed === 0;
-                  return (
-                    <tr key={r.prayer}>
-                      <td style={{ padding: "6px 0", color, fontWeight: 500 }}>
-                        <span style={{ marginRight: 6, display: "inline-flex", verticalAlign: "middle" }}><PrayerIcon name={r.prayer} size={14} /></span>
-                        {r.prayer}
-                      </td>
-                      <td style={{ padding: "6px 0 6px 8px", textAlign: "right", fontWeight: 600, color: clear ? "var(--text-muted)" : "#c79338" }}>
-                        {r.owed}
-                      </td>
-                      <td style={{ padding: "6px 0 6px 8px", textAlign: "right", color: r.paid > 0 ? "#3faa7e" : "var(--text-muted)" }}>
-                        {r.paid}
-                      </td>
-                      <td style={{ padding: "6px 0 6px 8px", textAlign: "right", color: "var(--text-secondary)" }}>
-                        {r.totalMissed}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              <tfoot>
-                <tr>
-                  <td style={{ paddingTop: 10, fontWeight: 500, borderTop: "0.5px solid var(--color-border-tertiary)" }}>Total</td>
-                  <td style={{ paddingTop: 10, paddingLeft: 8, textAlign: "right", fontWeight: 600, borderTop: "0.5px solid var(--color-border-tertiary)", color: qazaBalance.totalOutstanding > 0 ? "#c79338" : "var(--color-text-success)" }}>
-                    {qazaBalance.totalOutstanding}
-                  </td>
-                  <td style={{ paddingTop: 10, paddingLeft: 8, textAlign: "right", fontWeight: 600, borderTop: "0.5px solid var(--color-border-tertiary)", color: "#3faa7e" }}>
-                    {qazaBalance.totalPaid}
-                  </td>
-                  <td style={{ paddingTop: 10, paddingLeft: 8, textAlign: "right", fontWeight: 600, borderTop: "0.5px solid var(--color-border-tertiary)", color: "var(--text-secondary)" }}>
-                    {qazaBalance.totalMissed}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
-          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 10, lineHeight: 1.5 }}>
-            Qaza is a lifetime ledger — nothing resets monthly. Use the <strong>+</strong> on the Prayer tab to log a makeup; tick the 7-day tracker if you actually prayed on time but forgot to mark it.
-          </div>
-        </div>
-      )}
+      {/* QAZA LEDGER — the full interactive make-up ledger, relocated here
+          from the Prayer tab so all accountability lives in Mizan. Always
+          rendered (even when empty) so a user can seed a historical backlog
+          or mark excused days from here. Sits right after Prayer Health so
+          "how am I doing" and "what do I owe" are answered side-by-side. */}
+      <QazaLedger
+        qaza={qaza}
+        qazaOwed={qazaOwedMap}
+        payOneQaza={payOneQaza}
+        undoOneQaza={undoOneQaza}
+        adjustQaza={adjustQaza}
+        addQazaAll={addQazaAll}
+        qazaDailyTarget={qazaDailyTarget}
+        setQazaTarget={setQazaTarget}
+        addExcused={addExcused}
+        removeExcused={removeExcused}
+      />
 
       {/* VOLUNTARY PRACTICE — Tahajjud and other nafl prayers. Hidden when
           the user has no voluntary entries at all, to keep the page quiet

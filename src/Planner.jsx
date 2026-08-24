@@ -64,7 +64,7 @@ const NAV_ITEMS = [
   { v: "prayer", label: "Prayer" },
   { v: "pomodoro", label: "Focus" },
   { v: "muhasaba", label: "Muhasaba" },
-  { v: "stats", label: "Stats" },
+  { v: "stats", label: "Mizan" },
 ];
 
 // Per-view page title for the main header. The Dashboard keeps the warm
@@ -78,7 +78,7 @@ const VIEW_TITLES = {
   prayer: "Prayer",
   pomodoro: "Focus",
   muhasaba: "Muhasaba",
-  stats: "Stats",
+  stats: "Mizan",
 };
 
 // ── main component ─────────────────────────────────────────────────────────
@@ -1181,7 +1181,6 @@ export default function Planner({ user }) {
           nextPrayer={nextPrayer}
           setCityInput={setCityInput}
           setCountryInput={setCountryInput}
-          setPrayerTimes={setPrayerTimes}
           fetchPrayers={fetchPrayers}
           fetchByGeo={fetchByGeo}
           togglePrayerLog={togglePrayerLog}
@@ -1189,16 +1188,6 @@ export default function Planner({ user }) {
           prayerDoneToday={prayerDoneToday}
           canMarkPrayer={canMarkPrayer}
           prayerStreak={prayerStreak}
-          qaza={qaza}
-          qazaOwed={qazaOwedMap}
-          payOneQaza={payOneQaza}
-          undoOneQaza={undoOneQaza}
-          adjustQaza={adjustQaza}
-          addQazaAll={addQazaAll}
-          qazaDailyTarget={userSettings.qazaDailyTarget || 5}
-          setQazaTarget={setQazaTarget}
-          addExcused={addExcused}
-          removeExcused={removeExcused}
           notifications={notifications}
           updateNotifications={updateNotifications}
         />
@@ -1254,6 +1243,14 @@ export default function Planner({ user }) {
           muhasaba={muhasaba}
           prayerLog={prayerLog}
           qaza={qaza}
+          payOneQaza={payOneQaza}
+          undoOneQaza={undoOneQaza}
+          adjustQaza={adjustQaza}
+          addQazaAll={addQazaAll}
+          qazaDailyTarget={userSettings.qazaDailyTarget || 5}
+          setQazaTarget={setQazaTarget}
+          addExcused={addExcused}
+          removeExcused={removeExcused}
           prayerTimes={prayerTimes}
           onSelectGoal={openGoal}
           onDeleteFocusEntry={deleteFocusEntry}

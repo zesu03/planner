@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Prayer — Serene single column</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --gold:#7cc39d; --noor:#e0c06a; --on-accent:#10160f;
+    --bg-primary:#0f1310; --bg-secondary:#1f271e; --bg-card:#171d17;
+    --border:rgba(210,180,99,0.3); --border-soft:rgba(210,180,99,0.16);
+    --text-primary:#f1efe4; --text-secondary:#c7c3b0; --text-muted:#a8a289;
+    --fajr:#6b74c4; --sunrise:#dd9a4e; --dhuhr:#d9b85e; --asr:#d38a4c; --maghrib:#cf6b47; --isha:#8a79c0;
+    --success:#3faa7e;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Space Grotesk",sans-serif;color:var(--text-primary);line-height:1.5;padding:34px 24px 100px;
+    background:radial-gradient(1100px 520px at 50% -12%, rgba(124,195,157,.07), transparent 60%),
+      radial-gradient(700px 400px at 85% 8%, rgba(224,192,106,.045), transparent 60%), var(--bg-primary);}
+  .serif{font-family:"Fraunces",serif}.arabic{font-family:"Amiri",serif}
+  /* Narrow, centred column — the whole point of "serene". */
+  .wrap{max-width:600px;margin:0 auto}
+
+  .head{text-align:center;margin-bottom:26px}
+  .head .t{font-family:"Fraunces",serif;font-size:27px;font-weight:600;letter-spacing:.01em}
+  .head .loc{margin-top:5px;font-size:13px;color:var(--text-muted)}
+  .head .loc button{background:none;border:none;color:var(--gold);font-size:13px;cursor:pointer;padding:0 0 0 6px;font-family:inherit}
+
+  /* Hero — the calm focal point. */
+  .hero{position:relative;overflow:hidden;text-align:center;border-radius:20px;padding:24px 22px 22px;margin-bottom:30px;
+    background:linear-gradient(180deg,color-mix(in srgb,var(--maghrib) 15%,transparent),color-mix(in srgb,var(--maghrib) 4%,transparent));
+    border:1px solid color-mix(in srgb,var(--maghrib) 40%,transparent)}
+  .hero .eye{font-size:12px;font-weight:600;letter-spacing:.13em;text-transform:uppercase;color:var(--maghrib)}
+  .hero .nm{font-family:"Fraunces",serif;font-size:34px;font-weight:600;line-height:1.15;margin-top:8px;color:var(--text-primary)}
+  .hero .nm .ar{font-family:"Amiri",serif;font-size:24px;color:var(--maghrib);margin-left:8px;font-weight:400}
+  .hero .tm{font-size:16px;color:var(--text-secondary);margin-top:4px;font-variant-numeric:tabular-nums}
+  .hero .cta{margin-top:16px;border:none;border-radius:99px;padding:10px 26px;font-size:14px;font-weight:600;
+    color:#fff;background:var(--maghrib);cursor:pointer;font-family:inherit}
+
+  /* Prayer list — aligned rows, hairline dividers, no boxes. */
+  .list{margin-bottom:32px}
+  .prow{display:grid;grid-template-columns:26px 1fr auto 40px;align-items:center;gap:14px;
+    padding:15px 10px;border-top:1px solid var(--border-soft);position:relative}
+  .prow:last-child{border-bottom:1px solid var(--border-soft)}
+  .prow .ic{display:grid;place-items:center;color:var(--text-muted)}
+  .prow .nm{font-family:"Fraunces",serif;font-size:19px;font-weight:500}
+  .prow .nm .ar{font-family:"Amiri",serif;font-size:16px;color:var(--text-muted);margin-left:7px;font-weight:400}
+  .prow .meta{text-align:right;font-size:14px;color:var(--text-secondary);font-variant-numeric:tabular-nums}
+  .prow .meta .st{display:block;font-size:11.5px;color:var(--text-muted);margin-top:1px}
+  .prow .flame{color:var(--gold)}
+  /* status control */
+  .mk{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--border);background:transparent;cursor:pointer;
+    display:grid;place-items:center;color:var(--text-muted);font-size:15px;justify-self:end;transition:all .15s}
+  .mk.done{background:var(--maghrib);border-color:var(--maghrib);color:#fff}
+  .prow.now{background:linear-gradient(90deg,color-mix(in srgb,var(--maghrib) 12%,transparent),transparent);border-radius:12px}
+  .prow.now::before{content:"";position:absolute;left:-2px;top:8px;bottom:8px;width:3px;border-radius:99px;background:var(--maghrib)}
+  .nowtag{font-size:10.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--maghrib);margin-left:8px}
+  /* sunrise — informational, no control */
+  .prow.info{grid-template-columns:26px 1fr auto;opacity:.72}
+  .prow.info .nm{font-size:16px;font-weight:400;font-style:italic;color:var(--text-secondary)}
+
+  /* quiet secondary strips */
+  .strip{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;
+    background:var(--bg-card);border:1px solid var(--border-soft);margin-bottom:12px}
+  .strip .lab{font-size:14px;font-weight:500}
+  .strip .sub{font-size:12px;color:var(--text-muted)}
+  .week{display:flex;gap:4px;margin-left:auto}
+  .week span{width:16px;height:22px;border-radius:4px;background:var(--bg-primary);border:1px solid var(--border-soft)}
+  .week span.on{background:var(--isha);border-color:var(--isha)}
+  .toggle{width:44px;height:24px;border-radius:99px;background:var(--gold);position:relative;flex:none;margin-left:auto}
+  .toggle::after{content:"";position:absolute;top:1px;left:22px;width:20px;height:20px;border-radius:50%;background:#fff}
+
+  /* accountability — a clear break, then the management zone */
+  .divide{display:flex;align-items:center;gap:12px;margin:34px 0 18px}
+  .divide .s{font-family:"Fraunces",serif;font-size:17px;font-weight:600;color:var(--text-secondary)}
+  .divide .rule{flex:1;height:1px;background:var(--border-soft)}
+  .qcard{background:var(--bg-card);border:1px solid var(--border-soft);border-radius:16px;padding:18px 20px;margin-bottom:14px}
+  .k{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;font-weight:600}
+  .qhero{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .qhero .n{font-family:"Fraunces",serif;font-size:38px;font-weight:600;color:var(--noor);line-height:1}
+  .qhero .muted{font-size:13px;color:var(--text-muted)}
+  .bar{height:8px;border-radius:99px;background:var(--bg-primary);overflow:hidden;margin-top:12px}
+  .bar>i{display:block;height:100%;background:var(--noor);border-radius:99px}
+  .qrow{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--border-soft)}
+  .qrow .nm{flex:1;font-size:14px;font-weight:500}
+  .qrow .owed{font-size:13px;color:var(--text-secondary);width:66px;text-align:right}
+  .stepper{display:inline-flex;align-items:center;gap:2px}
+  .stepper button{width:28px;height:28px;border-radius:8px;border:1px solid var(--border-soft);background:var(--bg-secondary);color:var(--text-primary);font-size:16px;cursor:pointer}
+  .stepper .v{width:42px;text-align:center;font-size:12px;color:var(--text-muted)}
+  .qtools{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;align-items:center}
+  .btn{font-size:13px;padding:8px 14px;border-radius:10px;border:1px solid var(--border-soft);background:transparent;color:var(--text-secondary);cursor:pointer;font-family:inherit}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{color:var(--text-secondary);font-weight:400;padding-bottom:8px;text-align:center}
+  th.l{text-align:left}
+  td{text-align:center;padding-bottom:7px}
+  td.l{text-align:left;color:var(--text-primary);white-space:nowrap}
+  .cell{width:24px;height:24px;border-radius:5px;margin:0 auto;display:grid;place-items:center;font-size:11px;color:#fff}
+  .cell.on{background:var(--gold)}.cell.off{background:var(--bg-primary);border:1px solid var(--border-soft);color:var(--text-muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div class="t serif">Prayer</div>
+    <div class="loc">Hyderabad, India · 11 Rabīʿ al-awwal 1448 AH <button>Change</button></div>
+  </div>
+
+  <!-- HERO: the calm focal point -->
+  <div class="hero">
+    <div class="eye">Due now · not prayed</div>
+    <div class="nm serif">Maghrib<span class="ar">مغرب</span></div>
+    <div class="tm">18:36 · window closes in 42 min</div>
+    <button class="cta">Mark prayed</button>
+  </div>
+
+  <!-- PRAYER LIST: aligned rows, hairlines, no cards -->
+  <div class="list">
+    <div class="prow">
+      <span class="ic">☼</span>
+      <div><span class="nm serif" style="color:var(--fajr)">Fajr<span class="ar">فجر</span></span></div>
+      <div class="meta">05:00<span class="st"><span class="flame">🔥</span> 12-day streak</span></div>
+      <button class="mk done" style="background:var(--fajr);border-color:var(--fajr)">✓</button>
+    </div>
+
+    <div class="prow info">
+      <span class="ic">◐</span>
+      <div><span class="nm serif">Sunrise<span class="ar">شروق</span></span></div>
+      <div class="meta">06:12</div>
+    </div>
+
+    <div class="prow">
+      <span class="ic">☀</span>
+      <div><span class="nm serif" style="color:var(--dhuhr)">Dhuhr<span class="ar">ظهر</span></span></div>
+      <div class="meta">12:19</div>
+      <button class="mk">○</button>
+    </div>
+
+    <div class="prow">
+      <span class="ic">⛅</span>
+      <div><span class="nm serif" style="color:var(--asr)">Asr<span class="ar">عصر</span></span></div>
+      <div class="meta">16:46</div>
+      <button class="mk">○</button>
+    </div>
+
+    <div class="prow now">
+      <span class="ic" style="color:var(--maghrib)">☾</span>
+      <div><span class="nm serif" style="color:var(--maghrib)">Maghrib<span class="ar">مغرب</span></span><span class="nowtag">now</span></div>
+      <div class="meta">18:36</div>
+      <button class="mk">○</button>
+    </div>
+
+    <div class="prow">
+      <span class="ic">✦</span>
+      <div><span class="nm serif" style="color:var(--isha)">Isha<span class="ar">عشاء</span></span></div>
+      <div class="meta">19:30</div>
+      <button class="mk">○</button>
+    </div>
+  </div>
+
+  <!-- QUIET SECONDARY STRIPS -->
+  <div class="strip">
+    <span style="color:var(--isha)">☾</span>
+    <div><div class="lab">Tahajjud <span class="sub">· voluntary</span></div><div class="sub">Best after 02:14 · 🔥 3-day · tap tonight's cell to log</div></div>
+    <div class="week"><span></span><span class="on"></span><span class="on"></span><span></span><span class="on"></span><span class="on"></span><span class="on"></span></div>
+  </div>
+  <div class="strip">
+    <span style="color:var(--gold)">🔔</span>
+    <div><div class="lab">Prayer reminders</div><div class="sub">Push at the start of each prayer</div></div>
+    <div class="toggle"></div>
+  </div>
+
+  <!-- ACCOUNTABILITY: clear break, then the management zone -->
+  <div class="divide"><span class="s serif">Accountability</span><span class="rule"></span></div>
+
+  <div class="qcard">
+    <div class="k">Qaza · make-up progress</div>
+    <div class="qhero"><span class="n">283</span><span class="muted">prayers owed &nbsp;·&nbsp; 47 made up &nbsp;·&nbsp; at 5/day → cleared ~Jun 2027</span></div>
+    <div class="bar"><i style="width:14%"></i></div>
+    <div style="margin-top:14px">
+      <div class="qrow" style="border-top:none"><span class="nm" style="color:var(--fajr)">Fajr</span><span class="owed">62 owed</span><span class="stepper"><button>−</button><span class="v">2 today</span><button>+</button></span></div>
+      <div class="qrow"><span class="nm" style="color:var(--dhuhr)">Dhuhr</span><span class="owed">55 owed</span><span class="stepper"><button>−</button><span class="v">1 today</span><button>+</button></span></div>
+      <div class="qrow"><span class="nm" style="color:var(--asr)">Asr</span><span class="owed">58 owed</span><span class="stepper"><button>−</button><span class="v">0 today</span><button>+</button></span></div>
+      <div class="qrow"><span class="nm" style="color:var(--maghrib)">Maghrib</span><span class="owed">51 owed</span><span class="stepper"><button>−</button><span class="v">0 today</span><button>+</button></span></div>
+      <div class="qrow"><span class="nm" style="color:var(--isha)">Isha</span><span class="owed">57 owed</span><span class="stepper"><button>−</button><span class="v">0 today</span><button>+</button></span></div>
+    </div>
+    <div class="qtools">
+      <button class="btn">Add older missed prayers</button>
+      <button class="btn">Excused days</button>
+      <span class="muted" style="margin-left:auto;font-size:13px;color:var(--text-muted)">Target: <b style="color:var(--gold)">5</b>/day</span>
+    </div>
+  </div>
+
+  <div class="qcard">
+    <div class="k">7-day tracker</div>
+    <div class="sub" style="margin-bottom:12px;font-size:12px;color:var(--text-muted)">Tap any cell to mark / unmark — for when you prayed but forgot to log it.</div>
+    <table>
+      <thead><tr><th class="l">Prayer</th><th>18</th><th>19</th><th>20</th><th>21</th><th>22</th><th>23</th><th>24</th><th>%</th></tr></thead>
+      <tbody>
+        <tr><td class="l">Fajr</td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell off"></span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td style="color:var(--success)">86%</td></tr>
+        <tr><td class="l">Dhuhr</td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell off"></span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td style="color:var(--success)">86%</td></tr>
+        <tr><td class="l">Asr</td><td><span class="cell on">✓</span></td><td><span class="cell off"></span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell off"></span></td><td style="color:var(--success)">71%</td></tr>
+        <tr><td class="l">Maghrib</td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell off"></span></td><td style="color:var(--success)">86%</td></tr>
+        <tr><td class="l">Isha</td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell off"></span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell off"></span></td><td><span class="cell off"></span></td><td style="color:var(--text-secondary)">57%</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Prayer — Option A (full)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Amiri:wght@400;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --gold:#7cc39d; --noor:#e0c06a; --on-accent:#10160f;
+    --bg-primary:#0f1310; --bg-secondary:#1f271e; --bg-card:#171d17;
+    --border:rgba(210,180,99,0.3); --border-soft:rgba(210,180,99,0.16);
+    --text-primary:#f1efe4; --text-secondary:#c7c3b0; --text-muted:#a8a289;
+    --fajr:#6b74c4; --sunrise:#dd9a4e; --dhuhr:#d9b85e; --asr:#d38a4c; --maghrib:#cf6b47; --isha:#8a79c0;
+    --success:#3faa7e;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Space Grotesk",sans-serif;color:var(--text-primary);line-height:1.5;padding:36px 32px 90px;
+    background:radial-gradient(1200px 600px at 20% -10%, rgba(124,195,157,.06), transparent 55%),
+      radial-gradient(900px 500px at 90% 20%, rgba(224,192,106,.05), transparent 60%), var(--bg-primary);}
+  .serif{font-family:"Fraunces",serif}.arabic{font-family:"Amiri",serif}
+  .wrap{max-width:1040px;margin:0 auto}
+  .page-title{font-family:"Fraunces",serif;font-size:26px;font-weight:600;margin-bottom:6px}
+  .page-sub{color:var(--text-secondary);font-size:14px;margin-bottom:28px}
+  .ptitle{font-family:"Fraunces",serif;font-size:26px;font-weight:600;margin-bottom:16px}
+  .loc{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .loc .c{font-size:15px;font-weight:500}.loc .s{font-size:13px;color:var(--text-muted)}
+  .muted{color:var(--text-muted);font-size:13px}.big{font-family:"Fraunces",serif;font-size:24px;font-weight:600}
+  .btn{font-size:13px;padding:8px 14px;border-radius:10px;border:1px solid var(--border-soft);background:transparent;color:var(--text-secondary);cursor:pointer}
+  .btn-accent{border:none;font-weight:600;color:#fff;padding:8px 16px;border-radius:99px}
+  .sectionlabel{display:flex;align-items:baseline;gap:12px;margin:34px 0 14px}
+  .sectionlabel .s{font-family:"Fraunces",serif;font-size:18px;font-weight:600}
+  .sectionlabel .rule{flex:1;height:1px;background:var(--border-soft)}
+  .card{background:var(--bg-secondary);border:1px solid var(--border-soft);border-radius:14px;padding:15px 16px}
+  .k{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--text-muted);margin-bottom:8px;font-weight:600}
+  .bar{height:8px;border-radius:99px;background:var(--bg-primary);overflow:hidden;margin-top:8px}
+  .bar>i{display:block;height:100%;background:var(--gold);border-radius:99px}
+  .pill{font-size:11px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:2px 8px;border-radius:99px;color:#fff}
+  .two{display:grid;grid-template-columns:1.55fr 1fr;gap:22px;align-items:start}
+  .stack{display:flex;flex-direction:column;gap:12px}.listcol{display:flex;flex-direction:column;gap:8px}
+  .hero{display:flex;align-items:center;gap:14px;border-radius:16px;padding:16px 18px;margin-bottom:16px;
+    background:linear-gradient(90deg,color-mix(in srgb,var(--maghrib) 16%,transparent),transparent);border:1px solid color-mix(in srgb,var(--maghrib) 45%,transparent)}
+  .hero .ic{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;background:color-mix(in srgb,var(--maghrib) 22%,transparent);color:var(--maghrib);font-size:20px}
+  .hero .eye{font-size:12px;font-weight:600;color:var(--maghrib);text-transform:uppercase;letter-spacing:.05em}
+  .hero .nm{font-family:"Fraunces",serif;font-size:22px;font-weight:600;color:var(--maghrib)}
+  .row{display:flex;align-items:center;gap:12px;background:var(--bg-card);border:1px solid var(--border-soft);border-radius:12px;padding:10px 14px;position:relative;overflow:hidden}
+  .row .edge{position:absolute;left:0;top:0;bottom:0;width:4px}
+  .row .ic{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-size:15px;flex:none}
+  .row .nm{font-size:15px;font-weight:500;display:flex;align-items:center;gap:8px}
+  .row .tm{font-size:13px;color:var(--text-secondary)}
+  .done{font-size:13px;padding:5px 13px;border-radius:99px;border:1px solid;font-weight:600}
+  .jump{display:inline-flex;align-items:center;gap:6px;color:var(--noor);font-size:12px;font-weight:600;background:none;border:none;cursor:pointer;padding:0;margin-top:10px}
+
+  /* accountability */
+  .acct{display:grid;grid-template-columns:1.35fr 1fr;gap:18px;align-items:start}
+  .qcard{background:var(--bg-card);border:1px solid var(--border-soft);border-radius:16px;padding:20px 22px}
+  .qhero{display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;margin-bottom:4px}
+  .qhero .n{font-family:"Fraunces",serif;font-size:34px;font-weight:600;color:var(--noor)}
+  .qrow{display:flex;align-items:center;gap:12px;padding:11px 0;border-top:1px solid var(--border-soft)}
+  .qrow .nm{flex:1;font-size:14px;font-weight:500}
+  .qrow .owed{font-size:13px;color:var(--text-secondary);width:70px;text-align:right}
+  .stepper{display:inline-flex;align-items:center;gap:2px}
+  .stepper button{width:28px;height:28px;border-radius:8px;border:1px solid var(--border-soft);background:var(--bg-secondary);color:var(--text-primary);font-size:16px;cursor:pointer;display:grid;place-items:center}
+  .stepper .v{width:44px;text-align:center;font-size:13px;color:var(--text-muted)}
+  .qtools{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px;align-items:center}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{color:var(--text-secondary);font-weight:400;padding-bottom:8px;text-align:center}
+  th.l{text-align:left}
+  td{text-align:center;padding-bottom:7px}
+  td.l{text-align:left;color:var(--text-primary);white-space:nowrap}
+  .cell{width:24px;height:24px;border-radius:5px;margin:0 auto;display:grid;place-items:center;font-size:11px;color:#fff}
+  .cell.on{background:var(--gold)}.cell.off{background:var(--bg-primary);border:1px solid var(--border-soft);color:var(--text-muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="page-title serif">Prayer — Option A, full page</div>
+  <div class="page-sub">Console on top; the full Qaza ledger + 7-day tracker sit in a full-width "Accountability" section below (the rail's Qaza card jumps you here). Scroll to see it all.</div>
+
+  <!-- CONSOLE -->
+  <div class="ptitle serif">Prayer</div>
+  <div class="two">
+    <div>
+      <div class="loc"><div><div class="c">Hyderabad, India</div><div class="s">Mon 24 Aug · 11 Rabīʿ al-awwal 1448 AH</div></div><button class="btn">Change city</button></div>
+      <div class="hero">
+        <div class="ic">☾</div>
+        <div style="flex:1"><div class="eye">Due now · not prayed</div><div class="nm serif">Maghrib <span class="arabic" style="font-size:16px;opacity:.8">مغرب</span></div><div class="muted">18:36</div></div>
+        <button class="btn-accent" style="background:var(--maghrib)">Mark prayed</button>
+      </div>
+      <div class="sectionlabel" style="margin-top:6px"><span class="s serif">Daily Salah</span><span class="rule"></span></div>
+      <div class="listcol">
+        <div class="row"><div class="edge" style="background:var(--fajr)"></div><div class="ic" style="background:color-mix(in srgb,var(--fajr) 22%,transparent);color:var(--fajr)">☼</div><div style="flex:1"><div class="nm" style="color:var(--fajr)">Fajr <span class="arabic muted">فجر</span></div><div class="tm">05:00 · 🔥 12 day streak</div></div><span class="done" style="background:var(--fajr);color:#fff;border-color:var(--fajr)">✓ Prayed</span></div>
+        <div class="row"><div class="edge" style="background:var(--dhuhr)"></div><div class="ic" style="background:color-mix(in srgb,var(--dhuhr) 22%,transparent);color:var(--dhuhr)">☀</div><div style="flex:1"><div class="nm" style="color:var(--dhuhr)">Dhuhr <span class="arabic muted">ظهر</span></div><div class="tm">12:19</div></div><span class="done" style="border-color:var(--border-soft);color:var(--text-secondary)">Mark done</span></div>
+        <div class="row"><div class="edge" style="background:var(--asr)"></div><div class="ic" style="background:color-mix(in srgb,var(--asr) 22%,transparent);color:var(--asr)">⛅</div><div style="flex:1"><div class="nm" style="color:var(--asr)">Asr <span class="arabic muted">عصر</span></div><div class="tm">16:46</div></div><span class="done" style="border-color:var(--border-soft);color:var(--text-secondary)">Mark done</span></div>
+        <div class="row" style="background:linear-gradient(90deg,color-mix(in srgb,var(--maghrib) 18%,transparent),transparent);border-color:color-mix(in srgb,var(--maghrib) 55%,transparent)"><div class="edge" style="background:var(--maghrib)"></div><div class="ic" style="background:color-mix(in srgb,var(--maghrib) 22%,transparent);color:var(--maghrib)">☾</div><div style="flex:1"><div class="nm" style="color:var(--maghrib)">Maghrib <span class="arabic muted">مغرب</span> <span class="pill" style="background:var(--maghrib)">Now</span></div><div class="tm">18:36</div></div><span class="done" style="border-color:var(--border-soft);color:var(--text-secondary)">Mark done</span></div>
+        <div class="row"><div class="edge" style="background:var(--isha)"></div><div class="ic" style="background:color-mix(in srgb,var(--isha) 22%,transparent);color:var(--isha)">✦</div><div style="flex:1"><div class="nm" style="color:var(--isha)">Isha <span class="arabic muted">عشاء</span></div><div class="tm">19:30</div></div><span class="done" style="border-color:var(--border-soft);color:var(--text-secondary)">Mark done</span></div>
+      </div>
+    </div>
+    <div class="stack">
+      <div class="card"><div class="k">Prayer health · 30 days</div><div style="display:flex;align-items:baseline;gap:8px"><span class="big">82%</span><span class="muted">on time</span></div><div class="bar"><i style="width:82%"></i></div><div class="muted" style="margin-top:10px">🔥 12-day Fajr streak</div></div>
+      <div class="card"><div class="k">Qaza ledger</div><div style="display:flex;align-items:baseline;gap:8px"><span class="big" style="color:var(--noor)">283</span><span class="muted">prayers owed</span></div><div class="muted" style="margin-top:6px">47 made up · at 5/day → cleared ~Jun 2027</div><button class="jump">Manage make-ups ↓</button></div>
+      <div class="card"><div class="k">Voluntary · Tahajjud</div><div class="muted">Best after 02:14 · 🔥 3-day</div><div style="display:flex;gap:4px;margin-top:8px"><span style="flex:1;height:20px;border-radius:4px;background:var(--bg-primary)"></span><span style="flex:1;height:20px;border-radius:4px;background:var(--isha)"></span><span style="flex:1;height:20px;border-radius:4px;background:var(--isha)"></span><span style="flex:1;height:20px;border-radius:4px;background:var(--bg-primary)"></span><span style="flex:1;height:20px;border-radius:4px;background:var(--isha)"></span><span style="flex:1;height:20px;border-radius:4px;background:var(--isha)"></span><span style="flex:1;height:20px;border-radius:4px;background:var(--isha)"></span></div></div>
+      <div class="card"><div style="display:flex;align-items:center;justify-content:space-between"><div><div style="font-weight:500;font-size:14px">Prayer reminders</div><div class="muted">Push at each prayer time</div></div><div style="width:44px;height:24px;border-radius:99px;background:var(--gold);position:relative;flex:none"><div style="position:absolute;top:1px;left:22px;width:20px;height:20px;border-radius:50%;background:#fff"></div></div></div></div>
+    </div>
+  </div>
+
+  <!-- ACCOUNTABILITY -->
+  <div class="sectionlabel"><span class="s serif">Accountability</span><span class="rule"></span></div>
+  <div class="acct">
+    <!-- full qaza ledger -->
+    <div class="qcard">
+      <div class="k">Make-up progress</div>
+      <div class="qhero"><span class="n">283</span><span class="muted">owed &nbsp;·&nbsp; 47 made up &nbsp;·&nbsp; at 5/day → cleared ~Jun 2027</span></div>
+      <div class="bar" style="height:10px;margin-bottom:6px"><i style="width:14%;background:var(--noor)"></i></div>
+
+      <div style="margin-top:12px">
+        <div class="qrow" style="border-top:none"><span class="nm" style="color:var(--fajr)">Fajr</span><span class="owed">62 owed</span><span class="stepper"><button>−</button><span class="v">2 today</span><button>+</button></span></div>
+        <div class="qrow"><span class="nm" style="color:var(--dhuhr)">Dhuhr</span><span class="owed">55 owed</span><span class="stepper"><button>−</button><span class="v">1 today</span><button>+</button></span></div>
+        <div class="qrow"><span class="nm" style="color:var(--asr)">Asr</span><span class="owed">58 owed</span><span class="stepper"><button>−</button><span class="v">0 today</span><button>+</button></span></div>
+        <div class="qrow"><span class="nm" style="color:var(--maghrib)">Maghrib</span><span class="owed">51 owed</span><span class="stepper"><button>−</button><span class="v">0 today</span><button>+</button></span></div>
+        <div class="qrow"><span class="nm" style="color:var(--isha)">Isha</span><span class="owed">57 owed</span><span class="stepper"><button>−</button><span class="v">0 today</span><button>+</button></span></div>
+      </div>
+      <div class="qtools">
+        <button class="btn">Estimate backlog</button>
+        <button class="btn">Excused days</button>
+        <span class="muted" style="margin-left:auto">Target: <b style="color:var(--gold)">5</b>/day</span>
+      </div>
+    </div>
+
+    <!-- 7-day tracker -->
+    <div class="qcard">
+      <div class="k">7-day tracker</div>
+      <div class="muted" style="margin-bottom:12px">Tap any cell to mark / unmark — for when you prayed but forgot to log it.</div>
+      <table>
+        <thead><tr><th class="l">Prayer</th><th>18</th><th>19</th><th>20</th><th>21</th><th>22</th><th>23</th><th>24</th><th>%</th></tr></thead>
+        <tbody>
+          <tr><td class="l">Fajr</td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell off"></span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td style="color:var(--success);font-weight:500">86%</td></tr>
+          <tr><td class="l">Dhuhr</td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell off"></span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td style="color:var(--success);font-weight:500">86%</td></tr>
+          <tr><td class="l">Asr</td><td><span class="cell on">✓</span></td><td><span class="cell off"></span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell off"></span></td><td style="color:var(--success);font-weight:500">71%</td></tr>
+          <tr><td class="l">Maghrib</td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell off"></span></td><td style="color:var(--success);font-weight:500">86%</td></tr>
+          <tr><td class="l">Isha</td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell off"></span></td><td><span class="cell on">✓</span></td><td><span class="cell on">✓</span></td><td><span class="cell off"></span></td><td><span class="cell off"></span></td><td style="color:var(--text-secondary);font-weight:500">57%</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</body>
+</html>

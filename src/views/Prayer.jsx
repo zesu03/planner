@@ -1,14 +1,18 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { PRAYERS, PRAYER_COLORS, VOLUNTARY_PRAYERS } from "../lib/constants";
 import { PrayerIcon, Icon } from "../components/icons";
-import { localDateStr, addDaysToStr } from "../lib/dates";
-import QazaLedger from "../components/QazaLedger";
-import { QAZA_PRAYERS } from "../lib/qaza";
-import SectionLabel from "../components/SectionLabel";
+import { localDateStr } from "../lib/dates";
 import { currentPrayerWindow, prayerDisplayName } from "../lib/prayer";
+import { rewardPrayerMark } from "../lib/feedback";
+import {
+  currentPermission,
+  isIosNeedsInstall,
+  isNotificationsSupported,
+  requestPermissionAndToken,
+} from "../lib/notifications";
 import { S } from "../lib/styles";
 
-// Arabic name + time-of-day descriptor per prayer, for the tile subtitles.
+// Arabic name + time-of-day descriptor per prayer, for the row subtitles.
 const PRAYER_META = {
   Fajr: { ar: "فجر", phase: "Dawn" },
   Sunrise: { ar: "شروق", phase: "Sunrise" },
@@ -18,16 +22,11 @@ const PRAYER_META = {
   Isha: { ar: "عشاء", phase: "Night" },
   Tahajjud: { ar: "تهجد", phase: "Last third of the night" },
 };
-import { rewardPrayerMark } from "../lib/feedback";
-import {
-  currentPermission,
-  isIosNeedsInstall,
-  isNotificationsSupported,
-  requestPermissionAndToken,
-} from "../lib/notifications";
 
-// Prayer tab. All state-touching behaviour comes through props so this view
-// stays purely presentational.
+// Prayer tab — the daily worship screen. A serene single column: a calm
+// next-prayer hero, the five fard prayers as aligned rows, then Tahajjud,
+// the 7-day tracker (retro-logging) and reminders. Qaza make-up management
+// lives in the Mizan tab now, so this stays focused on today.
 export default function Prayer({
   prayerTimes,
   prayerCity,
@@ -40,7 +39,6 @@ export default function Prayer({
   nextPrayer,
   setCityInput,
   setCountryInput,
-  setPrayerTimes,
   fetchPrayers,
   fetchByGeo,
   togglePrayerLog,
@@ -48,21 +46,11 @@ export default function Prayer({
   prayerDoneToday,
   canMarkPrayer,
   prayerStreak,
-  qaza,
-  qazaOwed,
-  payOneQaza,
-  undoOneQaza,
-  adjustQaza,
-  addQazaAll,
-  qazaDailyTarget,
-  setQazaTarget,
-  addExcused,
-  removeExcused,
   notifications,
   updateNotifications,
 }) {
   // The currently-active prayer window. Null between windows (e.g. between
-  // Sunrise and Dhuhr), so the "Now" badge doesn't cling to Fajr after its
+  // Sunrise and Dhuhr), so the "now" badge doesn't cling to Fajr after its
   // window has closed.
   const currentPrayerName = currentPrayerWindow(prayerTimes);
 
@@ -90,39 +78,6 @@ export default function Prayer({
       setTimeout(() => setBurstKey((k) => (k === p ? null : k)), 650);
     }
   }
-
-  // ── Rail summaries ───────────────────────────────────────────────────
-  // The right-hand rail shows compact read-outs; the full, interactive
-  // ledger + 7-day tracker live in the Accountability section below. The
-  // "Manage make-ups" button smooth-scrolls the main column down to it.
-  const acctRef = useRef(null);
-  const jumpToQaza = () =>
-    acctRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-
-  const FARD = QAZA_PRAYERS;
-  const last30 = Array.from({ length: 30 }).map((_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    return localDateStr(d);
-  });
-  let doneCells = 0;
-  for (const p of FARD) for (const d of last30) if ((prayerLog[p] || []).includes(d)) doneCells++;
-  const healthPct = Math.round((doneCells / (FARD.length * 30)) * 100);
-  const bestStreak = FARD
-    .map((p) => ({ p, s: prayerStreak ? prayerStreak(p) : 0 }))
-    .reduce((a, b) => (b.s > a.s ? b : a), { p: null, s: 0 });
-
-  const owedMap = qazaOwed || {};
-  const totalOwed = QAZA_PRAYERS.reduce((s, p) => s + (owedMap[p] || 0), 0);
-  const totalMadeUp = QAZA_PRAYERS.reduce((s, p) => s + (qaza?.paidTotal?.[p] || 0), 0);
-  const qTarget = Math.max(1, qazaDailyTarget || 5);
-  const qClearLabel = totalOwed > 0
-    ? new Date(`${addDaysToStr(localDateStr(), Math.ceil(totalOwed / qTarget))}T12:00:00Z`)
-        .toLocaleDateString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" })
-    : null;
-
-  // Uppercase eyebrow used on rail cards.
-  const railK = { fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 600, marginBottom: 8 };
 
   return (
     <div className="view-content">
@@ -172,52 +127,40 @@ export default function Prayer({
       )}
 
       {prayerTimes && !editingCity && (
-        <div>
-          <div className="prayer-console">
-          <div className="prayer-console-main">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-            <div>
+        <div className="prayer-serene">
+          {/* location — the Hijri date lives here now (no floating banner) */}
+          <div style={{ marginBottom: 22 }}>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 }}>
               <div style={{ fontSize: 15, fontWeight: 500 }}>{prayerCity}</div>
-              <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{hijriDate || "Today's prayer times"}</div>
+              <button onClick={() => setEditingCity(true)}
+                style={{ fontSize: 13, color: "var(--gold)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                Change
+              </button>
             </div>
-            <button onClick={() => setEditingCity(true)} style={{ fontSize: 14, color: "var(--text-secondary)" }}>
-              Change city
-            </button>
+            {hijriDate && <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 2 }}>{hijriDate}</div>}
           </div>
 
+          {/* HERO — the calm focal point: what's next, and mark it when due */}
           {nextPrayer && (() => {
             const due = !!nextPrayer.due;
-            const accent = due ? (PRAYER_COLORS[nextPrayer.name] || "var(--gold)") : "var(--gold)";
+            const accent = PRAYER_COLORS[nextPrayer.name] || "#7cc39d";
             const eyebrow = due ? "Due now · not prayed" : nextPrayer.tomorrow ? "Tomorrow's first prayer" : "Next prayer";
             return (
               <div style={{
-                ...S.goldCard,
-                display: "flex",
-                alignItems: "center",
-                gap: 14,
-                marginBottom: 14,
-                padding: "14px 18px",
-                borderColor: due ? accent + "88" : undefined,
-                background: due ? `linear-gradient(90deg, ${accent}1a 0%, ${accent}08 100%)` : undefined,
+                position: "relative", overflow: "hidden", textAlign: "center",
+                borderRadius: 20, padding: "24px 22px 22px", marginBottom: 28,
+                background: `linear-gradient(180deg, ${accent}26 0%, ${accent}0a 100%)`,
+                border: `1px solid ${accent}66`,
               }}>
-                <span style={{ display: "flex", color: due ? accent : "var(--gold)" }}><PrayerIcon name={nextPrayer.name} size={26} /></span>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 13, color: due ? accent : "var(--text-secondary)", fontWeight: due ? 600 : 400 }}>{eyebrow}</div>
-                  <div className="serif" style={{ fontSize: 22, fontWeight: 600, color: due ? accent : "var(--gold)" }}>{prayerDisplayName(nextPrayer.name, localDateStr())}</div>
-                  <div style={{ fontSize: 15, color: "var(--text-secondary)" }}>{nextPrayer.time}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, letterSpacing: "0.13em", textTransform: "uppercase", color: accent }}>{eyebrow}</div>
+                <div className="serif" style={{ fontSize: 32, fontWeight: 600, marginTop: 8, lineHeight: 1.15 }}>
+                  {prayerDisplayName(nextPrayer.name, localDateStr())}
+                  <span className="arabic" style={{ fontSize: 22, color: accent, marginLeft: 8, fontWeight: 400 }}>{PRAYER_META[nextPrayer.name]?.ar}</span>
                 </div>
+                <div style={{ fontSize: 15, color: "var(--text-secondary)", marginTop: 4, fontVariantNumeric: "tabular-nums" }}>{nextPrayer.time}</div>
                 {due && (
-                  <button onClick={() => markPrayer(nextPrayer.name)}
-                    style={{
-                      fontSize: 14,
-                      padding: "6px 14px",
-                      borderRadius: 99,
-                      background: accent,
-                      color: "#fff",
-                      border: `0.5px solid ${accent}`,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}>
+                  <button onClick={() => markPrayer(nextPrayer.name)} className="pop-in"
+                    style={{ marginTop: 16, border: "none", borderRadius: 99, padding: "10px 26px", fontSize: 14, fontWeight: 600, color: "#fff", background: accent, cursor: "pointer" }}>
                     Mark prayed
                   </button>
                 )}
@@ -225,141 +168,64 @@ export default function Prayer({
             );
           })()}
 
-          <SectionLabel>Daily Salah</SectionLabel>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
+          {/* THE FIVE PRAYERS — aligned rows, hairline dividers, no boxes.
+              Sunrise is an informational row (not a prayer you log). */}
+          <div style={{ marginBottom: 28 }}>
             {PRAYERS.filter((p) => prayerTimes[p]).map((p) => {
-              const done = prayerDoneToday(p);
-              const streak = prayerStreak(p);
               const isSunrise = p === "Sunrise";
               const pColor = PRAYER_COLORS[p];
-              const isCurrent = p === currentPrayerName && !isSunrise && !done;
-              return (
-                <div key={p} className={`tile-hover${burstKey === p ? " mark-burst" : ""}`}
-                  style={{
-                    ...S.card,
-                    position: "relative",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    padding: "12px 16px 12px 22px",
-                    transition: "transform 0.12s ease, border-color 0.18s ease, background 0.18s ease",
-                    background: done
-                      ? `linear-gradient(90deg, ${pColor}14 0%, ${pColor}08 100%)`
-                      : isCurrent
-                        ? `linear-gradient(90deg, ${pColor}22 0%, ${pColor}0a 100%)`
-                        : "var(--bg-card)",
-                    borderColor: done
-                      ? pColor + "55"
-                      : isCurrent
-                        ? pColor + "88"
-                        : "var(--color-border-tertiary)",
-                    overflow: "hidden",
-                  }}>
-                  {/* prayer-time-of-day accent edge */}
-                  <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: pColor, opacity: done ? 1 : isCurrent ? 1 : 0.55 }} />
-                  <span style={{
-                    fontSize: 18, width: 32, height: 32, borderRadius: 10,
-                    background: pColor + "22", display: "flex",
-                    alignItems: "center", justifyContent: "center", flexShrink: 0,
-                  }}>
-                    <PrayerIcon name={p} size={20} />
-                  </span>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 500, fontSize: 16, color: pColor, display: "flex", alignItems: "center", gap: 8 }}>
+              if (isSunrise) {
+                return (
+                  <div key={p} className="prayer-srow prayer-srow--info">
+                    <span className="prayer-srow__ic"><PrayerIcon name={p} size={18} /></span>
+                    <div className="prayer-srow__nm serif">
                       {prayerDisplayName(p, localDateStr())}
-                      <span className="arabic" style={{ fontSize: 15, color: "var(--text-muted)", fontWeight: 400 }}>{PRAYER_META[p]?.ar}</span>
-                      {isCurrent && (
-                        <span style={{
-                          fontSize: 11,
-                          fontWeight: 600,
-                          letterSpacing: "0.5px",
-                          textTransform: "uppercase",
-                          padding: "2px 7px",
-                          borderRadius: 99,
-                          background: pColor,
-                          color: "#fff",
-                        }}>Now</span>
-                      )}
+                      <span className="arabic">{PRAYER_META[p]?.ar}</span>
                     </div>
-                    <div style={{ fontSize: 14, color: "var(--text-secondary)" }}>
-                      {prayerTimes[p]}{streak > 0 && !isSunrise && (<> · <Icon name="flame" size={12} style={{ verticalAlign: "-2px", color: "var(--gold)" }} /> {streak} day streak</>)}
-                    </div>
+                    <div className="prayer-srow__meta">{prayerTimes[p]}</div>
                   </div>
-                  {!isSunrise && (() => {
-                    const canMark = canMarkPrayer ? canMarkPrayer(p) : true;
-                    const disabled = !done && !canMark;
-                    return (
-                      <button onClick={() => !disabled && markPrayer(p)}
-                        disabled={disabled}
-                        title={disabled ? `${p} time hasn't started yet (${prayerTimes[p]})` : undefined}
-                        style={{
-                          fontSize: 14,
-                          padding: "5px 14px",
-                          borderRadius: 99,
-                          background: done ? pColor : "transparent",
-                          color: done ? "#fff" : "var(--text-secondary)",
-                          border: `0.5px solid ${done ? pColor : "var(--color-border-secondary)"}`,
-                          cursor: disabled ? "not-allowed" : "pointer",
-                          opacity: disabled ? 0.4 : 1,
-                          transition: "background 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.15s ease",
-                          fontWeight: done ? 600 : 400,
-                        }}>
-                        {done ? <span key="done" className="pop-in" style={{ display: "inline-block" }}>✓ Prayed</span> : disabled ? "Not yet" : "Mark done"}
-                      </button>
-                    );
-                  })()}
+                );
+              }
+              const done = prayerDoneToday(p);
+              const streak = prayerStreak(p);
+              const isCurrent = p === currentPrayerName && !done;
+              const canMark = canMarkPrayer ? canMarkPrayer(p) : true;
+              const disabled = !done && !canMark;
+              return (
+                <div key={p}
+                  className={`prayer-srow${isCurrent ? " prayer-srow--now" : ""}${burstKey === p ? " mark-burst" : ""}`}
+                  style={isCurrent ? { "--nowc": pColor } : undefined}>
+                  <span className="prayer-srow__ic" style={{ color: pColor }}><PrayerIcon name={p} size={18} /></span>
+                  <div className="prayer-srow__nm serif" style={{ color: pColor }}>
+                    {prayerDisplayName(p, localDateStr())}
+                    <span className="arabic">{PRAYER_META[p]?.ar}</span>
+                    {isCurrent && <span className="prayer-srow__now" style={{ color: pColor }}>now</span>}
+                  </div>
+                  <div className="prayer-srow__meta">
+                    {prayerTimes[p]}
+                    {streak > 0 && (
+                      <span className="prayer-srow__streak">
+                        <Icon name="flame" size={11} style={{ verticalAlign: "-1px", color: "var(--gold)" }} /> {streak}-day streak
+                      </span>
+                    )}
+                  </div>
+                  <button onClick={() => !disabled && markPrayer(p)}
+                    disabled={disabled}
+                    aria-label={done ? `${p} prayed — tap to unmark` : `Mark ${p} prayed`}
+                    title={disabled ? `${p} time hasn't started yet (${prayerTimes[p]})` : undefined}
+                    className={`prayer-mk${done ? " done" : ""}`}
+                    style={done ? { background: pColor, borderColor: pColor } : disabled ? { opacity: 0.4, cursor: "not-allowed" } : undefined}>
+                    {done ? <span className="pop-in" style={{ display: "inline-block" }}>✓</span> : ""}
+                  </button>
                 </div>
               );
             })}
           </div>
-          </div>{/* /prayer-console-main */}
 
-          <div className="prayer-console-rail">
-          {/* 30-day salah completion across the five fard prayers. */}
-          <div style={S.card}>
-            <div style={railK}>Prayer health · 30 days</div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-              <span className="serif" style={{ fontSize: 26, fontWeight: 600 }}>{healthPct}%</span>
-              <span style={{ fontSize: 13, color: "var(--text-muted)" }}>prayed</span>
-            </div>
-            <div style={{ height: 8, borderRadius: 99, background: "var(--bg-primary)", overflow: "hidden", marginTop: 8 }}>
-              <div style={{ height: "100%", width: `${healthPct}%`, background: "var(--gold)", borderRadius: 99 }} />
-            </div>
-            <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 10 }}>
-              {bestStreak.s > 0
-                ? (<><Icon name="flame" size={12} style={{ verticalAlign: "-2px", color: "var(--gold)" }} /> {bestStreak.s}-day {bestStreak.p} streak</>)
-                : "Mark today's prayers to start a streak"}
-            </div>
-          </div>
-
-          {/* Compact qaza read-out; the full ledger lives in Accountability below. */}
-          <div style={S.card}>
-            <div style={railK}>Qaza ledger</div>
-            {totalOwed > 0 ? (
-              <>
-                <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                  <span className="serif" style={{ fontSize: 26, fontWeight: 600, color: "var(--noor)" }}>{totalOwed.toLocaleString()}</span>
-                  <span style={{ fontSize: 13, color: "var(--text-muted)" }}>prayers owed</span>
-                </div>
-                <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 6, lineHeight: 1.5 }}>
-                  {totalMadeUp > 0 ? `${totalMadeUp.toLocaleString()} made up · ` : ""}at {qTarget}/day → cleared ~{qClearLabel}
-                </div>
-              </>
-            ) : (
-              <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-text-success)" }}>
-                {totalMadeUp > 0 ? "All caught up — alhamdulillah" : "No qaza tracked yet"}
-              </div>
-            )}
-            <button onClick={jumpToQaza}
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 10, padding: 0, background: "none", border: "none", color: "var(--noor)", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
-              Manage make-ups <Icon name="arrow-down" size={13} />
-            </button>
-          </div>
-
-          {/* Voluntary night prayer (Tahajjud). Nafl — never enters qaza
-              and never counts towards Prayer Health. Shows the start of the
-              last third of the night when available, plus a streak and a
-              7-day strip. Tap a cell to mark / unmark for that day. */}
+          {/* Voluntary night prayer (Tahajjud). Nafl — never enters qaza and
+              never counts towards Prayer Health. Shows the start of the last
+              third of the night when available, plus a streak and a 7-day
+              strip. Tap tonight's cell to log it. */}
           {VOLUNTARY_PRAYERS.map((vp) => {
             const color = PRAYER_COLORS[vp];
             const streak = prayerStreak(vp);
@@ -372,45 +238,24 @@ export default function Prayer({
             });
             const todayKey = localDateStr();
             return (
-              <div key={vp} style={{ ...S.card, position: "relative", overflow: "hidden" }}>
+              <div key={vp} style={{ ...S.card, marginBottom: 14, position: "relative", overflow: "hidden" }}>
                 <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: color, opacity: done ? 1 : 0.55 }} />
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, gap: 10, flexWrap: "wrap", paddingLeft: 8 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
-                    <span style={{
-                      fontSize: 18, width: 32, height: 32, borderRadius: 10,
-                      background: color + "22", display: "flex",
-                      alignItems: "center", justifyContent: "center", flexShrink: 0,
-                    }}><PrayerIcon name={vp} size={18} /></span>
-                    <div style={{ minWidth: 0 }}>
-                      <div style={{ fontSize: 15, fontWeight: 500, color }}>Voluntary · {vp}</div>
-                      <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
-                        {lastThird ? `Best after ${lastThird} (last third of the night)` : "Pray in the last third of the night"}
-                        {streak > 0 && (<> · <Icon name="flame" size={12} style={{ verticalAlign: "-2px", color: "var(--gold)" }} /> {streak} day streak</>)}
-                      </div>
+                <div style={{ display: "flex", alignItems: "center", marginBottom: 10, gap: 10, paddingLeft: 8 }}>
+                  <span style={{
+                    fontSize: 18, width: 32, height: 32, borderRadius: 10,
+                    background: color + "22", display: "flex",
+                    alignItems: "center", justifyContent: "center", flexShrink: 0,
+                  }}><PrayerIcon name={vp} size={18} /></span>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 15, fontWeight: 500, color }}>Voluntary · {vp}</div>
+                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                      {lastThird ? `Best after ${lastThird} (last third of the night)` : "Pray in the last third of the night"}
+                      {streak > 0 && (<> · <Icon name="flame" size={12} style={{ verticalAlign: "-2px", color: "var(--gold)" }} /> {streak} day streak</>)}
                     </div>
                   </div>
-                  {(() => {
-                    const canMark = canMarkPrayer ? canMarkPrayer(vp) : true;
-                    const disabled = !done && !canMark;
-                    return (
-                      <button onClick={() => !disabled && markPrayer(vp)}
-                        disabled={disabled}
-                        title={disabled ? `${vp} can be prayed after Isha (${prayerTimes?.Isha || "tonight"})` : undefined}
-                        style={{
-                          fontSize: 14,
-                          padding: "5px 14px",
-                          borderRadius: 99,
-                          background: done ? color : "transparent",
-                          color: done ? "#fff" : "var(--text-secondary)",
-                          border: `0.5px solid ${done ? color : "var(--color-border-secondary)"}`,
-                          cursor: disabled ? "not-allowed" : "pointer",
-                          opacity: disabled ? 0.4 : 1,
-                          fontWeight: done ? 600 : 400,
-                        }}>
-                        {done ? "✓ Prayed" : disabled ? "Not yet" : "Mark done"}
-                      </button>
-                    );
-                  })()}
+                </div>
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8, paddingLeft: 8 }}>
+                  Tap tonight&apos;s cell to log it.
                 </div>
                 <div style={{ display: "flex", gap: 4, paddingLeft: 8 }}>
                   {days.map((d) => {
@@ -444,31 +289,9 @@ export default function Prayer({
             );
           })}
 
-          <RemindersPanel
-            notifications={notifications}
-            updateNotifications={updateNotifications}
-          />
-          </div>{/* /prayer-console-rail */}
-          </div>{/* /prayer-console */}
-
-          <div ref={acctRef}>
-          <SectionLabel>Accountability</SectionLabel>
-          <div className="prayer-acct">
-          <QazaLedger
-            qaza={qaza}
-            qazaOwed={qazaOwed}
-            payOneQaza={payOneQaza}
-            undoOneQaza={undoOneQaza}
-            adjustQaza={adjustQaza}
-            addQazaAll={addQazaAll}
-            qazaDailyTarget={qazaDailyTarget}
-            setQazaTarget={setQazaTarget}
-            addExcused={addExcused}
-            removeExcused={removeExcused}
-          />
-
-          {/* 7-day tracker */}
-          <div style={S.card}>
+          {/* 7-day tracker — retro-log a prayer you did but forgot to mark.
+              Toggling a settled day adjusts qaza (handled in Planner). */}
+          <div style={{ ...S.card, marginBottom: 14 }}>
             <div style={{ fontSize: 15, fontWeight: 500, marginBottom: 4 }}>7-day tracker</div>
             <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>
               Tap any cell to mark / unmark — useful when you prayed but forgot to log it.
@@ -548,8 +371,11 @@ export default function Prayer({
               </table>
             </div>
           </div>
-          </div>{/* /prayer-acct */}
-          </div>{/* /accountability */}
+
+          <RemindersPanel
+            notifications={notifications}
+            updateNotifications={updateNotifications}
+          />
         </div>
       )}
     </div>
@@ -647,7 +473,7 @@ function RemindersPanel({ notifications, updateNotifications }) {
   };
 
   return (
-    <div style={{ ...S.card, marginTop: 20 }}>
+    <div style={{ ...S.card, marginTop: 0 }}>
       <button onClick={toggle} disabled={blocked || busy}
         aria-pressed={enabled}
         aria-label={enabled ? "Turn off prayer reminders" : "Turn on prayer reminders"}
