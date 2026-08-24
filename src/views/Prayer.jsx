@@ -29,10 +29,11 @@ const PRAYER_META = {
 // lives in the Mizan tab now, so this stays focused on today.
 export default function Prayer({
   prayerTimes,
-  prayerCity,
   prayerLog,
   prayerLoading,
   prayerError,
+  editingCity,
+  setEditingCity,
   cityInput,
   countryInput,
   nextPrayer,
@@ -53,15 +54,9 @@ export default function Prayer({
   // window has closed.
   const currentPrayerName = currentPrayerWindow(prayerTimes);
 
-  // "Change city" used to call setPrayerTimes(null), which dumped the
-  // user into the city-input form with no way back if they tapped it by
-  // accident. Now it just opens an `editingCity` mode — the user can hit
-  // Cancel to return to the existing prayer view, or fetch new times
-  // which auto-closes the form via the effect below.
-  const [editingCity, setEditingCity] = useState(false);
-  useEffect(() => {
-    if (prayerTimes) setEditingCity(false);
-  }, [prayerTimes]);
+  // "Change city" mode is lifted to Planner (so the page-header location line
+  // can toggle it) and passed in as editingCity/setEditingCity. Show the city
+  // form when there are no times yet, or the user chose to change location.
   const showCityForm = !prayerTimes || editingCity;
 
   // Reward the moment a prayer is *newly* marked (not on unmark): a soft
@@ -127,17 +122,6 @@ export default function Prayer({
 
       {prayerTimes && !editingCity && (
         <div className="prayer-arc">
-          {/* location — a compact left-aligned line under the page title
-              (Hijri date lives in the sidebar, so it isn't repeated here) */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
-            <Icon name="location" size={15} style={{ color: "var(--text-muted)" }} />
-            <span style={{ fontSize: 15, fontWeight: 500 }}>{prayerCity}</span>
-            <button onClick={() => setEditingCity(true)}
-              style={{ fontSize: 13, color: "var(--gold)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
-              Change
-            </button>
-          </div>
-
           {/* ARC CENTREPIECE + next-prayer hero, both on a dark "sky" card.
               The card is always dark, so text/marks here use fixed light
               colours — theme vars would invert to dark-on-dark in light mode. */}

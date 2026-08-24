@@ -120,6 +120,12 @@ export default function Planner({ user }) {
     fetchPrayers, fetchByGeo,
   } = usePrayer({ settingsFromDb, userSettings, updateSettings, notifications, updateNotifications });
 
+  // "Change city" mode — lifted out of the Prayer view so the page header's
+  // location line (rendered alongside the "Prayer" title) can toggle it.
+  // Auto-closes once fresh prayer times arrive.
+  const [editingCity, setEditingCity] = useState(false);
+  useEffect(() => { if (prayerTimes) setEditingCity(false); }, [prayerTimes]);
+
   // muhasaba
   const [muhasabaDay,setMuhasabaDay] = useState(todayStr());
   const [aiLoadingDay,setAiLoadingDay] = useState(null); // day being generated, or null
@@ -1024,6 +1030,18 @@ export default function Planner({ user }) {
           <div className="app-header-date">{dateLine}</div>
         </div>
         <div className="app-header-actions">
+          {/* Prayer-tab location — sits on the title row so "Prayer" + the
+              place read as one header. "Change" opens the city form. */}
+          {view === "prayer" && prayerTimes && !editingCity && (
+            <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 14, fontWeight: 500, color: "var(--text-primary)" }}>
+              <Icon name="location" size={14} style={{ color: "var(--text-muted)" }} />
+              <span>{prayerCity}</span>
+              <button type="button" onClick={() => setEditingCity(true)}
+                style={{ padding: 0, background: "none", border: "none", boxShadow: "none", color: "var(--gold)", fontSize: 13, cursor: "pointer" }}>
+                Change
+              </button>
+            </div>
+          )}
           {/* Sync status (Phase R1) — surfaces write state so a failed save is
               never silent. "synced" shows nothing to stay quiet. */}
           {syncState === "saving" && (
@@ -1171,11 +1189,11 @@ export default function Planner({ user }) {
       {view==="prayer" && (
         <Prayer
           prayerTimes={prayerTimes}
-          prayerCity={prayerCity}
           prayerLog={prayerLog}
           prayerLoading={prayerLoading}
           prayerError={prayerError}
-          hijriDate={hijriDate}
+          editingCity={editingCity}
+          setEditingCity={setEditingCity}
           cityInput={cityInput}
           countryInput={countryInput}
           nextPrayer={nextPrayer}

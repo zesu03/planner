@@ -885,8 +885,9 @@ select:focus-visible {
 /* Day-Arc Prayer view — the day drawn as the sun's path (SVG dome) with the
    next-prayer hero on the same dark "sky" card, then the five fard prayers as
    compact boxes in a line. Qaza management lives in the Mizan tab. Each box
-   sets --c (its prayer colour) inline; color-mix tints from it. */
-.prayer-arc { max-width: 900px; }
+   sets --c (its prayer colour) inline; color-mix tints from it. The view
+   fills the content width so the arc card's edges line up with the page
+   header (title left, location right). */
 .day-arc-card { position: relative; border-radius: 22px; overflow: hidden; margin-bottom: 22px;
   border: 1px solid var(--border-soft);
   background: linear-gradient(180deg, #141a2e 0%, #1a1a22 42%, #241a18 78%, #2a1c14 100%); }
