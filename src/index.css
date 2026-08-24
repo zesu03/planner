@@ -55,10 +55,10 @@ body {
   --bg-primary: #0d1024;
   --bg-secondary: #181d38;
   --bg-card: #11152e;
-  --border: rgba(212,182,94,0.2);
-  --text-primary: #eef0f7;
-  --text-secondary: #a3a9c2;
-  --text-muted: #868db0; /* ~6:1 on the indigo cards — WCAG AA */
+  --border: rgba(212,182,94,0.34);
+  --text-primary: #f2f4fb; /* ~16:1 on the indigo cards */
+  --text-secondary: #bcc2db; /* ~10:1 — clearly legible, still below primary */
+  --text-muted: #a1a7c8; /* ~7.6:1 on the indigo cards — WCAG AAA (was #868db0, 5.4:1) */
   --radius: 14px;
   --radius-sm: 10px;
   --card-padding: 20px 22px;
@@ -113,8 +113,8 @@ body {
      (--color-background-secondary is theme-specific in light mode, so it is
      NOT a plain alias of --bg-secondary — keep using it as-is.) */
   --color-background-secondary: var(--bg-secondary);
-  --color-border-tertiary: rgba(212,182,94,0.22);
-  --color-border-secondary: rgba(212,182,94,0.32);
+  --color-border-tertiary: rgba(212,182,94,0.34);
+  --color-border-secondary: rgba(212,182,94,0.5);
   --color-border-danger: rgba(214,95,82,0.4);
   --color-border-warning: rgba(214,168,95,0.45);
   --color-border-success: rgba(127,190,143,0.45);
@@ -153,14 +153,14 @@ body {
   --bg-primary: #f5ecd6;
   --bg-secondary: #e6dcbf;
   --bg-card: #fbf6e6;
-  --border: rgba(96,70,18,0.22);
-  --text-primary: #20180c;
-  --text-secondary: #5a4818;
-  --text-muted: #6b5a2a; /* bumped from #8a7848 — was 3.7:1 on bg-card; now ~6.1:1 (WCAG AA) */
+  --border: rgba(96,70,18,0.34);
+  --text-primary: #1a1308;
+  --text-secondary: #4f3f12; /* deepened from #5a4818 for extra presence (~9:1) */
+  --text-muted: #5f4f1f; /* deepened from #6b5a2a — now ~7.4:1 on bg-card (WCAG AAA) */
 
   --color-background-secondary: #ece1c4;
-  --color-border-tertiary: rgba(96,70,18,0.22);
-  --color-border-secondary: rgba(96,70,18,0.34);
+  --color-border-tertiary: rgba(96,70,18,0.34);
+  --color-border-secondary: rgba(96,70,18,0.5);
   --color-border-danger: rgba(154,52,40,0.4);
   --color-border-warning: rgba(192,140,40,0.5);
   --color-border-success: rgba(58,107,52,0.45);
@@ -508,7 +508,7 @@ select:focus-visible {
 }
 .tab-btn-icon {
   font-size: 15px;
-  opacity: 0.7;
+  opacity: 0.85;
 }
 .tab-btn--active .tab-btn-icon {
   opacity: 1;

@@ -314,7 +314,7 @@ export default function Dashboard({
             textAlign: "center",
           }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-              <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", opacity: 0.8 }}>
+              <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase" }}>
                 Verse of the day
               </div>
               {refreshVerse && (
@@ -335,7 +335,7 @@ export default function Dashboard({
                 </button>
               )}
             </div>
-            <div className="arabic" style={{ fontSize: 22, color: "var(--gold)", marginBottom: 10, opacity: 0.92 }}>
+            <div className="arabic" style={{ fontSize: 22, color: "var(--gold)", marginBottom: 10 }}>
               {verseOfDay.arabic || FALLBACK_VERSE.arabic}
             </div>
             <div style={{
@@ -346,7 +346,7 @@ export default function Dashboard({
             </div>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
               <a href={verseOfDay.url} target="_blank" rel="noreferrer"
-                style={{ fontSize: 12, color: "var(--gold)", textDecoration: "none", opacity: 0.7 }}>
+                style={{ fontSize: 12, color: "var(--gold)", textDecoration: "none", fontWeight: 500 }}>
                 Quran.com {verseOfDay.verseKey} ↗
               </a>
               {saveAction}
@@ -371,7 +371,7 @@ export default function Dashboard({
             </div>
             {/* niyyah lead-out — the rotating intention, folded into the
                 verse's closing moment rather than floating mid-page. */}
-            <div style={{ fontSize: 13, color: "var(--text-muted)", fontStyle: "italic", marginTop: 16, opacity: 0.85, maxWidth: 480, marginLeft: "auto", marginRight: "auto" }}>
+            <div style={{ fontSize: 13, color: "var(--text-secondary)", fontStyle: "italic", marginTop: 16, maxWidth: 480, marginLeft: "auto", marginRight: "auto" }}>
               {INTENTIONS[intentionIdx]}
             </div>
           </div>
@@ -413,7 +413,7 @@ export default function Dashboard({
                     </span>
                   </div>
                   {v.arabic && (
-                    <div className="arabic" style={{ fontSize: 19, color: "var(--gold)", marginBottom: 8, opacity: 0.92 }}>
+                    <div className="arabic" style={{ fontSize: 19, color: "var(--gold)", marginBottom: 8 }}>
                       {v.arabic}
                     </div>
                   )}
