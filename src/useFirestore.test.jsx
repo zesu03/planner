@@ -97,6 +97,25 @@ describe("useUserData — load gate", () => {
     await flushDebounce();
     expect(mainWrites()).toHaveLength(0);
   });
+
+  it("a warm fromCache HIT does NOT open the gate (stale-cache clobber guard)", async () => {
+    const { result } = renderHook(() => useUserData("u1"));
+    // A stale IndexedDB cache serves real-looking data, but fromCache:true →
+    // the write gate must stay shut so a later flush can't stomp newer server
+    // data (the recurring account-wipe).
+    emitMainDoc({ goals: [{ id: "stale" }] }, { exists: true, fromCache: true });
+    act(() => result.current.updateGoals([{ id: "edit" }]));
+    await flushDebounce();
+    expect(mainWrites()).toHaveLength(0);
+
+    // Once the SERVER snapshot arrives it wins (drops the stale edit) and the
+    // gate opens; subsequent edits flush normally.
+    emitMainDoc({ goals: [{ id: "server" }] }); // fromCache:false (server)
+    act(() => result.current.updateGoals([{ id: "edit2" }]));
+    await flushDebounce();
+    expect(mainWrites().length).toBeGreaterThan(0);
+    expect(mainWrites().at(-1).data).toEqual({ goals: [{ id: "edit2" }] });
+  });
 });
 
 describe("useUserData — field-scoped writes", () => {

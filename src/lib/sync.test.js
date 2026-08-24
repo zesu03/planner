@@ -56,18 +56,13 @@ describe("shouldAcceptField — snapshot-clobber protection", () => {
 });
 
 describe("load gates", () => {
-  it("doc gate opens when the doc exists (cached counts)", () => {
-    expect(gateOpenForDoc(true, true)).toBe(true);
-    expect(gateOpenForDoc(true, false)).toBe(true);
+  it("doc gate opens ONLY on a server snapshot, never on a cached one", () => {
+    expect(gateOpenForDoc(false)).toBe(true);   // server snapshot → open
+    expect(gateOpenForDoc(true)).toBe(false);   // cached snapshot (hit OR miss) → stay closed
   });
-  it("doc gate opens on server-confirmed absence, NOT on a cold cache miss", () => {
-    expect(gateOpenForDoc(false, false)).toBe(true);   // server says absent
-    expect(gateOpenForDoc(false, true)).toBe(false);   // cold fromCache miss → stay closed
-  });
-  it("collection gate opens on server truth or any cached docs", () => {
-    expect(gateOpenForCollection(false, true)).toBe(true);   // server, empty
-    expect(gateOpenForCollection(true, false)).toBe(true);   // cache, has docs
-    expect(gateOpenForCollection(true, true)).toBe(false);   // cold empty → stay closed
+  it("collection gate opens ONLY on a server snapshot, never on a cached one", () => {
+    expect(gateOpenForCollection(false)).toBe(true);   // server → open
+    expect(gateOpenForCollection(true)).toBe(false);   // cached → stay closed
   });
 });
 

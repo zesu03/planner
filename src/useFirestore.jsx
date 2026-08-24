@@ -66,10 +66,11 @@ export function useUserData(userId) {
   const [notifications, setNotifications] = useState(null);
   const [loading, setLoading] = useState(true);
   // Mirrors loadedRef as reactive state: true only once the write gate has
-  // opened (a real snapshot — NOT a cold fromCache miss). Consumers that must
-  // not act on transiently-empty pre-load data (e.g. the qaza settle pass,
-  // which would otherwise manufacture phantom missed-prayer debt) gate on this
-  // rather than `loading`, which flips false even on a cache miss.
+  // opened — which now requires a SERVER snapshot (never a cached one). Consumers
+  // that must not act on stale/transient cached data (e.g. the qaza settle pass,
+  // which would otherwise settle against a stale prayerLog and manufacture
+  // phantom debt) gate on this rather than `loading`, which flips false as soon
+  // as ANY snapshot — including a cache hit — arrives.
   const [loaded, setLoaded] = useState(false);
   // Sync status surfaced to the UI (Phase R1 / R2). "synced" | "saving" |
   // "error". Ends the silent write-failure: a rejected write (rules/quota/
@@ -92,10 +93,11 @@ export function useUserData(userId) {
   // timer (null when nothing scheduled); pendingRef tracks whether the
   // refs have changes the snapshot hasn't reflected yet. userIdRef
   // mirrors the current userId so flushNow doesn't need it in deps.
-  // loadedRef gates save() — no writes until the first snapshot returns,
-  // so callers that fire before Firestore responds (e.g. geolocation
-  // callback during onboarding) don't overwrite existing data with the
-  // empty initial refs.
+  // loadedRef gates save() — no writes until a SERVER snapshot returns (a
+  // cached snapshot does NOT open it), so neither a caller firing before
+  // Firestore responds (e.g. a geolocation callback during onboarding) nor a
+  // device holding a stale offline cache can flush its refs over real server
+  // data. This is the guard against the recurring account-wipe.
   const timerRef = useRef(null);
   const pendingRef = useRef(false);
   const userIdRef = useRef(userId);
@@ -335,14 +337,14 @@ export function useUserData(userId) {
           }
         })();
       }
-      // Write gate. exists → real data present (a cached hit counts; it's
-      // genuine data persisted from a prior session), safe to allow writes.
-      // Absent → only open the gate once the SERVER confirms absence. With
-      // offline persistence a cold IndexedDB cache reports exists:false +
-      // fromCache:true on first load; opening the gate then would let a queued
-      // write persist empty defaults over real server data on reconnect — the
-      // exact data-wipe loadedRef exists to prevent.
-      if (gateOpenForDoc(exists, snap.metadata.fromCache)) {
+      // Write gate — opens ONLY on a SERVER snapshot (fromCache:false), never
+      // on a cached one (hit or miss). A stale IndexedDB cache fires
+      // fromCache:true with old data first; opening the gate then would let the
+      // next write (a tap, or the qaza reconcile) flush that stale data over
+      // newer server data — the recurring account-wipe this guards against.
+      // Reads already rendered above from whatever snapshot this is; only
+      // writes wait for server truth. (See gateOpenForDoc in lib/sync.js.)
+      if (gateOpenForDoc(snap.metadata.fromCache)) {
         loadedRef.current = true;
         setLoaded(true);
       }
@@ -384,8 +386,9 @@ export function useUserData(userId) {
       );
       latestMuhasabaRef.current = merged;
       setMuhasaba(merged);
-      // Open the write gate once we have server truth (or any cached docs).
-      if (gateOpenForCollection(snap.metadata.fromCache, snap.empty)) muhasabaLoadedRef.current = true;
+      // Open the write gate only once the server has responded (never on a
+      // cached snapshot) — same clobber guard as the main doc.
+      if (gateOpenForCollection(snap.metadata.fromCache)) muhasabaLoadedRef.current = true;
     });
     return () => {
       flushMuhasabaNow(false); // persist the old user's pending days before detaching
@@ -410,7 +413,7 @@ export function useUserData(userId) {
       );
       latestFocusRef.current = arr;
       setFocusLog(arr);
-      if (gateOpenForCollection(snap.metadata.fromCache, snap.empty)) focusLoadedRef.current = true;
+      if (gateOpenForCollection(snap.metadata.fromCache)) focusLoadedRef.current = true;
     });
     return () => {
       flushFocusNow(false); // persist the old user's pending entries before detaching

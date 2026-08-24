@@ -37,18 +37,30 @@ export function shouldAcceptField(loaded, isDirty) {
 
 // ── load gates ──────────────────────────────────────────────────────────────
 
-// Open the main-doc write gate? Yes if the doc exists (cached counts — it's
-// genuine prior data), or if the SERVER confirmed absence (a new user). Never
-// on a cold fromCache miss, or a queued write could persist empty defaults
-// over real server data on reconnect.
-export function gateOpenForDoc(exists, fromCache) {
-  return exists || !fromCache;
+// Open the main-doc write gate? ONLY once a SERVER snapshot has arrived
+// (fromCache === false). A cached snapshot — hit OR miss — must NOT open it.
+//
+// Why not a cached hit: with offline persistence, a device holding a STALE
+// IndexedDB copy (e.g. one that was offline for weeks) fires fromCache:true
+// with that old data first. If the gate opened then, the next write — a prayer
+// tap, or the qaza reconcile pass running on `loaded` — would flush the stale
+// refs over newer server data before the server snapshot arrives to correct
+// them, wiping the account back to the cached state. Requiring a server
+// snapshot means writes (and reconcile) always build on the true current data.
+//
+// Reads still render from cache immediately (loading flips false regardless);
+// only WRITES wait for the server. Trade-off: the first edit of a session
+// can't persist until the server has been heard from once — acceptable, and
+// far safer than the clobber it prevents.
+export function gateOpenForDoc(fromCache) {
+  return !fromCache;
 }
 
-// Open a subcollection write gate? Yes once we have server truth, or any
-// cached docs to work from.
-export function gateOpenForCollection(fromCache, empty) {
-  return !fromCache || !empty;
+// Open a subcollection write gate? Same rule: only once the server has
+// responded (fromCache === false). A cached (possibly stale) snapshot must
+// not authorize writes, for the same clobber-prevention reason as the doc gate.
+export function gateOpenForCollection(fromCache) {
+  return !fromCache;
 }
 
 // ── muhasaba (day-keyed map) ─────────────────────────────────────────────────
