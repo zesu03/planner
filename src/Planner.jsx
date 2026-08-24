@@ -970,8 +970,12 @@ export default function Planner({ user }) {
           </div>
           {/* Date lives in the sidebar on desktop (the main-header copy is
               hidden >=1024px); on mobile the sidebar is gone, so the header
-              copy carries it. */}
-          <div className="sidebar-date">{dateLine}</div>
+              copy carries it. Two lines (Gregorian + Hijri) so the long Hijri
+              string doesn't wrap mid-phrase around the "·" separator. */}
+          <div className="sidebar-date">
+            <span className="sidebar-date-greg">{englishDate}</span>
+            {hijriDate && <span className="sidebar-date-hijri">{hijriDate}</span>}
+          </div>
           <nav aria-label="Primary">
             {NAV_ITEMS.map(({ v, label }) => {
               const active = view === v;
@@ -1007,7 +1011,7 @@ export default function Planner({ user }) {
       {/* header — styled via .app-header-* in index.css so the mobile
           media query can compact it (drop the overline, shrink the
           greeting) without fighting inline styles. */}
-      <header className="app-header">
+      <header className={`app-header${view === "pomodoro" ? " app-header--center" : ""}`}>
         <div className="app-header-text">
           <div className="app-header-overline">Aakhirah Planner</div>
           {view === "dashboard" ? (
