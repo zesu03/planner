@@ -987,10 +987,15 @@ select:focus-visible {
   width: 32px;
   height: 32px;
   flex-shrink: 0;
+  /* Reset the base `button` padding + shadow — without padding:0 the 18px
+     side padding collapses the icon's content box to zero (border-box) and
+     the glyph is clipped away. */
+  padding: 0;
+  box-shadow: none;
   border-radius: 8px;
   background: transparent;
   border: none;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
