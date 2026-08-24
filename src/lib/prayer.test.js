@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isFriday, prayerDisplayName, nextPrayer } from "./prayer";
+import { isFriday, prayerDisplayName, nextPrayer, prayerTimesMirrorFresh } from "./prayer";
 
 // 2026-08-07 is a Friday; 08-06 Thu, 08-08 Sat. (TZ pinned to UTC in config.)
 describe("isFriday", () => {
@@ -57,5 +57,40 @@ describe("nextPrayer — post-midnight Isha attribution", () => {
     const evening = new Date("2026-08-06T21:00:00Z"); // 21:00 local — after Isha start
     expect(nextPrayer(times, {}, today, evening, prevDay)).toMatchObject({ name: "Isha", due: true });
     expect(nextPrayer(times, { Isha: [today] }, today, evening, prevDay).due).toBeFalsy();
+  });
+});
+
+// Guards the reminder-mirror write ping-pong: two open app instances whose
+// Aladhan fetches disagree by one minute must NOT keep rewriting each other's
+// notifications.prayerTimes on every snapshot (the "Saving… every 1s while
+// idle" bug that silently burned Firestore quota).
+describe("prayerTimesMirrorFresh — anti-ping-pong tolerance", () => {
+  const today = "2026-08-06";
+  const times = { Fajr: "05:00", Dhuhr: "12:19", Asr: "16:46", Maghrib: "18:36", Isha: "19:37" };
+  const stored = (over = {}) => ({ date: today, times: { ...times, ...over } });
+
+  it("exact match for today is fresh (no write)", () => {
+    expect(prayerTimesMirrorFresh(stored(), today, times)).toBe(true);
+  });
+
+  it("a 1-minute Isha jitter is treated as fresh — the exact ping-pong case", () => {
+    // stored 19:38 vs computed 19:37 → the two-client fight must stop here.
+    expect(prayerTimesMirrorFresh(stored({ Isha: "19:38" }), today, times)).toBe(true);
+    expect(prayerTimesMirrorFresh(stored({ Isha: "19:36" }), today, times)).toBe(true);
+  });
+
+  it("a real shift (city change) exceeds tolerance → not fresh (write)", () => {
+    expect(prayerTimesMirrorFresh(stored({ Isha: "19:52" }), today, times)).toBe(false);
+    expect(prayerTimesMirrorFresh(stored({ Dhuhr: "12:25" }), today, times)).toBe(false);
+  });
+
+  it("a different (stale) date is never fresh → write", () => {
+    expect(prayerTimesMirrorFresh({ date: "2026-08-05", times }, today, times)).toBe(false);
+  });
+
+  it("missing / malformed stored mirror is never fresh → write", () => {
+    expect(prayerTimesMirrorFresh(null, today, times)).toBe(false);
+    expect(prayerTimesMirrorFresh({ date: today }, today, times)).toBe(false);
+    expect(prayerTimesMirrorFresh(stored({ Isha: undefined }), today, times)).toBe(false);
   });
 });

@@ -45,6 +45,42 @@ export function prayerDisplayName(prayer, dayStr) {
   return prayer === "Dhuhr" && isFriday(dayStr) ? "Jumu'ah" : prayer;
 }
 
+// The five obligatory prayers the reminder mirror tracks.
+const MIRROR_PRAYERS = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
+
+// Is the already-stored reminder mirror (`existing`) good enough that a client
+// should NOT overwrite it with its freshly-computed `times` for `today`?
+//
+// The mirror (notifications.prayerTimes) exists so the server cron has
+// authoritative prayer times to match against. When two app instances are open
+// at once (installed PWA + a browser tab, or two tabs), their Aladhan fetches
+// can disagree by a single minute — city-vs-coords endpoint, or a request whose
+// timestamp straddles a rounding boundary. A STRICT equality check then makes
+// each instance treat the other's value as "changed" and rewrite its own on
+// every snapshot: an infinite write ping-pong that pulses "Saving…" while the
+// app sits idle and quietly burns Firestore quota 24/7.
+//
+// The fix: treat a sub-`tolMin`-minute disagreement as already-fresh so the
+// clients stop fighting (whichever wrote first for the day wins; ±1 min is
+// immaterial — the server already matches reminders within a ±1-min window).
+// A REAL change still updates: a new day fails the date check, and a city
+// change shifts times by far more than the tolerance. Once ANY open instance
+// runs this tolerant check it stops re-writing, which starves the loop even if
+// another instance is still on the old strict code.
+//
+// Pure + tolerant-by-value so it's unit-testable without React.
+export function prayerTimesMirrorFresh(existing, today, times, tolMin = 1) {
+  if (!existing || existing.date !== today || !existing.times) return false;
+  return MIRROR_PRAYERS.every((p) => {
+    const a = parseHHMM(existing.times[p]);
+    const b = parseHHMM(times?.[p]);
+    // If either side isn't a parseable HH:MM, fall back to strict equality so a
+    // genuinely missing/garbled time still triggers a corrective write.
+    if (a == null || b == null) return existing.times[p] === times?.[p];
+    return Math.abs(a - b) <= tolMin;
+  });
+}
+
 // The currently-active prayer window, or null if the user is between windows.
 // `prayerTimes` is the Aladhan timings object (HH:MM strings).
 export function currentPrayerWindow(prayerTimes, now = new Date()) {

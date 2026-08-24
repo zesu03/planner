@@ -14,6 +14,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { localDateStr } from "../lib/dates";
+import { prayerTimesMirrorFresh } from "../lib/prayer";
 
 const ALADHAN_BASE = "https://api.aladhan.com/v1";
 const METHOD_SCHOOL = "method=2&school=1";
@@ -253,9 +254,12 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings, notifi
 
   // Mirror today's prayer times to the notifications field so the server
   // cron (which can't call Aladhan per-tick) has authoritative times to
-  // match against. Cheap guard: skip writes when the cached payload is
-  // already today's and the five values match — without it, every snapshot
-  // re-emit from Firestore would re-trigger this effect and burn writes.
+  // match against. Skip the write when the stored payload is already today's
+  // and within a minute of what we computed — see prayerTimesMirrorFresh.
+  // WITHOUT that tolerance, two open app instances whose Aladhan fetches
+  // disagree by a single minute each rewrite the other's value on every
+  // snapshot: an infinite write ping-pong that pulses "Saving…" while idle
+  // and burns Firestore quota. A strict === on the five times was the bug.
   // We only mirror when the user has opted in (notifications.prayer.enabled);
   // no point bloating the doc for users who'll never see a push.
   useEffect(() => {
@@ -269,14 +273,7 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings, notifi
       Maghrib: bareTime(prayerTimes.Maghrib),
       Isha: bareTime(prayerTimes.Isha),
     };
-    const existing = notifications?.prayerTimes;
-    const unchanged = existing?.date === today
-      && existing?.times?.Fajr === times.Fajr
-      && existing?.times?.Dhuhr === times.Dhuhr
-      && existing?.times?.Asr === times.Asr
-      && existing?.times?.Maghrib === times.Maghrib
-      && existing?.times?.Isha === times.Isha;
-    if (unchanged) return;
+    if (prayerTimesMirrorFresh(notifications?.prayerTimes, today, times)) return;
     // Functional updater (not a spread of the `notifications` snapshot) so a
     // concurrent notifications write still in the debounce window — e.g. an
     // FCM-token registration or a per-prayer toggle — isn't clobbered by a
