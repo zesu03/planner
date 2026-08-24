@@ -167,19 +167,10 @@ export default function AuthWrapper({ children }) {
 
   return (
     <div>
-      <div
-        className="auth-bar"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          /* Top padding includes the iPhone notch safe area so the bar
-             clears the dynamic island / status bar; sides honour the
-             landscape-mode notch insets. */
-          padding: "calc(10px + env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 10px max(16px, env(safe-area-inset-left))",
-          borderBottom: "0.5px solid var(--border)",
-        }}
-      >
+      {/* Layout lives in the .auth-bar CSS class (not inline) so the desktop
+          media query can hide the whole bar — inline styles would beat the
+          class and keep it visible at >=1024px. */}
+      <div className="auth-bar">
         <div className="auth-bar-user" style={{ fontSize: 12, color: "var(--text-secondary)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           Signed in as{" "}
           <span style={{ color: "var(--text-primary)", fontWeight: 500 }}>
