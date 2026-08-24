@@ -64,7 +64,7 @@ export default function FullscreenDial({
         position: "fixed",
         inset: 0,
         zIndex: 9999,
-        background: "var(--bg-card)",
+        background: `radial-gradient(ellipse at 50% 32%, ${goldA(13)} 0%, transparent 60%), var(--bg-primary)`,
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -112,11 +112,25 @@ export default function FullscreenDial({
           aria-label={paused
             ? `Focus timer paused: ${fmtTime(elapsedSecs)} elapsed, ${fmtTime(pomSeconds)} remaining`
             : `Focus timer ${pomRunning ? "running" : "ready"}: ${fmtTime(pomSeconds)} remaining`}>
+          <defs>
+            <linearGradient id="fsDialGrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" style={{ stopColor: ringColor }} />
+              <stop offset="100%" style={{ stopColor: `color-mix(in srgb, ${ringColor} 55%, #ffffff)` }} />
+            </linearGradient>
+            <filter id="fsDialGlow" x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="10" result="blur" />
+              <feMerge>
+                <feMergeNode in="blur" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
           <circle cx={VB / 2} cy={VB / 2} r={R}
             fill="none" stroke="var(--color-background-secondary)" strokeWidth={STROKE} />
           <circle cx={VB / 2} cy={VB / 2} r={R}
             fill="none"
-            stroke={ringColor}
+            stroke="url(#fsDialGrad)"
+            filter="url(#fsDialGlow)"
             strokeWidth={STROKE}
             strokeDasharray={C}
             strokeDashoffset={C * (1 - prog)}
@@ -125,11 +139,13 @@ export default function FullscreenDial({
             opacity={paused ? 0.45 : 1}
             style={{ transition: "stroke-dashoffset 0.5s, stroke 0.3s, opacity 0.3s" }} />
           <text x={VB / 2} y={VB / 2 - 20} textAnchor="middle"
+            className="serif"
             opacity={paused ? 0.85 : 1}
             style={{
-              fontSize: 220, fontWeight: 500,
+              fontSize: 220, fontWeight: 600,
               fill: paused ? "var(--gold)" : "var(--text-primary)",
-              fontFamily: "monospace",
+              fontVariantNumeric: "tabular-nums",
+              letterSpacing: "-4px",
               transition: "opacity 0.3s, fill 0.3s",
             }}>
             {fmtTime(dialSecs)}
@@ -138,7 +154,7 @@ export default function FullscreenDial({
             style={{
               fontSize: 50,
               fill: paused ? "var(--color-text-warning)" : "var(--text-secondary)",
-              letterSpacing: "8px",
+              letterSpacing: "6px",
               textTransform: "uppercase",
               fontWeight: paused ? 600 : 400,
             }}>

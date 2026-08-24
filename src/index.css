@@ -665,6 +665,7 @@ select:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .pop-in { animation: none; }
   .streak-glow { animation: none; box-shadow: 0 0 8px 0 var(--glow, transparent); }
+  .dial-breath { animation: none; }
 }
 
 /* Soft tile hover used on stat tiles, prayer chips, etc. */
