@@ -375,28 +375,28 @@ export default function GoalDetail({ selected, goBack }) {
           <div style={{ ...S.card, marginBottom: 14 }}>
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div>
-                <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Title</label>
+                <label className="field-label">Title</label>
                 <input value={goalDraft.title} onChange={(e) => setGoalDraft((d) => ({ ...d, title: e.target.value }))} />
               </div>
               <div>
-                <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Timeframe</label>
+                <label className="field-label">Timeframe</label>
                 <TypeToggle value={goalDraft.type} onChange={(v) => setGoalDraft((d) => ({ ...d, type: v }))} />
               </div>
               <div>
-                <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Category</label>
+                <label className="field-label">Category</label>
                 <CategoryTiles value={goalDraft.category} onChange={(v) => setGoalDraft((d) => ({ ...d, category: v }))} />
               </div>
               <div>
-                <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Due date</label>
+                <label className="field-label">Due date</label>
                 <DueChips value={goalDraft.due} onChange={(v) => setGoalDraft((d) => ({ ...d, due: v }))} />
               </div>
               <div>
-                <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Niyyah / Intention</label>
+                <label className="field-label">Niyyah / Intention</label>
                 <input value={goalDraft.intention} onChange={(e) => setGoalDraft((d) => ({ ...d, intention: e.target.value }))} />
                 <NiyyahChips onPick={(v) => setGoalDraft((d) => ({ ...d, intention: v }))} />
               </div>
               <div>
-                <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Notes</label>
+                <label className="field-label">Notes</label>
                 <textarea rows={2} value={goalDraft.notes} onChange={(e) => setGoalDraft((d) => ({ ...d, notes: e.target.value }))} />
               </div>
               <div style={{ display: "flex", gap: 8 }}>

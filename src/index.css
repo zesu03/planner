@@ -308,6 +308,58 @@ select:focus-visible {
 .btn-primary:active { transform: translateY(0); box-shadow: 0 4px 12px color-mix(in srgb, var(--gold) 18%, transparent); }
 .btn-primary:disabled { background: color-mix(in srgb, var(--gold) 35%, transparent); border-color: color-mix(in srgb, var(--gold) 35%, transparent); box-shadow: none; transform: none; cursor: not-allowed; }
 
+/* ── Chip ────────────────────────────────────────────────────────────────
+   The canonical pill toggle, shared by the goal-form pickers (category, due,
+   niyyah) via <Chip>. One active treatment everywhere — tinted background,
+   accent border, primary text, semibold — so the five ad-hoc variants stop
+   drifting. `--chip-accent` (set inline) tints per context: the gold primary
+   by default, or a category colour for CategoryTiles. */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: inherit;
+  font-size: var(--font-size-base);
+  font-weight: var(--fw-regular);
+  line-height: 1.2;
+  padding: 6px 13px;
+  border-radius: 99px;
+  background: var(--color-background-secondary);
+  border: 0.5px solid var(--color-border-tertiary);
+  color: var(--text-secondary);
+  cursor: pointer;
+  box-shadow: none;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.chip:hover { border-color: var(--chip-accent, var(--gold)); color: var(--text-primary); }
+.chip:disabled { opacity: 0.4; cursor: not-allowed; }
+.chip--active {
+  background: color-mix(in srgb, var(--chip-accent, var(--gold)) 16%, transparent);
+  border-color: color-mix(in srgb, var(--chip-accent, var(--gold)) 55%, transparent);
+  color: var(--text-primary);
+  font-weight: var(--fw-semibold);
+}
+
+/* Form field label — replaces the inline label style object that was
+   copy-pasted 12× across GoalAdd + GoalDetail's edit panel. */
+.field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: var(--font-size-base);
+  color: var(--text-secondary);
+}
+
+/* Goal card hover — replaces the JS onMouseEnter/Leave/Focus style mutation
+   in GoalCard. `--gc-accent` (the category colour) is set inline; the lift +
+   tinted border/shadow live here so devtools can inspect the hover state and
+   rapid mouse movement can't strand a half-applied style. */
+.goal-card { transition: border-color 0.15s ease, transform 0.12s ease, box-shadow 0.18s ease; }
+.goal-card:hover, .goal-card:focus-visible {
+  border-color: color-mix(in srgb, var(--gc-accent, var(--gold)) 60%, transparent);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--gc-accent, var(--gold)) 14%, transparent);
+}
+
 /* Arabic typography — tuned for reading Quranic verse and du'a. */
 .arabic {
   font-family: "Amiri", "Scheherazade New", serif;

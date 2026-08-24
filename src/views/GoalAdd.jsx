@@ -63,7 +63,7 @@ export default function GoalAdd({ form, setForm, addGoal }) {
         <h3 style={{ margin: "0 0 16px", fontSize: 20, fontWeight: 600 }}>New goal</h3>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
-            <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Goal title</label>
+            <label className="field-label">Goal title</label>
             <input value={form.title}
               onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
               placeholder="What do you want to achieve?"
@@ -72,17 +72,17 @@ export default function GoalAdd({ form, setForm, addGoal }) {
           </div>
 
           <div>
-            <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Timeframe</label>
+            <label className="field-label">Timeframe</label>
             <TypeToggle value={form.type} onChange={(v) => setForm((f) => ({ ...f, type: v }))} />
           </div>
 
           <div>
-            <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Category</label>
+            <label className="field-label">Category</label>
             <CategoryTiles value={form.category} onChange={(v) => setForm((f) => ({ ...f, category: v }))} />
           </div>
 
           <div>
-            <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Due date</label>
+            <label className="field-label">Due date</label>
             <DueChips value={form.due} onChange={(v) => setForm((f) => ({ ...f, due: v }))} />
             {tooSoon && (
               <div style={{ marginTop: 6, fontSize: 12, color: "var(--color-text-warning)" }}>
@@ -97,7 +97,7 @@ export default function GoalAdd({ form, setForm, addGoal }) {
           </div>
 
           <div>
-            <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Niyyah / Intention</label>
+            <label className="field-label">Niyyah / Intention</label>
             <input value={form.intention}
               onChange={(e) => setForm((f) => ({ ...f, intention: e.target.value }))}
               placeholder="Why are you doing this? (for Allah's pleasure…)"
@@ -106,7 +106,7 @@ export default function GoalAdd({ form, setForm, addGoal }) {
           </div>
 
           <div>
-            <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Notes</label>
+            <label className="field-label">Notes</label>
             <textarea value={form.notes}
               onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
               rows={2}

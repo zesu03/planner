@@ -1,5 +1,5 @@
 import { INTENTIONS } from "../../lib/constants";
-import { goldA } from "../../lib/styles";
+import Chip from "../Chip";
 
 // Three tap-to-fill chips drawn from the canonical INTENTIONS list. Lets the
 // user populate the Niyyah field without typing — also nudges towards a
@@ -8,22 +8,14 @@ export default function NiyyahChips({ onPick }) {
   return (
     <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
       {INTENTIONS.slice(0, 3).map((i, idx) => (
-        <button key={idx} type="button" onClick={() => onPick(i)}
-          style={{
-            fontSize: 12,
-            padding: "4px 10px",
-            borderRadius: 99,
-            background: "var(--color-background-secondary)",
-            border: `0.5px solid ${goldA(20)}`,
-            color: "var(--text-secondary)",
-            cursor: "pointer",
-            maxWidth: "100%",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-          }}>
+        <Chip
+          key={idx}
+          onClick={() => onPick(i)}
+          title={i}
+          style={{ display: "inline-block", fontSize: 12, padding: "4px 10px", maxWidth: "100%", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}
+        >
           {i.length > 40 ? i.slice(0, 40) + "…" : i}
-        </button>
+        </Chip>
       ))}
     </div>
   );

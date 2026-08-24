@@ -56,28 +56,16 @@ export default function GoalCard({ g, lastActivityDay, onSelect }) {
       tabIndex={0}
       aria-label={`Goal: ${g.title}, ${p}% complete, ${statusText}`}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect?.(); } }}
-      className="tap-card"
+      className="tap-card goal-card"
       style={{
         ...S.card,
         position: "relative",
         paddingLeft: 24,
         cursor: "pointer",
-        transition: "border-color 0.15s, transform 0.12s, box-shadow 0.18s",
         opacity: done ? 0.78 : 1,
         overflow: "hidden",
+        "--gc-accent": catColor,
       }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = catColor + "99";
-        e.currentTarget.style.transform = "translateY(-1px)";
-        e.currentTarget.style.boxShadow = `0 8px 24px ${catColor}22`;
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = "var(--color-border-tertiary)";
-        e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.boxShadow = "none";
-      }}
-      onFocus={(e) => { e.currentTarget.style.borderColor = catColor + "99"; }}
-      onBlur={(e) => { e.currentTarget.style.borderColor = "var(--color-border-tertiary)"; }}
     >
       {/* category accent edge */}
       <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: catColor, opacity: done ? 0.5 : 1 }} />
