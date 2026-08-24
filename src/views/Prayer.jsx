@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PRAYERS, PRAYER_COLORS, VOLUNTARY_PRAYERS } from "../lib/constants";
 import { PrayerIcon, Icon } from "../components/icons";
-import { localDateStr } from "../lib/dates";
+import { localDateStr, addDaysToStr } from "../lib/dates";
 import QazaLedger from "../components/QazaLedger";
+import { QAZA_PRAYERS } from "../lib/qaza";
 import SectionLabel from "../components/SectionLabel";
 import { currentPrayerWindow, prayerDisplayName } from "../lib/prayer";
 import { S } from "../lib/styles";
@@ -89,14 +90,42 @@ export default function Prayer({
       setTimeout(() => setBurstKey((k) => (k === p ? null : k)), 650);
     }
   }
+
+  // ── Rail summaries ───────────────────────────────────────────────────
+  // The right-hand rail shows compact read-outs; the full, interactive
+  // ledger + 7-day tracker live in the Accountability section below. The
+  // "Manage make-ups" button smooth-scrolls the main column down to it.
+  const acctRef = useRef(null);
+  const jumpToQaza = () =>
+    acctRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+
+  const FARD = QAZA_PRAYERS;
+  const last30 = Array.from({ length: 30 }).map((_, i) => {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    return localDateStr(d);
+  });
+  let doneCells = 0;
+  for (const p of FARD) for (const d of last30) if ((prayerLog[p] || []).includes(d)) doneCells++;
+  const healthPct = Math.round((doneCells / (FARD.length * 30)) * 100);
+  const bestStreak = FARD
+    .map((p) => ({ p, s: prayerStreak ? prayerStreak(p) : 0 }))
+    .reduce((a, b) => (b.s > a.s ? b : a), { p: null, s: 0 });
+
+  const owedMap = qazaOwed || {};
+  const totalOwed = QAZA_PRAYERS.reduce((s, p) => s + (owedMap[p] || 0), 0);
+  const totalMadeUp = QAZA_PRAYERS.reduce((s, p) => s + (qaza?.paidTotal?.[p] || 0), 0);
+  const qTarget = Math.max(1, qazaDailyTarget || 5);
+  const qClearLabel = totalOwed > 0
+    ? new Date(`${addDaysToStr(localDateStr(), Math.ceil(totalOwed / qTarget))}T12:00:00Z`)
+        .toLocaleDateString("en-GB", { month: "short", year: "numeric", timeZone: "UTC" })
+    : null;
+
+  // Uppercase eyebrow used on rail cards.
+  const railK = { fontSize: 11, letterSpacing: "0.08em", textTransform: "uppercase", color: "var(--text-muted)", fontWeight: 600, marginBottom: 8 };
+
   return (
     <div className="view-content">
-      {hijriDate && (
-        <div style={{ textAlign: "center", fontSize: 15, color: "var(--gold)", fontWeight: 500, marginBottom: 14 }}>
-          {hijriDate}
-        </div>
-      )}
-
       {showCityForm && (
         <div style={{ ...S.card, marginBottom: 16 }}>
           <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 14 }}>
@@ -144,10 +173,12 @@ export default function Prayer({
 
       {prayerTimes && !editingCity && (
         <div>
+          <div className="prayer-console">
+          <div className="prayer-console-main">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
             <div>
               <div style={{ fontSize: 15, fontWeight: 500 }}>{prayerCity}</div>
-              <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>Today's prayer times</div>
+              <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{hijriDate || "Today's prayer times"}</div>
             </div>
             <button onClick={() => setEditingCity(true)} style={{ fontSize: 14, color: "var(--text-secondary)" }}>
               Change city
@@ -281,6 +312,49 @@ export default function Prayer({
               );
             })}
           </div>
+          </div>{/* /prayer-console-main */}
+
+          <div className="prayer-console-rail">
+          {/* 30-day salah completion across the five fard prayers. */}
+          <div style={S.card}>
+            <div style={railK}>Prayer health · 30 days</div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+              <span className="serif" style={{ fontSize: 26, fontWeight: 600 }}>{healthPct}%</span>
+              <span style={{ fontSize: 13, color: "var(--text-muted)" }}>prayed</span>
+            </div>
+            <div style={{ height: 8, borderRadius: 99, background: "var(--bg-primary)", overflow: "hidden", marginTop: 8 }}>
+              <div style={{ height: "100%", width: `${healthPct}%`, background: "var(--gold)", borderRadius: 99 }} />
+            </div>
+            <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 10 }}>
+              {bestStreak.s > 0
+                ? (<><Icon name="flame" size={12} style={{ verticalAlign: "-2px", color: "var(--gold)" }} /> {bestStreak.s}-day {bestStreak.p} streak</>)
+                : "Mark today's prayers to start a streak"}
+            </div>
+          </div>
+
+          {/* Compact qaza read-out; the full ledger lives in Accountability below. */}
+          <div style={S.card}>
+            <div style={railK}>Qaza ledger</div>
+            {totalOwed > 0 ? (
+              <>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                  <span className="serif" style={{ fontSize: 26, fontWeight: 600, color: "var(--noor)" }}>{totalOwed.toLocaleString()}</span>
+                  <span style={{ fontSize: 13, color: "var(--text-muted)" }}>prayers owed</span>
+                </div>
+                <div style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 6, lineHeight: 1.5 }}>
+                  {totalMadeUp > 0 ? `${totalMadeUp.toLocaleString()} made up · ` : ""}at {qTarget}/day → cleared ~{qClearLabel}
+                </div>
+              </>
+            ) : (
+              <div style={{ fontSize: 15, fontWeight: 600, color: "var(--color-text-success)" }}>
+                {totalMadeUp > 0 ? "All caught up — alhamdulillah" : "No qaza tracked yet"}
+              </div>
+            )}
+            <button onClick={jumpToQaza}
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 10, padding: 0, background: "none", border: "none", color: "var(--noor)", fontSize: 12.5, fontWeight: 600, cursor: "pointer" }}>
+              Manage make-ups <Icon name="arrow-down" size={13} />
+            </button>
+          </div>
 
           {/* Voluntary night prayer (Tahajjud). Nafl — never enters qaza
               and never counts towards Prayer Health. Shows the start of the
@@ -298,7 +372,7 @@ export default function Prayer({
             });
             const todayKey = localDateStr();
             return (
-              <div key={vp} style={{ ...S.card, marginBottom: 20, position: "relative", overflow: "hidden" }}>
+              <div key={vp} style={{ ...S.card, position: "relative", overflow: "hidden" }}>
                 <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: color, opacity: done ? 1 : 0.55 }} />
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, gap: 10, flexWrap: "wrap", paddingLeft: 8 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
@@ -370,7 +444,16 @@ export default function Prayer({
             );
           })}
 
+          <RemindersPanel
+            notifications={notifications}
+            updateNotifications={updateNotifications}
+          />
+          </div>{/* /prayer-console-rail */}
+          </div>{/* /prayer-console */}
+
+          <div ref={acctRef}>
           <SectionLabel>Accountability</SectionLabel>
+          <div className="prayer-acct">
           <QazaLedger
             qaza={qaza}
             qazaOwed={qazaOwed}
@@ -465,11 +548,8 @@ export default function Prayer({
               </table>
             </div>
           </div>
-
-          <RemindersPanel
-            notifications={notifications}
-            updateNotifications={updateNotifications}
-          />
+          </div>{/* /prayer-acct */}
+          </div>{/* /accountability */}
         </div>
       )}
     </div>

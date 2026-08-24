@@ -11,6 +11,7 @@ import {
   Flame, Repeat, Search, MapPin, Bell, Trophy, Sprout, Pencil,
   Maximize2, Feather, NotebookPen, Sparkles, HandHeart, Mail, AlertTriangle,
   TrendingUp, BookMarked, CheckCircle2, Clock, Plus, CalendarDays, LogOut,
+  ArrowDown,
 } from "lucide-react";
 
 // Prayer name → time-of-day icon.
@@ -116,6 +117,7 @@ const ICON = {
   plus: Plus,            // add action
   calendar: CalendarDays,// excused days
   logout: LogOut,        // sign out
+  "arrow-down": ArrowDown, // jump-to-section
 };
 
 export function Icon({ name, size = 16, strokeWidth = 1.9, style, className }) {
