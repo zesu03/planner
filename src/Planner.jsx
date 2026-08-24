@@ -28,7 +28,7 @@ import CelebrationToast from "./components/CelebrationToast";
 import ConfirmDialog from "./components/ConfirmDialog";
 import Onboarding from "./components/Onboarding";
 import { GoalDetailProvider } from "./contexts/GoalDetailContext";
-import { TabIcon } from "./components/icons";
+import { TabIcon, BrandMark } from "./components/icons";
 
 // View components (one per tab).
 // Views are code-split (Phase 3 / J): only the active tab's chunk loads on
@@ -54,6 +54,17 @@ function ViewFallback() {
     </div>
   );
 }
+
+// Primary navigation — shared by the desktop sidebar and the mobile/tablet
+// tab bar so the two stay in lockstep.
+const NAV_ITEMS = [
+  { v: "dashboard", label: "Dashboard" },
+  { v: "list", label: "Goals" },
+  { v: "prayer", label: "Prayer" },
+  { v: "pomodoro", label: "Focus" },
+  { v: "muhasaba", label: "Muhasaba" },
+  { v: "stats", label: "Stats" },
+];
 
 // ── main component ─────────────────────────────────────────────────────────
 export default function Planner({ user }) {
@@ -915,6 +926,33 @@ export default function Planner({ user }) {
         onDismiss={dismissOnboarding}
       />
 
+      {/* App shell — at ≥1024px this is a 2-col grid: a sticky sidebar
+          (brand + vertical nav) + the main column. Below that the sidebar is
+          hidden and the .tabbar takes over (top on tablet, fixed-bottom on
+          phone). See the .app-shell rules in index.css. */}
+      <div className="app-shell">
+        <aside className="app-sidebar">
+          <div className="sidebar-brand">
+            <span style={{ display: "flex", color: "var(--gold)" }}><BrandMark size={24} /></span>
+            <span>Aakhirah</span>
+          </div>
+          <nav aria-label="Primary">
+            {NAV_ITEMS.map(({ v, label }) => {
+              const active = view === v;
+              return (
+                <button key={v} type="button"
+                  className={`sidebar-item${active ? " sidebar-item--active" : ""}`}
+                  aria-current={active ? "page" : undefined}
+                  onClick={() => setView(v)}>
+                  <span style={{ display: "flex" }} aria-hidden="true"><TabIcon name={v} size={19} /></span>
+                  <span>{label}</span>
+                </button>
+              );
+            })}
+          </nav>
+        </aside>
+
+        <div className="app-main">
       {/* header — styled via .app-header-* in index.css so the mobile
           media query can compact it (drop the overline, shrink the
           greeting) without fighting inline styles. */}
@@ -960,8 +998,7 @@ export default function Planner({ user }) {
           mobile via the .tabbar media query in index.css. Same markup,
           different layout per breakpoint. */}
       <nav className="tabbar" aria-label="Primary">
-        {["dashboard","list","prayer","pomodoro","muhasaba","stats"].map((v)=>{
-          const labels = { dashboard:"Dashboard", list:"Goals", prayer:"Prayer", pomodoro:"Focus", muhasaba:"Muhasaba", stats:"Stats" };
+        {NAV_ITEMS.map(({ v, label })=>{
           const active = view === v;
           return (
             <button key={v}
@@ -970,7 +1007,7 @@ export default function Planner({ user }) {
               aria-current={active ? "page" : undefined}
               onClick={()=>setView(v)}>
               <span className="tab-btn-icon" aria-hidden="true"><TabIcon name={v} size={20} /></span>
-              <span className="tab-btn-label">{labels[v]}</span>
+              <span className="tab-btn-label">{label}</span>
             </button>
           );
         })}
@@ -1166,6 +1203,8 @@ export default function Planner({ user }) {
       )}
 
       </Suspense>
+        </div>{/* .app-main */}
+      </div>{/* .app-shell */}
 
       <ConfirmDialog
         open={!!confirmState}

@@ -859,3 +859,70 @@ select:focus-visible {
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--gold) 20%, transparent); border-radius: 4px; }
+
+/* ── Desktop app shell (≥1024px) ─────────────────────────────────────────
+   A sticky left sidebar (brand + vertical nav) beside the main content
+   column. Below 1024px the sidebar is hidden and the .tabbar takes over
+   (top on tablet 641–1023px, fixed-bottom on phones ≤640px), so the
+   mobile/tablet layouts are completely unchanged — the shell is additive.
+   iPad landscape (≥1024) gets the sidebar; iPad portrait (768–834) keeps
+   the top-tab layout. */
+.app-sidebar { display: none; }
+@media (min-width: 1024px) {
+  .app-shell {
+    display: grid;
+    grid-template-columns: 236px minmax(0, 1fr);
+    gap: 36px;
+    align-items: start;
+  }
+  .app-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    position: sticky;
+    top: 56px;
+    align-self: start;
+    max-height: calc(100dvh - 72px);
+    overflow-y: auto;
+  }
+  .app-main { min-width: 0; }
+  /* The sidebar replaces the tab bar on desktop. */
+  .tabbar { display: none; }
+}
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 2px 10px 20px;
+}
+.sidebar-brand > span:last-child {
+  font-family: "Fraunces", serif;
+  font-weight: 600;
+  font-size: 19px;
+  color: var(--text-primary);
+}
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 10px 12px;
+  border-radius: 11px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 14.5px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.sidebar-item:hover { background: var(--color-background-secondary); color: var(--text-primary); border: none; }
+.sidebar-item--active {
+  background: color-mix(in srgb, var(--gold) 14%, transparent);
+  color: var(--gold);
+  font-weight: 600;
+}
