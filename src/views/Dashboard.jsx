@@ -209,7 +209,7 @@ export default function Dashboard({
       {/* upcoming goals — overall % folded into the header instead of its
           own card; the row of vanity stat tiles now lives in the Stats tab. */}
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12 }}>
-        <span style={{ fontSize: 16, fontWeight: 500 }}>Upcoming goals</span>
+        <span className="serif" style={{ fontSize: 17, fontWeight: 600 }}>Upcoming goals</span>
         {goals.length > 0 && (
           <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{overallPct}% overall</span>
         )}

@@ -197,7 +197,7 @@ function Section({ n, title, hint, children, accent = "var(--gold)" }) {
         }}>
           Pillar {n}
         </div>
-        <div style={{ fontSize: 16, fontWeight: 500 }}>{title}</div>
+        <div className="serif" style={{ fontSize: 16, fontWeight: 600 }}>{title}</div>
       </div>
       {hint && <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 12 }}>{hint}</div>}
       <div>{children}</div>
@@ -340,7 +340,7 @@ export default function Muhasaba({
             <div style={{ fontSize: 13, color: "var(--gold)", fontWeight: 600, letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: 4 }}>
               محاسبة النفس · Muhasaba
             </div>
-            <div style={{ fontSize: 18, fontWeight: 600, color: "var(--text-primary)" }}>
+            <div className="serif" style={{ fontSize: 20, fontWeight: 600, color: "var(--text-primary)" }}>
               {isToday ? "Tonight's reckoning" : dayLabel}
             </div>
             <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 3, fontStyle: "italic" }}>
@@ -348,7 +348,7 @@ export default function Muhasaba({
             </div>
           </div>
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: 24, fontWeight: 600, color: "var(--gold)" }}>{streak}</div>
+            <div className="serif" style={{ fontSize: 26, fontWeight: 600, color: "var(--gold)" }}>{streak}</div>
             <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>day streak</div>
           </div>
         </div>

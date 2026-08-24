@@ -102,7 +102,7 @@ export default function QazaLedger({
             border: `0.5px solid ${tintA(ACCENT, 30)}`,
           }}>
             <div>
-              <div style={{ fontSize: 34, fontWeight: 700, lineHeight: 1, color: "var(--text-primary)" }}>
+              <div className="serif" style={{ fontSize: 36, fontWeight: 700, lineHeight: 1, color: "var(--text-primary)" }}>
                 {totalOwed.toLocaleString()}
               </div>
               <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 4 }}>
@@ -237,7 +237,7 @@ function QazaRow({ p, owed, paidToday, paidTotalP, onPay, onUndo, onAdjust }) {
             aria-label={`Undo a ${p} qaza made up today`}
             title={paidToday === 0 ? "Nothing made up today to undo" : `Undo a ${p} qaza made up today`}
             style={{ ...roundBtn, opacity: paidToday === 0 ? 0.35 : 1, cursor: paidToday === 0 ? "default" : "pointer" }}>−</button>
-          <button onClick={() => setEditing((e) => !e)}
+          <button className="serif" onClick={() => setEditing((e) => !e)}
             title={`Adjust ${p} by a specific amount`}
             style={{
               minWidth: 40, textAlign: "center", padding: "0 2px",

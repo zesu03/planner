@@ -160,7 +160,7 @@ export default function Prayer({
                 <span style={{ display: "flex", color: due ? accent : "var(--gold)" }}><PrayerIcon name={nextPrayer.name} size={26} /></span>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 13, color: due ? accent : "var(--text-secondary)", fontWeight: due ? 600 : 400 }}>{eyebrow}</div>
-                  <div style={{ fontSize: 21, fontWeight: 500, color: due ? accent : "var(--gold)" }}>{prayerDisplayName(nextPrayer.name, localDateStr())}</div>
+                  <div className="serif" style={{ fontSize: 22, fontWeight: 600, color: due ? accent : "var(--gold)" }}>{prayerDisplayName(nextPrayer.name, localDateStr())}</div>
                   <div style={{ fontSize: 15, color: "var(--text-secondary)" }}>{nextPrayer.time}</div>
                 </div>
                 {due && (

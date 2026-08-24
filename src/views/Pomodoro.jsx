@@ -184,7 +184,7 @@ function TodayStrip({ focusLog, todayMins, streak, goalMins, onEditGoal, style, 
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
           <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>Today</span>
-          <span style={{ fontSize: 22, fontWeight: 600, color: met ? "var(--color-text-success)" : "var(--text-primary)", fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+          <span className="serif" style={{ fontSize: 22, fontWeight: 600, color: met ? "var(--color-text-success)" : "var(--text-primary)", fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
             {fmtMins(todayMins)}
           </span>
           <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
@@ -509,6 +509,7 @@ export default function Pomodoro({
                     style={{ transition: "stroke-dashoffset 0.5s, opacity 0.3s" }} />
                   {!editingFocus && (
                     <text x={DIAL / 2} y={DIAL / 2 - 6} textAnchor="middle"
+                      className="serif"
                       onClick={canEditDial ? enterDialEdit : undefined}
                       opacity={paused ? 0.85 : 1}
                       style={{

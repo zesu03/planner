@@ -60,7 +60,7 @@ export default function GoalAdd({ form, setForm, addGoal }) {
       )}
 
       <div style={S.card}>
-        <h3 style={{ margin: "0 0 16px", fontSize: 18, fontWeight: 500 }}>New goal</h3>
+        <h3 style={{ margin: "0 0 16px", fontSize: 20, fontWeight: 600 }}>New goal</h3>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
             <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Goal title</label>

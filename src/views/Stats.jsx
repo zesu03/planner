@@ -45,7 +45,7 @@ function CollapsibleSection({ title, icon, right, accent = "var(--gold)", defaul
               display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15,
             }}>{icon}</span>
           )}
-          {title}
+          <span className="serif">{title}</span>
         </span>
         {right && (
           <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 400, whiteSpace: "nowrap" }}>{right}</span>
@@ -76,7 +76,7 @@ function SectionHeader({ icon, title, accent = "var(--gold)", right }) {
             display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15,
           }}>{icon}</span>
         )}
-        <span style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)" }}>{title}</span>
+        <span className="serif" style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>{title}</span>
       </div>
       {right && <span style={{ fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{right}</span>}
     </div>
@@ -728,7 +728,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                     <div>
-                      <div style={{ fontSize: 22, fontWeight: 600, color, lineHeight: 1 }}>{ratePct}%</div>
+                      <div className="serif" style={{ fontSize: 22, fontWeight: 600, color, lineHeight: 1 }}>{ratePct}%</div>
                       <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>{v.count} of {v.days} days</div>
                     </div>
                     <div style={{ textAlign: "right" }}>

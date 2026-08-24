@@ -318,8 +318,8 @@ export default function GoalDetail({ selected, goBack }) {
           <div style={{ flex: 1 }}>
             <h3 style={{
               margin: "0 0 6px",
-              fontSize: 18,
-              fontWeight: 500,
+              fontSize: 19,
+              fontWeight: 600,
               textDecoration: done ? "line-through" : "none",
               textDecorationColor: done ? "var(--text-muted)" : "transparent",
             }}>
@@ -426,7 +426,7 @@ export default function GoalDetail({ selected, goBack }) {
           ].map(([l, v, c]) => (
             <div key={l} style={{ background: "var(--color-background-secondary)", borderRadius: "var(--border-radius-md)", padding: "12px 14px" }}>
               <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 4 }}>{l}</div>
-              <div style={{ fontSize: 22, fontWeight: 500, color: c }}>{v}</div>
+              <div className="serif" style={{ fontSize: 22, fontWeight: 600, color: c }}>{v}</div>
             </div>
           ))}
         </div>

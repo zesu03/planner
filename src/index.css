@@ -222,6 +222,13 @@ h1, h2, h3 {
   letter-spacing: 0.2px;
 }
 
+/* Fraunces display utility. Most "headings" in this app are styled <div>/
+   <span> (not semantic h-tags), so the rule above never reached them. Apply
+   `.serif` to the editorial moments — view/section titles, card titles, and
+   large stat numbers — to commit the brand serif. Body text stays Space
+   Grotesk; don't put this on paragraphs, labels, or eyebrows. */
+.serif { font-family: "Fraunces", Georgia, serif; }
+
 input, textarea, select {
   background: var(--input-bg);
   border: 0.5px solid var(--color-border-secondary);

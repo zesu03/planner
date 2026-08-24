@@ -83,6 +83,7 @@ export default function GoalCard({ g, lastActivityDay, onSelect }) {
       <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 4, background: catColor, opacity: done ? 0.5 : 1 }} />
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 9 }}>
         <span
+          className="serif"
           style={{
             flex: 1,
             fontWeight: 600,
