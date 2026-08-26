@@ -17,6 +17,7 @@ const h = vi.hoisted(() => ({
   muhasabaCbs: [],
   focusCbs: [],
   goalsCbs: [],
+  snapshotOpts: [], // { seg: string, opts } — the options arg each onSnapshot was called with
   writes: [], // { op: "set"|"delete", segs: string[], data?, opts? }
 }));
 
@@ -25,8 +26,12 @@ vi.mock("./firebase", () => ({ db: {} }));
 vi.mock("firebase/firestore", () => ({
   doc: (_db, ...segs) => ({ __type: "doc", segs }),
   collection: (_db, ...segs) => ({ __type: "collection", segs }),
-  onSnapshot: (ref, cb) => {
+  onSnapshot: (ref, optsOrCb, maybeCb) => {
+    // Mirror the real overload: onSnapshot(ref, cb) OR onSnapshot(ref, options, cb).
+    const cb = typeof optsOrCb === "function" ? optsOrCb : maybeCb;
+    const opts = typeof optsOrCb === "function" ? undefined : optsOrCb;
     const last = ref.segs[ref.segs.length - 1];
+    h.snapshotOpts.push({ seg: ref.__type === "doc" ? "doc" : last, opts });
     if (ref.__type === "doc") h.docCbs.push(cb);
     else if (last === "muhasaba") h.muhasabaCbs.push(cb);
     else if (last === "focusLog") h.focusCbs.push(cb);
@@ -84,6 +89,7 @@ beforeEach(() => {
   h.muhasabaCbs.length = 0;
   h.focusCbs.length = 0;
   h.goalsCbs.length = 0;
+  h.snapshotOpts.length = 0;
   h.writes.length = 0;
 });
 afterEach(() => cleanup());
@@ -128,6 +134,42 @@ describe("useUserData — load gate", () => {
     // Once the SERVER snapshot arrives it wins (drops the stale edit) and the
     // gate opens; subsequent edits flush normally.
     emitMainDoc({ qaza: { owed: { Fajr: 5 } } }); // fromCache:false (server)
+    act(() => result.current.updateQaza({ owed: { Fajr: 2 } }));
+    await flushDebounce();
+    expect(mainWrites().length).toBeGreaterThan(0);
+    expect(mainWrites().at(-1).data).toEqual({ qaza: { owed: { Fajr: 2 } } });
+  });
+});
+
+// Regression guard for the "can't reach server — saved locally" badge that
+// stuck forever for returning users whose SERVER doc matched their cache. Root
+// cause: onSnapshot suppresses metadata-only changes by default, so the
+// fromCache:true→false transition of an unchanged doc was never delivered and
+// the gate never opened. The fix passes { includeMetadataChanges: true } to
+// every listener; these tests fail loudly if the flag is dropped.
+describe("useUserData — includeMetadataChanges (server-snapshot delivery)", () => {
+  it("subscribes to all four listeners with includeMetadataChanges:true", () => {
+    renderHook(() => useUserData("u1"));
+    for (const seg of ["doc", "muhasaba", "focusLog", "goals"]) {
+      const sub = h.snapshotOpts.find((s) => s.seg === seg);
+      expect(sub, `missing ${seg} subscription`).toBeTruthy();
+      expect(sub.opts, `${seg} listener must opt into metadata changes`)
+        .toEqual({ includeMetadataChanges: true });
+    }
+  });
+
+  it("opens the gate on a metadata-only server snapshot with UNCHANGED content", async () => {
+    const { result } = renderHook(() => useUserData("u1"));
+    // Returning user: cached snapshot first (gate stays shut) …
+    emitMainDoc({ qaza: { owed: { Fajr: 3 } } }, { exists: true, fromCache: true });
+    act(() => result.current.updateQaza({ owed: { Fajr: 1 } }));
+    await flushDebounce();
+    expect(mainWrites()).toHaveLength(0);
+
+    // … then the listener syncs with the backend and fromCache flips to false
+    // with IDENTICAL content — the metadata-only event that used to be dropped.
+    // With includeMetadataChanges this is delivered and MUST open the gate.
+    emitMainDoc({ qaza: { owed: { Fajr: 3 } } }, { exists: true, fromCache: false });
     act(() => result.current.updateQaza({ owed: { Fajr: 2 } }));
     await flushDebounce();
     expect(mainWrites().length).toBeGreaterThan(0);

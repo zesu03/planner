@@ -325,7 +325,23 @@ export function useUserData(userId) {
   useEffect(() => {
     if (!userId) return;
     const ref = doc(db, "users", userId);
-    const unsub = onSnapshot(ref, (snap) => {
+    // includeMetadataChanges is REQUIRED, not cosmetic. The write gate opens
+    // only on a SERVER snapshot (metadata.fromCache === false). By default
+    // onSnapshot suppresses metadata-only changes — so for a returning user
+    // whose SERVER doc is byte-identical to the IndexedDB cache, the sequence
+    // is: (1) cached snapshot fires fromCache:true, then (2) the listener syncs
+    // with the backend and fromCache flips true→false with NO content change —
+    // a metadata-only event that, without this flag, is NEVER delivered. The
+    // gate would then never open: `loaded` stays false forever, the server
+    // watchdog trips the "can't reach server — saved locally" badge (even
+    // though sync is perfectly healthy), and every gated write (qaza, and the
+    // subcollection flushes below) silently no-ops for the whole session. This
+    // is the same root cause behind the original prayer-mark data loss (back
+    // when prayerLog was gated). With the flag, the cache→server transition and
+    // write acks are delivered, so the gate reliably opens. Handler is
+    // idempotent (dirty-checked applyField, one-time migration guards), so the
+    // extra metadata events are harmless.
+    const unsub = onSnapshot(ref, { includeMetadataChanges: true }, (snap) => {
       const exists = snap.exists();
       const data = exists ? snap.data() : {};
       // Is this the authoritative SERVER snapshot (not a cached one)? Gates the
@@ -477,7 +493,12 @@ export function useUserData(userId) {
   useEffect(() => {
     if (!userId) return;
     const col = collection(db, "users", userId, "muhasaba");
-    const unsub = onSnapshot(col, (snap) => {
+    // includeMetadataChanges required for the same reason as the main doc: the
+    // fromCache:true→false transition of an unchanged collection is a
+    // metadata-only event that's otherwise dropped, so muhasabaLoadedRef would
+    // never open for a returning user and the day-doc flushes would silently
+    // no-op. See the main-doc listener above.
+    const unsub = onSnapshot(col, { includeMetadataChanges: true }, (snap) => {
       const serverMap = {};
       snap.forEach((d) => { serverMap[d.id] = d.data(); });
       const merged = reconcileMuhasabaSnapshot(
@@ -504,7 +525,10 @@ export function useUserData(userId) {
   useEffect(() => {
     if (!userId) return;
     const col = collection(db, "users", userId, "focusLog");
-    const unsub = onSnapshot(col, (snap) => {
+    // includeMetadataChanges required — see the main-doc listener. Without it
+    // focusLoadedRef never opens for a returning user whose focusLog is
+    // unchanged, and new sessions silently fail to flush for the session.
+    const unsub = onSnapshot(col, { includeMetadataChanges: true }, (snap) => {
       const serverEntries = [];
       snap.forEach((d) => { serverEntries.push(d.data()); });
       const arr = reconcileFocusSnapshot(
@@ -528,7 +552,10 @@ export function useUserData(userId) {
   useEffect(() => {
     if (!userId) return;
     const col = collection(db, "users", userId, "goals");
-    const unsub = onSnapshot(col, (snap) => {
+    // includeMetadataChanges required — see the main-doc listener. Without it
+    // goalsLoadedRef never opens for a returning user whose goals are unchanged,
+    // and goal edits silently fail to flush for the session.
+    const unsub = onSnapshot(col, { includeMetadataChanges: true }, (snap) => {
       const serverEntries = [];
       snap.forEach((d) => { serverEntries.push(d.data()); });
       const arr = reconcileGoalsSnapshot(
