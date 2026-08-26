@@ -118,6 +118,14 @@ export function useUserData(userId) {
   // — the exact stalled-Listen-channel condition that silently dropped writes.
   const [online, setOnline] = useState(() => (typeof navigator !== "undefined" ? navigator.onLine !== false : true));
   const [serverTimedOut, setServerTimedOut] = useState(false);
+  // Last onSnapshot listen error, if any. onSnapshot has an optional error
+  // callback; without it a rejected Listen stream (permission-denied, an
+  // expired auth token, a terminal transport failure) is swallowed SILENTLY —
+  // no snapshot ever arrives, the gate never opens, and the app is stuck on
+  // cache with only the generic "can't reach server" badge and zero signal in
+  // the console. We capture it here so it's visible (console + monitoring) and
+  // so the badge can distinguish a real error from a slow-but-fine server.
+  const [listenError, setListenError] = useState(null);
   const inflightWritesRef = useRef(0);
   const latestGoalsRef = useRef([]);
   const latestPrayerRef = useRef({});
@@ -464,6 +472,12 @@ export function useUserData(userId) {
         setLoaded(true);
       }
       setLoading(false);
+    }, (err) => {
+      // Listen stream rejected/errored. Surface it — a swallowed error here is
+      // exactly the stuck-on-cache-forever failure the badge can't explain.
+      console.error("[firestore] user-doc listen error:", err?.code, err?.message, err);
+      setListenError({ scope: "user-doc", code: err?.code, message: err?.message });
+      captureError(err, { scope: "firestore-listen", collection: "user-doc", uid: userId });
     });
     return () => {
       // Critical: flush BEFORE unsubscribing so the old user's last
@@ -509,6 +523,10 @@ export function useUserData(userId) {
       // Open the write gate only once the server has responded (never on a
       // cached snapshot) — same clobber guard as the main doc.
       if (gateOpenForCollection(snap.metadata.fromCache)) muhasabaLoadedRef.current = true;
+    }, (err) => {
+      console.error("[firestore] muhasaba listen error:", err?.code, err?.message, err);
+      setListenError({ scope: "muhasaba", code: err?.code, message: err?.message });
+      captureError(err, { scope: "firestore-listen", collection: "muhasaba", uid: userId });
     });
     return () => {
       flushMuhasabaNow(false); // persist the old user's pending days before detaching
@@ -537,6 +555,10 @@ export function useUserData(userId) {
       latestFocusRef.current = arr;
       setFocusLog(arr);
       if (gateOpenForCollection(snap.metadata.fromCache)) focusLoadedRef.current = true;
+    }, (err) => {
+      console.error("[firestore] focusLog listen error:", err?.code, err?.message, err);
+      setListenError({ scope: "focusLog", code: err?.code, message: err?.message });
+      captureError(err, { scope: "firestore-listen", collection: "focusLog", uid: userId });
     });
     return () => {
       flushFocusNow(false); // persist the old user's pending entries before detaching
@@ -564,6 +586,10 @@ export function useUserData(userId) {
       latestGoalsRef.current = arr;
       setGoals(arr);
       if (gateOpenForCollection(snap.metadata.fromCache)) goalsLoadedRef.current = true;
+    }, (err) => {
+      console.error("[firestore] goals listen error:", err?.code, err?.message, err);
+      setListenError({ scope: "goals", code: err?.code, message: err?.message });
+      captureError(err, { scope: "firestore-listen", collection: "goals", uid: userId });
     });
     return () => {
       flushGoalsNow(false); // persist the old user's pending goals before detaching
@@ -773,5 +799,5 @@ export function useUserData(userId) {
   // Single source of truth for the header sync indicator (see deriveConnBadge).
   const connBadge = deriveConnBadge({ loading, loaded, online, serverTimedOut, syncState });
 
-  return { goals, prayerLog, focusLog, settings, muhasaba, qaza, savedVerses, notifications, loading, loaded, syncState, online, connBadge, updateGoals, updatePrayerLog, updateFocusLog, updateSettings, updateMuhasaba, updateQaza, updateSavedVerses, updateNotifications };
+  return { goals, prayerLog, focusLog, settings, muhasaba, qaza, savedVerses, notifications, loading, loaded, syncState, online, listenError, connBadge, updateGoals, updatePrayerLog, updateFocusLog, updateSettings, updateMuhasaba, updateQaza, updateSavedVerses, updateNotifications };
 }
