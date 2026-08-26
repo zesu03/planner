@@ -463,16 +463,20 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
     const good = direction === "up_good" || direction === "down_good";
     const bad = direction === "down_bad" || direction === "up_bad";
     const color = good ? "var(--color-text-success)" : bad ? "#c79338" : "var(--text-muted)";
-    const arrow = direction === "up_good" || direction === "up_bad" ? "↑"
+    // Arrow only for signed numeric deltas (+12%, −15m, +1). Word labels
+    // ("new this week", "rising", "×3", "3/7 days") already read as a
+    // direction on their own — an arrow in front of them reads oddly.
+    const arrowDir = direction === "up_good" || direction === "up_bad" ? "↑"
       : direction === "down_good" || direction === "down_bad" ? "↓"
-      : direction === "missing" ? "" : "→";
+      : "";
+    const showArrow = arrowDir && /^[+\-−]/.test(String(deltaLabel || ""));
     return (
       <div className="stat-chip">
         <div className="k">{icon}<span>{label}</span></div>
         <div className="row">
           <span className="v">{value}</span>
           {deltaLabel && (
-            <span className="d" style={{ color }}>{arrow && <span>{arrow} </span>}{deltaLabel}</span>
+            <span className="d" style={{ color }}>{showArrow && <span>{arrowDir} </span>}{deltaLabel}</span>
           )}
         </div>
       </div>
