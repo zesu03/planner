@@ -16,6 +16,38 @@ export default function App() {
       .catch(() => {});
   }, []);
 
+  // Auto-reload the page when a newly deployed service worker takes control.
+  //
+  // Why this is needed: index.html is precached and sw.js does
+  // skipWaiting()+clientsClaim(), so a new deploy's SW activates and claims
+  // this page immediately — BUT the vite-plugin-pwa registerSW.js is bare
+  // (register only, no reload). So the already-loaded page keeps running the
+  // OLD precached bundle until the user happens to reload AFTER the swap. That
+  // is exactly why a fresh deploy can appear to "do nothing" across reloads:
+  // the new SW is in control, but the running page never re-fetches the new
+  // index.html / JS chunks. Reloading on `controllerchange` closes that gap.
+  //
+  // We only reload on a genuine controller SWAP (a previous controller existed
+  // → this is an update), never on the first-ever acquisition (first install /
+  // post-unregister), so a first visit doesn't get a spurious reload. Tracking
+  // the last-seen controller (rather than a mount-time snapshot) also catches
+  // updates that land while a long-lived tab stays open. The `refreshing` guard
+  // prevents a reload loop.
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    let refreshing = false;
+    let lastController = navigator.serviceWorker.controller;
+    const onControllerChange = () => {
+      const hadController = !!lastController;
+      lastController = navigator.serviceWorker.controller;
+      if (refreshing || !hadController) return;
+      refreshing = true;
+      window.location.reload();
+    };
+    navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
+    return () => navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
+  }, []);
+
   return (
     <AuthWrapper>
       {(user) => (
