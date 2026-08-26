@@ -396,7 +396,10 @@ export default function Dashboard({
             />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {savedVerses.map((v) => (
+              {/* Sort newest-first at render. savedVerses now persists via
+                  arrayUnion (server-side append), so array order is no longer
+                  guaranteed newest-first; savedAt (ISO) sorts chronologically. */}
+              {savedVerses.slice().sort((a, b) => (b.savedAt || "").localeCompare(a.savedAt || "")).map((v) => (
                 <div key={v.id} style={{
                   padding: "14px 14px",
                   background: "var(--color-background-secondary)",

@@ -16,14 +16,14 @@ import { newId } from "./lib/ids";
 import { todayStr, localDateStr, daysLeft, addDaysToStr } from "./lib/dates";
 import { isGoalDone, pct } from "./lib/goals";
 import { emptyMuhasabaEntry, isMuhasabaFilled, muhasabaStreak } from "./lib/muhasaba";
-import { reconcileQaza, qazaOwed, payQaza, undoQaza, addQaza, qazaAfterRetroToggle, addExcusedRange, removeExcusedRange, QAZA_PRAYERS } from "./lib/qaza";
+import { reconcileQaza, qazaOwed, payQaza, undoQaza, addQaza, qazaAfterRetroToggle, addExcusedRange, removeExcusedRange, settleWouldSkip, QAZA_PRAYERS } from "./lib/qaza";
 import { nextPrayer as computeNextPrayer, prayerDayFor as computePrayerDayFor } from "./lib/prayer";
 import { dayPhase, prayersToday, focusToday, muhasabaState, yesterdayDua, firstOpenTask, istiqamahStreak, istiqamahActiveToday } from "./lib/daily";
 import { fmtTime, focusStreakDays, STREAK_MILESTONES } from "./lib/focus";
 import { rewardMilestone } from "./lib/feedback";
 import { goldA, S } from "./lib/styles";
 import { attachForegroundHandler, silentTokenRefresh } from "./lib/notifications";
-import { setUser as setMonitoringUser } from "./lib/monitoring";
+import { setUser as setMonitoringUser, captureError } from "./lib/monitoring";
 import { buildReportPayload as buildReportPayloadLib } from "./lib/reportPayload";
 import CelebrationToast from "./components/CelebrationToast";
 import ConfirmDialog from "./components/ConfirmDialog";
@@ -83,7 +83,7 @@ const VIEW_TITLES = {
 
 // ── main component ─────────────────────────────────────────────────────────
 export default function Planner({ user }) {
-  const { goals: goalsFromDb, prayerLog: prayerLogFromDb, focusLog: focusLogFromDb, settings: settingsFromDb, muhasaba: muhasabaFromDb, qaza: qazaFromDb, savedVerses: savedVersesFromDb, notifications: notificationsFromDb, loading, loaded, syncState, updateGoals, updatePrayerLog, updateFocusLog, updateSettings, updateMuhasaba, updateQaza, updateSavedVerses, updateNotifications } = useUserData(user.uid);
+  const { goals: goalsFromDb, prayerLog: prayerLogFromDb, focusLog: focusLogFromDb, settings: settingsFromDb, muhasaba: muhasabaFromDb, qaza: qazaFromDb, savedVerses: savedVersesFromDb, notifications: notificationsFromDb, loading, loaded, connBadge, updateGoals, updatePrayerLog, updateFocusLog, updateSettings, updateMuhasaba, updateQaza, updateSavedVerses, updateNotifications } = useUserData(user.uid);
   const goals = goalsFromDb ?? [];
   const prayerLog = prayerLogFromDb ?? {};
   const focusLog = focusLogFromDb ?? [];
@@ -326,6 +326,9 @@ export default function Planner({ user }) {
     (async () => {
       const res = await silentTokenRefresh();
       if (cancelled || !res?.token) return;
+      // updateNotifications now unions ONLY the added token (arrayUnion), so a
+      // still-valid token is a no-op and this never rewrites the whole
+      // (possibly server-pruned) token list.
       updateNotifications((prev) => {
         const toks = Array.isArray(prev?.fcmTokens) ? prev.fcmTokens : [];
         if (toks.includes(res.token)) return prev; // already registered — no write
@@ -386,6 +389,15 @@ export default function Planner({ user }) {
   // in the steady state.
   useEffect(() => {
     if (!loaded) return;
+    // Surface a stuck ledger: if settle refuses because prayerLog looks stale/
+    // empty while the ledger has history, the makeup count silently freezes —
+    // flag it rather than let it hide (the guard prevents phantom debt, but a
+    // persistent skip means data isn't loading correctly).
+    if (settleWouldSkip(qazaFromDb, prayerLog, todayStr())) {
+      captureError(new Error("qaza settle skipped: empty prayerLog with history"), {
+        scope: "qaza-settle-skip", uid: user.uid,
+      });
+    }
     updateQaza((cur) => reconcileQaza(cur, prayerLog, todayStr()));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, prayerLogFromDb, updateQaza]);
@@ -1067,18 +1079,25 @@ export default function Planner({ user }) {
               </button>
             </div>
           )}
-          {/* Sync status (Phase R1) — surfaces write state so a failed save is
-              never silent. "synced" shows nothing to stay quiet. */}
-          {syncState === "saving" && (
-            <span title="Saving your changes…"
-              style={{fontSize:13,padding:"3px 10px",borderRadius:99,background:"var(--bg-card)",border:"0.5px solid var(--border)",color:"var(--text-secondary)"}}>
-              Saving…
-            </span>
-          )}
-          {syncState === "error" && (
-            <span role="status" aria-live="polite" title="A recent change couldn't be saved to the server. Reloading often clears it; your other data is safe."
-              style={{fontSize:13,padding:"3px 10px",borderRadius:99,background:"rgba(199,90,58,0.15)",border:"0.5px solid rgba(199,90,58,0.5)",color:"#c75a3a",fontWeight:500}}>
-              ⚠ Not saved
+          {/* Connection / sync status — one badge, driven by deriveConnBadge.
+              Surfaces write state AND the "rendered from cache but the server
+              was never reached" gap that used to silently drop edits. null in
+              the healthy steady state (stays quiet). */}
+          {connBadge && (
+            <span role="status" aria-live="polite"
+              title={
+                connBadge.kind === "offline" ? "You're offline. Changes are saved on this device and will sync when you reconnect."
+                : connBadge.kind === "not-synced" ? "Can't reach the server. Your changes are saved on this device and will sync once the connection is restored."
+                : connBadge.kind === "error" ? "A recent change couldn't be saved to the server. Reloading often clears it; your other data is safe."
+                : "Saving your changes…"
+              }
+              style={{
+                fontSize: 13, padding: "3px 10px", borderRadius: 99, fontWeight: connBadge.tone === "muted" ? 400 : 500,
+                background: connBadge.tone === "danger" ? "rgba(199,90,58,0.15)" : connBadge.tone === "warning" ? "rgba(201,168,76,0.15)" : "var(--bg-card)",
+                border: connBadge.tone === "danger" ? "0.5px solid rgba(199,90,58,0.5)" : connBadge.tone === "warning" ? "0.5px solid rgba(201,168,76,0.5)" : "0.5px solid var(--border)",
+                color: connBadge.tone === "danger" ? "#c75a3a" : connBadge.tone === "warning" ? "var(--gold)" : "var(--text-secondary)",
+              }}>
+              {connBadge.kind === "error" ? "⚠ " : ""}{connBadge.text}
             </span>
           )}
           {pomRunning && <span style={{fontSize:14,padding:"3px 10px",borderRadius:99,background:goldA(15),color:"var(--gold)",fontWeight:500}}>● Focus {fmtTime(pomSeconds)}</span>}

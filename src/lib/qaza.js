@@ -47,10 +47,25 @@ export const emptyQaza = () => ({
   excused: [],
 });
 
-// Outstanding makeups per prayer — reads the stored counter (with a zeroed
-// fallback so a legacy/blank ledger is safe to spread).
-export function qazaOwed(qaza) {
+// Raw signed net per prayer (misses − makeups), NOT floored. This is the value
+// every mutator reads and writes, so each decrement is exactly reversible by
+// its inverse. Previously mutators clamped the STORED counter at 0, which
+// destroyed information: a decrement swallowed by the clamp was later "restored"
+// by an unclamped inverse as phantom debt (e.g. pay→retro-mark→undo). Storing a
+// signed net kills that whole drift class.
+export function qazaOwedRaw(qaza) {
   return { ...zeroCounts(), ...(qaza?.owed || {}) };
+}
+
+// Outstanding makeups per prayer for DISPLAY — the signed net floored at 0.
+// Every consumer of "how many do I owe" (Prayer tab, Stats, the AI report
+// payload) routes through here, so a transiently-negative stored net never
+// shows as a negative owed.
+export function qazaOwed(qaza) {
+  const raw = qazaOwedRaw(qaza);
+  const out = zeroCounts();
+  for (const p of QAZA_PRAYERS) out[p] = Math.max(0, raw[p]);
+  return out;
 }
 
 // How many qaza the user marked made-up on `day` (default today), summed
@@ -66,6 +81,27 @@ export function isExcused(day, excused = []) {
   return (excused || []).some((r) => r && r.from <= day && day <= r.to);
 }
 
+// True when prayerLog has no entries for ANY fard prayer. For an established
+// user this only happens on a stale/failed load (the log accumulates and is
+// never cleared) — settling against it would manufacture phantom qaza.
+export function prayerLogIsEmpty(prayerLog) {
+  return QAZA_PRAYERS.every((p) => !((prayerLog || {})[p] || []).length);
+}
+
+// Does the ledger carry real history (owed / paid / excused / made-up)? An
+// established user always does; a brand-new user declaring a backlog does not.
+// Pairs with prayerLogIsEmpty to detect the stale-load signature.
+export function qazaHasHistory(qaza) {
+  if (!qaza) return false;
+  const owed = qazaOwedRaw(qaza);
+  if (QAZA_PRAYERS.some((p) => owed[p] !== 0)) return true;
+  const paidTotal = qaza.paidTotal || {};
+  if (QAZA_PRAYERS.some((p) => (paidTotal[p] || 0) > 0)) return true;
+  if ((qaza.excused || []).length) return true;
+  if (Object.keys(qaza.paidLog || {}).length) return true;
+  return false;
+}
+
 // Materialise missed prayers from (lastSettledDate, yesterday] into `owed`.
 // Pure: returns a new ledger when something settles, otherwise the same
 // reference (so callers can skip a redundant write). Never touches today.
@@ -75,7 +111,15 @@ export function settleQaza(qaza, prayerLog = {}, today = todayStr()) {
   let from = qaza.lastSettledDate ? addDaysToStr(qaza.lastSettledDate, 1) : qaza.startDate;
   if (from < qaza.startDate) from = qaza.startDate;
   if (from > yesterday) return qaza; // nothing new to settle
-  const owed = qazaOwed(qaza);
+  // Defense-in-depth against the IRREVERSIBLE over-accrual: an empty prayerLog
+  // paired with a ledger that has history is the stale/empty-load signature.
+  // Refuse — same reference, and critically DON'T advance lastSettledDate — so
+  // the deferred days settle correctly once trustworthy prayerLog data arrives.
+  // (The caller's `loaded` gate is the first line of defense; this is the
+  // second, in case settle ever runs against a transiently-empty log.) Better
+  // to under-count until data is trustworthy than to manufacture permanent debt.
+  if (prayerLogIsEmpty(prayerLog) && qazaHasHistory(qaza)) return qaza;
+  const owed = qazaOwedRaw(qaza);
   const excused = qaza.excused || [];
   // eachDayBetween is [start, end) — bump end past yesterday to include it.
   for (const day of eachDayBetween(from, addDaysToStr(yesterday, 1))) {
@@ -135,14 +179,36 @@ function normalizePaidTotal(qaza) {
   return changed ? { ...qaza, paidTotal } : qaza;
 }
 
+// Does this ledger carry v2-only fields even if `version` is missing/corrupt?
+// v1 never wrote `lastSettledDate` or `paidTotal` (it used `paid`), so their
+// presence alongside an `owed` map means it's really v2. Guards against a
+// partial/corrupted write that dropped `version` being mis-detected as v1 and
+// having its `owed` silently recomputed (regressed) from prayerLog.
+export function looksLikeV2(qaza) {
+  return !!qaza && (qaza.lastSettledDate != null || qaza.paidTotal != null) && qaza.owed != null;
+}
+
 // Seed-or-migrate-then-settle-then-heal in one idempotent pass. Run on load
 // once the user doc has resolved (an empty prayerLog pre-load would manufacture
 // phantom qaza — the caller must gate on the load flag). Returns the same
 // reference when there's nothing to change, so the effect can skip the write.
 export function reconcileQaza(qaza, prayerLog = {}, today = todayStr()) {
   if (!qaza || !qaza.startDate) return settleQaza(emptyQaza(), prayerLog, today);
-  const q = qaza.version === QAZA_VERSION ? qaza : migrateV1(qaza, prayerLog, today);
+  const q = (qaza.version === QAZA_VERSION || looksLikeV2(qaza)) ? qaza : migrateV1(qaza, prayerLog, today);
   return normalizePaidTotal(settleQaza(q, prayerLog, today));
+}
+
+// True when settleQaza WOULD refuse to settle because of the empty-prayerLog-
+// with-history guard (there ARE days to settle, but the log looks stale). Lets
+// the caller emit a monitoring signal for a stuck ledger without importing
+// monitoring into this pure module.
+export function settleWouldSkip(qaza, prayerLog = {}, today = todayStr()) {
+  if (!qaza?.startDate) return false;
+  const yesterday = addDaysToStr(today, -1);
+  let from = qaza.lastSettledDate ? addDaysToStr(qaza.lastSettledDate, 1) : qaza.startDate;
+  if (from < qaza.startDate) from = qaza.startDate;
+  if (from > yesterday) return false; // nothing to settle anyway
+  return prayerLogIsEmpty(prayerLog) && qazaHasHistory(qaza);
 }
 
 // ── mutations (pure reducers) ──────────────────────────────────────────
@@ -154,8 +220,8 @@ export function reconcileQaza(qaza, prayerLog = {}, today = todayStr()) {
 
 export function payQaza(qaza, prayer, today = todayStr()) {
   if (!QAZA_PRAYERS.includes(prayer)) return qaza;
-  const owed = qazaOwed(qaza);
-  if (owed[prayer] <= 0) return qaza; // nothing to make up
+  const owed = qazaOwedRaw(qaza);
+  if (owed[prayer] <= 0) return qaza; // nothing effectively owed to make up
   owed[prayer] -= 1;
   const paidTotal = { ...zeroCounts(), ...(qaza.paidTotal || {}) };
   paidTotal[prayer] += 1;
@@ -170,7 +236,7 @@ export function undoQaza(qaza, prayer, today = todayStr()) {
   if (!QAZA_PRAYERS.includes(prayer)) return qaza;
   const paidToday = qaza?.paidLog?.[today]?.[prayer] || 0;
   if (paidToday <= 0) return qaza; // can only undo a makeup logged today
-  const owed = qazaOwed(qaza);
+  const owed = qazaOwedRaw(qaza);
   owed[prayer] += 1;
   const paidTotal = { ...zeroCounts(), ...(qaza.paidTotal || {}) };
   paidTotal[prayer] = Math.max(0, paidTotal[prayer] - 1);
@@ -184,12 +250,14 @@ export function undoQaza(qaza, prayer, today = todayStr()) {
 }
 
 // Add N to owed[prayer] — manual "record a miss" and the historical-backlog
-// entry (Phase B). Clamped at 0 so a negative n can't underflow.
+// entry (Phase B). Operates on the signed net (no stored clamp); display floors
+// at 0 via qazaOwed, so a negative n that drives the net below zero shows as 0
+// owed but remains exactly reversible.
 export function addQaza(qaza, prayer, n = 1) {
   if (!QAZA_PRAYERS.includes(prayer) || !Number.isFinite(n) || n === 0) return qaza;
   const base = qaza?.startDate ? qaza : emptyQaza();
-  const owed = qazaOwed(base);
-  owed[prayer] = Math.max(0, owed[prayer] + n);
+  const owed = qazaOwedRaw(base);
+  owed[prayer] = owed[prayer] + n;
   return { ...base, owed };
 }
 
@@ -201,8 +269,8 @@ export function qazaAfterRetroToggle(qaza, prayer, day, willBeMarked) {
   if (!qaza?.startDate || !qaza.lastSettledDate) return qaza;
   if (day < qaza.startDate || day > qaza.lastSettledDate) return qaza;
   if (isExcused(day, qaza.excused)) return qaza;
-  const owed = qazaOwed(qaza);
-  if (willBeMarked) owed[prayer] = Math.max(0, owed[prayer] - 1);
+  const owed = qazaOwedRaw(qaza);
+  if (willBeMarked) owed[prayer] -= 1;
   else owed[prayer] += 1;
   return { ...qaza, owed };
 }
@@ -212,14 +280,14 @@ export function qazaAfterRetroToggle(qaza, prayer, day, willBeMarked) {
 // the outstanding count). Phase C UI; pure so it's testable now.
 export function addExcusedRange(qaza, from, to, reason = "", prayerLog = {}) {
   if (!qaza?.startDate || !from || !to || from > to) return qaza;
-  const owed = qazaOwed(qaza);
+  const owed = qazaOwedRaw(qaza);
   const lo = from < qaza.startDate ? qaza.startDate : from;
   const hi = qaza.lastSettledDate && to > qaza.lastSettledDate ? qaza.lastSettledDate : to;
   if (lo <= hi) {
     for (const day of eachDayBetween(lo, addDaysToStr(hi, 1))) {
       if (isExcused(day, qaza.excused)) continue; // already excused before
       for (const p of QAZA_PRAYERS) {
-        if (!(prayerLog[p] || []).includes(day)) owed[p] = Math.max(0, owed[p] - 1);
+        if (!(prayerLog[p] || []).includes(day)) owed[p] -= 1;
       }
     }
   }
@@ -234,7 +302,7 @@ export function removeExcusedRange(qaza, index, prayerLog = {}) {
   if (index < 0 || index >= excused.length) return qaza;
   const removed = excused[index];
   const remaining = excused.filter((_, i) => i !== index);
-  const owed = qazaOwed(qaza);
+  const owed = qazaOwedRaw(qaza);
   if (qaza.startDate && qaza.lastSettledDate) {
     const lo = removed.from < qaza.startDate ? qaza.startDate : removed.from;
     const hi = removed.to > qaza.lastSettledDate ? qaza.lastSettledDate : removed.to;

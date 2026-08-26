@@ -1,14 +1,39 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { db } from "./firebase";
 import {
-  doc, setDoc, deleteDoc, onSnapshot, collection
+  doc, setDoc, deleteDoc, onSnapshot, collection,
+  arrayUnion, arrayRemove, increment, deleteField,
 } from "firebase/firestore";
 import {
   buildDirtyPayload as buildDirtyPayloadPure,
   shouldAcceptField, gateOpenForDoc, gateOpenForCollection,
   diffMuhasabaDays, reconcileMuhasabaSnapshot, seedMuhasabaMerge,
   diffFocusIds, reconcileFocusSnapshot, stampFocusForMigration, seedFocusMerge,
+  prayerLogDelta, savedVersesDelta, settingsDelta, mapMergeDelta,
+  pickClientOwnedNotifications, deriveConnBadge, dUnion,
 } from "./lib/sync";
+
+// Turn a Firebase-free delta descriptor (see lib/sync.js) into a payload with
+// real FieldValue sentinels. A leaf is tagged `__delta`; any other plain object
+// is a nested map to recurse into. Used by the immediate/ungated delta writes.
+function materialize(node) {
+  if (node && typeof node === "object" && node.__delta) {
+    switch (node.__delta) {
+      case "set": return node.value;
+      case "arrayUnion": return arrayUnion(...node.vals);
+      case "arrayRemove": return arrayRemove(...node.vals);
+      case "increment": return increment(node.n);
+      case "delete": return deleteField();
+      default: return undefined;
+    }
+  }
+  if (node && typeof node === "object" && !Array.isArray(node)) {
+    const out = {};
+    for (const k of Object.keys(node)) out[k] = materialize(node[k]);
+    return out;
+  }
+  return node;
+}
 import { captureError } from "./lib/monitoring";
 import { asArray, asObject } from "./lib/validate";
 
@@ -18,6 +43,13 @@ import { asArray, asObject } from "./lib/validate";
 // flush's IndexedDB write commits. Still long enough to batch a burst of rapid
 // edits (typing, multi-tap) into one write.
 const WRITE_DEBOUNCE_MS = 500;
+
+// How long after the app has rendered (from cache) we wait for a SERVER
+// snapshot before warning the user that their session isn't syncing. Long
+// enough to avoid false "can't reach server" flashes on a slow-but-working
+// link; short enough to surface a genuinely stalled connection (the corporate
+// proxy / blocked Listen channel behind the silent-data-loss incident).
+const SERVER_WATCHDOG_MS = 8000;
 
 // Per-user persistence with debounced writes + flush-on-unload. Storage is a
 // main document at users/{uid} (goals, prayerLog, settings, qaza, savedVerses,
@@ -79,6 +111,12 @@ export function useUserData(userId) {
   // land. inflightRef counts tracked writes so "saving" clears only when all
   // settle. Retry/backoff is R6; R1 just makes the state visible.
   const [syncState, setSyncState] = useState("synced");
+  // Connection state feeding the header badge (deriveConnBadge). `online`
+  // tracks navigator.onLine; `serverTimedOut` flips true when the app has
+  // rendered from cache but no SERVER snapshot arrived within SERVER_WATCHDOG_MS
+  // — the exact stalled-Listen-channel condition that silently dropped writes.
+  const [online, setOnline] = useState(() => (typeof navigator !== "undefined" ? navigator.onLine !== false : true));
+  const [serverTimedOut, setServerTimedOut] = useState(false);
   const inflightWritesRef = useRef(0);
   const latestGoalsRef = useRef([]);
   const latestPrayerRef = useRef({});
@@ -138,11 +176,7 @@ export function useUserData(userId) {
   function buildDirtyPayload() {
     return buildDirtyPayloadPure(dirtyRef.current, {
       goals: latestGoalsRef.current,
-      prayerLog: latestPrayerRef.current,
-      settings: latestSettingsRef.current,
       qaza: latestQazaRef.current,
-      savedVerses: latestSavedVersesRef.current,
-      notifications: latestNotificationsRef.current,
     });
   }
 
@@ -263,6 +297,13 @@ export function useUserData(userId) {
     const unsub = onSnapshot(ref, (snap) => {
       const exists = snap.exists();
       const data = exists ? snap.data() : {};
+      // Is this the authoritative SERVER snapshot (not a cached one)? Gates the
+      // write machinery below — including the one-time inline→subcollection
+      // migrations, which must NOT run against a stale cached snapshot (a device
+      // offline while a peer migrated would otherwise resurrect cleared inline
+      // data and clobber the peer's subcollection docs — the same account-wipe
+      // class the write gate prevents).
+      const serverSnapshot = gateOpenForDoc(snap.metadata.fromCache);
       // Accept a server field only when there's no unflushed local edit for
       // it (see dirtyRef) — otherwise this snapshot would clobber a pending
       // write the SDK doesn't know about yet. Two important nuances:
@@ -295,7 +336,7 @@ export function useUserData(userId) {
       // Idempotent: once inline is empty this never runs again, and concurrent
       // devices just write identical data (harmless).
       const inlineMuhasaba = (data.muhasaba && typeof data.muhasaba === "object") ? data.muhasaba : {};
-      if (!muhasabaMigratedRef.current && Object.keys(inlineMuhasaba).length > 0) {
+      if (serverSnapshot && !muhasabaMigratedRef.current && Object.keys(inlineMuhasaba).length > 0) {
         muhasabaMigratedRef.current = true;
         const seeded = seedMuhasabaMerge(inlineMuhasaba, latestMuhasabaRef.current); // subcollection wins
         latestMuhasabaRef.current = seeded;
@@ -319,7 +360,7 @@ export function useUserData(userId) {
       // times come from entry.day/at, which are untouched. Seed → write → clear
       // inline last; idempotent via focusMigratedRef.
       const inlineFocus = Array.isArray(data.focusLog) ? data.focusLog : [];
-      if (!focusMigratedRef.current && inlineFocus.length > 0) {
+      if (serverSnapshot && !focusMigratedRef.current && inlineFocus.length > 0) {
         focusMigratedRef.current = true;
         const stamped = stampFocusForMigration(inlineFocus);
         const seeded = seedFocusMerge(latestFocusRef.current || [], stamped);
@@ -344,7 +385,7 @@ export function useUserData(userId) {
       // newer server data — the recurring account-wipe this guards against.
       // Reads already rendered above from whatever snapshot this is; only
       // writes wait for server truth. (See gateOpenForDoc in lib/sync.js.)
-      if (gateOpenForDoc(snap.metadata.fromCache)) {
+      if (serverSnapshot) {
         loadedRef.current = true;
         setLoaded(true);
       }
@@ -435,6 +476,31 @@ export function useUserData(userId) {
     };
   }, [flushNow, flushMuhasabaNow, flushFocusNow]);
 
+  // Track browser online/offline so the badge can distinguish "you're offline"
+  // (queue will replay) from "server unreachable" (something's blocking us).
+  useEffect(() => {
+    const on = () => setOnline(true);
+    const off = () => setOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
+
+  // Server watchdog. Once the app has rendered (loading false) but the write
+  // gate is still shut (no server snapshot), warn after SERVER_WATCHDOG_MS.
+  // Clears the moment the gate opens; re-arms if connectivity drops and returns
+  // (online in deps). Skipped while offline — that's surfaced directly.
+  useEffect(() => {
+    if (loading) return;               // still on the boot spinner
+    if (loaded) { setServerTimedOut(false); return; }
+    if (!online) return;               // offline shown directly; no timeout needed
+    const t = setTimeout(() => setServerTimedOut(true), SERVER_WATCHDOG_MS);
+    return () => clearTimeout(t);
+  }, [loading, loaded, online]);
+
   // Each updater accepts either a new value OR a functional updater
   // (prev) => next. Functional updaters read from latest*Ref so rapid
   // back-to-back calls see each other's results without waiting for a
@@ -451,15 +517,30 @@ export function useUserData(userId) {
     save();
   }, [save]);
 
+  // Fire a delta descriptor as an IMMEDIATE, UNGATED write. arrayUnion/
+  // arrayRemove/increment are idempotent + merge-safe, so — unlike the
+  // whole-object save() path — they need neither the load gate nor
+  // dirty-tracking: Firestore's offline queue persists them and latency
+  // compensation folds them into every subsequent snapshot. No debounce: the
+  // write must be issued synchronously with the state update, since we no
+  // longer dirty-track the field to protect it from an interleaving snapshot.
+  const writeDelta = useCallback((descriptor) => {
+    if (!descriptor) return;
+    const uid = userIdRef.current;
+    if (!uid) return;
+    trackWrite(setDoc(doc(db, "users", uid), materialize(descriptor), { merge: true }));
+  }, [trackWrite]);
+
   const updatePrayerLog = useCallback((updaterOrValue) => {
-    const next = typeof updaterOrValue === "function"
-      ? updaterOrValue(latestPrayerRef.current)
-      : updaterOrValue;
+    const prev = latestPrayerRef.current || {};
+    const next = typeof updaterOrValue === "function" ? updaterOrValue(prev) : updaterOrValue;
     latestPrayerRef.current = next;
-    dirtyRef.current.prayerLog = true;
     setPrayerLog(next);
-    save();
-  }, [save]);
+    // Not dirty-tracked: incoming snapshots are always accepted for prayerLog
+    // (the pending arrayUnion/arrayRemove is already reflected by the SDK), so
+    // a competing device's edit merges instead of clobbering.
+    writeDelta(prayerLogDelta(prev, next));
+  }, [writeDelta]);
 
   // focusLog writes go to the subcollection, one doc per entry — NOT through
   // save()/the main-doc payload. Diff the new array against the previous
@@ -482,15 +563,17 @@ export function useUserData(userId) {
     }
   }, [flushFocusNow]);
 
+  // settings: immediate nested-map merge delta (ungated, not dirty-tracked).
+  // Each edit touches only the changed sub-field, so it can't clobber sibling
+  // settings even when fired before the server snapshot (e.g. a geolocation
+  // callback during onboarding) — the old whole-object gate is unnecessary here.
   const updateSettings = useCallback((updaterOrValue) => {
-    const next = typeof updaterOrValue === "function"
-      ? updaterOrValue(latestSettingsRef.current)
-      : updaterOrValue;
+    const prev = latestSettingsRef.current || {};
+    const next = typeof updaterOrValue === "function" ? updaterOrValue(prev) : updaterOrValue;
     latestSettingsRef.current = next;
-    dirtyRef.current.settings = true;
     setSettings(next);
-    save();
-  }, [save]);
+    writeDelta(settingsDelta(prev, next));
+  }, [writeDelta]);
 
   // muhasaba writes go to the subcollection, one doc per day — NOT through
   // save()/the main-doc payload. Diff the new map against the previous to find
@@ -531,29 +614,44 @@ export function useUserData(userId) {
     save();
   }, [save]);
 
+  // savedVerses: immediate delta write (arrayUnion on save, arrayRemove on
+  // delete). Ungated + not dirty-tracked, like prayerLog — bookmarking a verse
+  // on a flaky connection persists via the offline queue instead of silently
+  // dropping, and two devices' bookmarks merge instead of clobbering.
   const updateSavedVerses = useCallback((updaterOrValue) => {
-    const next = typeof updaterOrValue === "function"
-      ? updaterOrValue(latestSavedVersesRef.current)
-      : updaterOrValue;
+    const prev = latestSavedVersesRef.current || [];
+    const next = typeof updaterOrValue === "function" ? updaterOrValue(prev) : updaterOrValue;
     latestSavedVersesRef.current = next;
-    dirtyRef.current.savedVerses = true;
     setSavedVerses(next);
-    save();
-  }, [save]);
+    writeDelta(savedVersesDelta(prev, next));
+  }, [writeDelta]);
 
+  // notifications: immediate merge of ONLY the sub-fields the client owns.
+  // Non-token fields (prayer / timezone / prayerTimes) go through a nested-map
+  // merge; fcmTokens are ADDED via arrayUnion (the client only ever adds a
+  // token — pruning dead tokens is server-owned). lastSentAt and the full token
+  // list are NEVER written from here, so a client edit can no longer overwrite
+  // the server's dedup timestamps or freshly-pruned token list with a stale
+  // copy. Every existing call site keeps its (prev)=>next signature.
   const updateNotifications = useCallback((updaterOrValue) => {
-    const next = typeof updaterOrValue === "function"
-      ? updaterOrValue(latestNotificationsRef.current)
-      : updaterOrValue;
-    // No-op guard (mirrors updateQaza): a functional updater that returns the
-    // same reference — e.g. the startup token refresh finding its token already
-    // registered — shouldn't dirty the field or trigger a write.
-    if (next === latestNotificationsRef.current) return;
+    const prev = latestNotificationsRef.current || {};
+    const next = typeof updaterOrValue === "function" ? updaterOrValue(prev) : updaterOrValue;
+    if (next === prev) return; // no-op guard (e.g. token already registered)
     latestNotificationsRef.current = next;
-    dirtyRef.current.notifications = true;
     setNotifications(next);
-    save();
-  }, [save]);
+    const owned = mapMergeDelta(
+      pickClientOwnedNotifications(prev) || {},
+      pickClientOwnedNotifications(next) || {}
+    ) || {};
+    const prevToks = Array.isArray(prev.fcmTokens) ? prev.fcmTokens : [];
+    const nextToks = Array.isArray(next.fcmTokens) ? next.fcmTokens : [];
+    const addedToks = nextToks.filter((t) => !prevToks.includes(t));
+    if (addedToks.length) owned.fcmTokens = dUnion(...addedToks);
+    if (Object.keys(owned).length) writeDelta({ notifications: owned });
+  }, [writeDelta]);
 
-  return { goals, prayerLog, focusLog, settings, muhasaba, qaza, savedVerses, notifications, loading, loaded, syncState, updateGoals, updatePrayerLog, updateFocusLog, updateSettings, updateMuhasaba, updateQaza, updateSavedVerses, updateNotifications };
+  // Single source of truth for the header sync indicator (see deriveConnBadge).
+  const connBadge = deriveConnBadge({ loading, loaded, online, serverTimedOut, syncState });
+
+  return { goals, prayerLog, focusLog, settings, muhasaba, qaza, savedVerses, notifications, loading, loaded, syncState, online, connBadge, updateGoals, updatePrayerLog, updateFocusLog, updateSettings, updateMuhasaba, updateQaza, updateSavedVerses, updateNotifications };
 }

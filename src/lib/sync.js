@@ -16,15 +16,138 @@
 // `muhasaba` and `focusLog` are intentionally absent — they're sharded into
 // subcollections with their own write paths. Returns null when nothing is
 // dirty so the caller can skip the round-trip.
+// Only goals and qaza remain on the whole-object gated write path (they're
+// deeply structured and don't map cleanly to field sentinels). prayerLog,
+// savedVerses, settings, and notifications all moved to the immediate DELTA
+// path (arrayUnion/arrayRemove/nested-map merge; see the *Delta reducers below
+// and useFirestore.jsx) — ungated, not dirty-tracked, and (for notifications)
+// projected to client-owned sub-fields so the client never clobbers
+// server-owned keys (lastSentAt / fcmTokens pruning).
 export function buildDirtyPayload(dirty, values) {
   const payload = {};
   if (dirty.goals) payload.goals = values.goals;
-  if (dirty.prayerLog) payload.prayerLog = values.prayerLog;
-  if (dirty.settings) payload.settings = values.settings;
   if (dirty.qaza) payload.qaza = values.qaza;
-  if (dirty.savedVerses) payload.savedVerses = values.savedVerses;
-  if (dirty.notifications) payload.notifications = values.notifications;
   return Object.keys(payload).length ? payload : null;
+}
+
+// Project a notifications object down to ONLY the sub-fields the client owns:
+// `prayer` ({enabled, perPrayer}), `timezone`, and `prayerTimes`. Deliberately
+// omits `fcmTokens` (the client only ADDS tokens, via arrayUnion in
+// updateNotifications; pruning is server-owned) and `lastSentAt` (server-owned
+// dedup timestamps). Returns null when none are present so the caller can skip
+// the write. This is what stops a client flush from overwriting the server's
+// freshly-pruned tokens / dedup state with a stale in-memory copy.
+export function pickClientOwnedNotifications(notifications) {
+  if (!notifications || typeof notifications !== "object") return null;
+  const out = {};
+  if (notifications.prayer !== undefined) out.prayer = notifications.prayer;
+  if (notifications.timezone !== undefined) out.timezone = notifications.timezone;
+  if (notifications.prayerTimes !== undefined) out.prayerTimes = notifications.prayerTimes;
+  return Object.keys(out).length ? out : null;
+}
+
+// ── delta descriptors ────────────────────────────────────────────────────
+//
+// A "descriptor" is a Firebase-free encoding of a write. The hook's
+// materialize() (in useFirestore.jsx) turns it into arrayUnion/arrayRemove/
+// increment/deleteField sentinels or raw values. Keeping this layer pure means
+// the reducers below are unit-testable with no Firestore mock, and the app's
+// state/refs keep holding plain resolved values (a sentinel can't be rendered
+// or diffed). A LEAF is an object tagged with `__delta`; anything else that is a
+// plain object is a nested map to recurse into:
+//   { __delta: "set", value }            → raw value (nested-map merge)
+//   { __delta: "arrayUnion",  vals: [] } → arrayUnion(...vals)
+//   { __delta: "arrayRemove", vals: [] } → arrayRemove(...vals)
+//   { __delta: "increment", n }          → increment(n)
+//   { __delta: "delete" }                → deleteField()
+// e.g. { prayerLog: { Fajr: { __delta: "arrayUnion", vals: ["2026-08-26"] } } }.
+//
+// Descriptor writes fire IMMEDIATELY and UNGATED: arrayUnion/arrayRemove/
+// increment are idempotent and merge-safe, so a stale cache or a concurrent
+// device can't clobber via them, and Firestore's offline queue persists them
+// without needing the load gate. This is what makes a prayer tap survive a
+// refresh even when the server was never reached.
+
+export const dSet = (value) => ({ __delta: "set", value });
+export const dUnion = (...vals) => ({ __delta: "arrayUnion", vals });
+export const dRemove = (...vals) => ({ __delta: "arrayRemove", vals });
+
+// prayerLog delta: per prayer, days added since `prev` → arrayUnion, days
+// removed → arrayRemove. Arrays are read order-independently everywhere
+// (`(prayerLog[p]||[]).includes(day)`), so the server-side append order is
+// irrelevant. A single tap yields exactly one prayer with one add OR one
+// remove; the defensive union-wins branch below never fires in practice (one
+// merged path can carry only one FieldValue). Returns null when unchanged.
+export function prayerLogDelta(prev, next) {
+  prev = prev || {};
+  next = next || {};
+  const out = {};
+  for (const p of new Set([...Object.keys(prev), ...Object.keys(next)])) {
+    const a = prev[p] || [];
+    const b = next[p] || [];
+    const added = b.filter((d) => !a.includes(d));
+    const removed = a.filter((d) => !b.includes(d));
+    if (added.length) out[p] = dUnion(...added);
+    else if (removed.length) out[p] = dRemove(...removed);
+  }
+  return Object.keys(out).length ? { prayerLog: out } : null;
+}
+
+// Nested-map merge delta: recurse over `next`, emitting only CHANGED leaves as
+// dSet (and array keys named in arrayKeys as arrayUnion/arrayRemove). Because
+// setDoc(...,{merge:true}) deep-merges nested maps, the resulting write touches
+// only the changed sub-fields and leaves every sibling (including server-owned
+// ones) intact. Only iterates `next` keys — callers never delete settings keys
+// (updaters spread ...prev), so a key present only in prev is left untouched.
+// Returns null when nothing changed.
+export function mapMergeDelta(prev, next, { arrayKeys = [] } = {}) {
+  prev = prev || {};
+  next = next || {};
+  const out = {};
+  for (const k of Object.keys(next)) {
+    const pv = prev[k];
+    const nv = next[k];
+    if (arrayKeys.includes(k)) {
+      const a = Array.isArray(pv) ? pv : [];
+      const b = Array.isArray(nv) ? nv : [];
+      const added = b.filter((x) => !a.includes(x));
+      const removed = a.filter((x) => !b.includes(x));
+      if (added.length) out[k] = dUnion(...added);
+      else if (removed.length) out[k] = dRemove(...removed);
+    } else if (nv && typeof nv === "object" && !Array.isArray(nv)) {
+      const sub = mapMergeDelta(pv, nv, { arrayKeys });
+      if (sub) out[k] = sub;
+    } else if (nv !== pv) {
+      out[k] = dSet(nv);
+    }
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+// settings delta: nested-map merge of whatever sub-fields changed (theme, city,
+// focus goal, pomDurations, …). All settings are client-owned, so a plain merge
+// is safe. Returns null when unchanged.
+export function settingsDelta(prev, next) {
+  const d = mapMergeDelta(prev, next);
+  return d ? { settings: d } : null;
+}
+
+// savedVerses delta: diff by entry id. A newly-bookmarked verse → arrayUnion of
+// that entry; a removed verse → arrayRemove of the EXACT prev entry object
+// (deep-equality removal is reliable because we hold the original). De-dupe by
+// verseKey stays at the reducer call site (re-saving returns the same array
+// reference → this returns null → no write); arrayUnion can't dedupe distinct
+// -id objects, so that guard must not move here. Returns null when unchanged.
+export function savedVersesDelta(prev, next) {
+  prev = prev || [];
+  next = next || [];
+  const prevIds = new Set(prev.map((v) => v.id));
+  const nextIds = new Set(next.map((v) => v.id));
+  const added = next.filter((v) => !prevIds.has(v.id));
+  const removed = prev.filter((v) => !nextIds.has(v.id));
+  if (added.length) return { savedVerses: dUnion(...added) };
+  if (removed.length) return { savedVerses: dRemove(...removed) };
+  return null;
 }
 
 // Should an incoming snapshot's value for a field be accepted? No, if there's
@@ -61,6 +184,28 @@ export function gateOpenForDoc(fromCache) {
 // not authorize writes, for the same clobber-prevention reason as the doc gate.
 export function gateOpenForCollection(fromCache) {
   return !fromCache;
+}
+
+// ── connection / sync-state badge ────────────────────────────────────────────
+
+// The single source of truth for the header sync indicator. Encodes the exact
+// gap behind the silent-data-loss incident: the app renders from a cached
+// snapshot (`loading===false`) but the write gate never opened (`!loaded`)
+// because a SERVER snapshot never arrived — and nothing told the user. Returns
+// null to stay quiet (the healthy steady state), otherwise a small badge spec.
+//
+// Precedence: a rejected write ("error") is the loudest signal; being offline
+// explains a stuck queue; an online-but-unreachable server (watchdog fired) is
+// next; a normal in-flight write is quietest. Delta-path fields (prayerLog,
+// savedVerses, settings) persist to the offline queue even while `!loaded`, so
+// the offline/not-synced copy truthfully says "saved on this device".
+export function deriveConnBadge({ loading, loaded, online, serverTimedOut, syncState }) {
+  if (syncState === "error") return { kind: "error", tone: "danger", text: "Not saved" };
+  if (!online) return { kind: "offline", tone: "warning", text: "Offline — saved on this device" };
+  if (loading === false && !loaded && serverTimedOut)
+    return { kind: "not-synced", tone: "warning", text: "Can't reach server — saved locally" };
+  if (syncState === "saving") return { kind: "saving", tone: "muted", text: "Saving…" };
+  return null;
 }
 
 // ── muhasaba (day-keyed map) ─────────────────────────────────────────────────
@@ -138,12 +283,26 @@ export function reconcileFocusSnapshot(currentArr, serverEntries, pendingIds, lo
   return sortFocusByCreatedAt(Array.from(byId.values()));
 }
 
-// Backfill createdAt on legacy inline focusLog entries for migration. The
+// Deterministic id for a legacy focus entry that lacks one — index + stable
+// fields, NEVER Date.now()/randomUUID. A mid-migration failure re-reads the
+// same inline array from the next snapshot, so a stable id overwrites the same
+// subcollection doc instead of creating a duplicate. Must land in the entry
+// object because seedFocusMerge / reconcileFocusSnapshot key by `id` and the
+// doc path is `focusLog/{e.id}`.
+function synthFocusId(e, i) {
+  return `legacy-${e.day ?? "x"}-${e.at ?? "x"}-${i}`;
+}
+
+// Backfill id + createdAt on legacy inline focusLog entries for migration. The
 // array is newest-first (index 0 newest), so descending synthetic stamps
 // (base - i) preserve that order under sortFocusByCreatedAt. An entry that
-// already has createdAt keeps it.
+// already has createdAt / id keeps it.
 export function stampFocusForMigration(inlineArr, base = Date.now()) {
-  return inlineArr.map((e, i) => ({ ...e, createdAt: e.createdAt || (base - i) }));
+  return inlineArr.map((e, i) => ({
+    ...e,
+    id: e.id || synthFocusId(e, i),
+    createdAt: e.createdAt || (base - i),
+  }));
 }
 
 // Seed the array from stamped inline entries during migration. Current

@@ -12,6 +12,12 @@ import {
   reconcileFocusSnapshot,
   stampFocusForMigration,
   seedFocusMerge,
+  prayerLogDelta,
+  savedVersesDelta,
+  mapMergeDelta,
+  settingsDelta,
+  pickClientOwnedNotifications,
+  deriveConnBadge,
 } from "./sync";
 
 // These lock the write-safety invariants that prevent data loss. Each block
@@ -40,6 +46,36 @@ describe("buildDirtyPayload — field-scoped writes", () => {
     expect(p).not.toHaveProperty("muhasaba");
     expect(p).not.toHaveProperty("focusLog");
   });
+
+  it("only goals/qaza remain — prayerLog/savedVerses/settings/notifications moved to the delta path", () => {
+    const p = buildDirtyPayload(
+      { goals: true, prayerLog: true, savedVerses: true, settings: true, notifications: true }, values
+    );
+    expect(p).toEqual({ goals: values.goals });
+  });
+});
+
+describe("prayerLogDelta — atomic per-prayer array deltas", () => {
+  it("marking a day emits arrayUnion for just that prayer", () => {
+    const d = prayerLogDelta({ Fajr: ["a"] }, { Fajr: ["a", "b"] });
+    expect(d).toEqual({ prayerLog: { Fajr: { __delta: "arrayUnion", vals: ["b"] } } });
+  });
+  it("unmarking a day emits arrayRemove", () => {
+    const d = prayerLogDelta({ Fajr: ["a", "b"] }, { Fajr: ["a"] });
+    expect(d).toEqual({ prayerLog: { Fajr: { __delta: "arrayRemove", vals: ["b"] } } });
+  });
+  it("marking a brand-new prayer key works from empty", () => {
+    const d = prayerLogDelta({}, { Isha: ["a"] });
+    expect(d).toEqual({ prayerLog: { Isha: { __delta: "arrayUnion", vals: ["a"] } } });
+  });
+  it("touches ONLY the changed prayer, leaving others out of the write", () => {
+    const d = prayerLogDelta({ Fajr: ["a"], Dhuhr: ["a"] }, { Fajr: ["a"], Dhuhr: ["a", "b"] });
+    expect(Object.keys(d.prayerLog)).toEqual(["Dhuhr"]);
+  });
+  it("returns null when nothing changed", () => {
+    expect(prayerLogDelta({ Fajr: ["a"] }, { Fajr: ["a"] })).toBeNull();
+    expect(prayerLogDelta({}, {})).toBeNull();
+  });
 });
 
 describe("shouldAcceptField — snapshot-clobber protection", () => {
@@ -52,6 +88,89 @@ describe("shouldAcceptField — snapshot-clobber protection", () => {
   it("accepts a clean field", () => {
     expect(shouldAcceptField(true, false)).toBe(true);
     expect(shouldAcceptField(true, undefined)).toBe(true);
+  });
+});
+
+describe("savedVersesDelta", () => {
+  it("bookmarking a verse emits arrayUnion of the new entry", () => {
+    const a = { id: "1", verseKey: "2:255" };
+    const d = savedVersesDelta([], [a]);
+    expect(d).toEqual({ savedVerses: { __delta: "arrayUnion", vals: [a] } });
+  });
+  it("removing a verse emits arrayRemove of the exact prev entry", () => {
+    const a = { id: "1" }, b = { id: "2" };
+    const d = savedVersesDelta([a, b], [a]);
+    expect(d).toEqual({ savedVerses: { __delta: "arrayRemove", vals: [b] } });
+  });
+  it("returns null when unchanged (dedupe no-op relies on this)", () => {
+    const a = { id: "1" };
+    expect(savedVersesDelta([a], [a])).toBeNull();
+  });
+});
+
+describe("mapMergeDelta / settingsDelta — per-subfield nested merge", () => {
+  it("emits only the changed scalar leaf", () => {
+    const d = settingsDelta({ theme: "dark", dailyFocusGoalMins: 60 }, { theme: "light", dailyFocusGoalMins: 60 });
+    expect(d).toEqual({ settings: { theme: { __delta: "set", value: "light" } } });
+  });
+  it("recurses into nested objects, emitting only the changed sub-key", () => {
+    const d = settingsDelta(
+      { pomDurations: { defaultFocus: 25, defaultBreak: 5 } },
+      { pomDurations: { defaultFocus: 30, defaultBreak: 5 } }
+    );
+    expect(d).toEqual({ settings: { pomDurations: { defaultFocus: { __delta: "set", value: 30 } } } });
+  });
+  it("writes an explicit null (clears lat/lng) rather than deleting", () => {
+    const d = settingsDelta({ prayerLat: 12.9 }, { prayerLat: null });
+    expect(d).toEqual({ settings: { prayerLat: { __delta: "set", value: null } } });
+  });
+  it("returns null when nothing changed", () => {
+    expect(settingsDelta({ theme: "dark" }, { theme: "dark" })).toBeNull();
+  });
+  it("array keys diff to arrayUnion/arrayRemove", () => {
+    expect(mapMergeDelta({ toks: ["a"] }, { toks: ["a", "b"] }, { arrayKeys: ["toks"] }))
+      .toEqual({ toks: { __delta: "arrayUnion", vals: ["b"] } });
+  });
+});
+
+describe("pickClientOwnedNotifications — never touches server-owned keys", () => {
+  it("keeps prayer/timezone/prayerTimes, drops fcmTokens and lastSentAt", () => {
+    const out = pickClientOwnedNotifications({
+      prayer: { enabled: true }, timezone: "Asia/Kolkata", prayerTimes: { date: "x" },
+      fcmTokens: ["a"], lastSentAt: { "2026-08-26_Fajr": "iso" },
+    });
+    expect(out).toEqual({ prayer: { enabled: true }, timezone: "Asia/Kolkata", prayerTimes: { date: "x" } });
+    expect(out).not.toHaveProperty("fcmTokens");
+    expect(out).not.toHaveProperty("lastSentAt");
+  });
+  it("returns null when only server-owned keys are present", () => {
+    expect(pickClientOwnedNotifications({ fcmTokens: ["a"], lastSentAt: {} })).toBeNull();
+    expect(pickClientOwnedNotifications(null)).toBeNull();
+  });
+});
+
+describe("deriveConnBadge — surfaces the un-synced state (no silent loss)", () => {
+  const base = { loading: false, loaded: true, online: true, serverTimedOut: false, syncState: "synced" };
+  it("healthy steady state is quiet (null)", () => {
+    expect(deriveConnBadge(base)).toBeNull();
+  });
+  it("a rejected write outranks everything", () => {
+    expect(deriveConnBadge({ ...base, loaded: false, online: false, syncState: "error" }).kind).toBe("error");
+  });
+  it("offline shows the offline badge (queue will replay)", () => {
+    expect(deriveConnBadge({ ...base, online: false }).kind).toBe("offline");
+  });
+  it("rendered-from-cache but server unreachable (watchdog fired) → not-synced", () => {
+    expect(deriveConnBadge({ ...base, loaded: false, serverTimedOut: true }).kind).toBe("not-synced");
+  });
+  it("does NOT warn during the grace window before the watchdog fires", () => {
+    expect(deriveConnBadge({ ...base, loaded: false, serverTimedOut: false })).toBeNull();
+  });
+  it("a normal in-flight write shows saving", () => {
+    expect(deriveConnBadge({ ...base, syncState: "saving" }).kind).toBe("saving");
+  });
+  it("offline outranks a stuck in-flight write", () => {
+    expect(deriveConnBadge({ ...base, online: false, syncState: "saving" }).kind).toBe("offline");
   });
 });
 
@@ -185,6 +304,20 @@ describe("stampFocusForMigration — preserve order via synthetic createdAt", ()
   it("keeps an existing createdAt", () => {
     const stamped = stampFocusForMigration([{ id: "x", createdAt: 42 }], 1000);
     expect(stamped[0].createdAt).toBe(42);
+  });
+  it("synthesizes an id for an entry missing one", () => {
+    const stamped = stampFocusForMigration([{ day: "2026-01-01", at: "10:00" }], 1000);
+    expect(stamped[0].id).toBeTruthy();
+  });
+  it("synthesized id is stable across calls (retry-safe, base-independent)", () => {
+    const inline = [{ day: "2026-01-01", at: "10:00" }, { day: "2026-01-02", at: "11:00" }];
+    const a = stampFocusForMigration(inline, 1000).map((e) => e.id);
+    const b = stampFocusForMigration(inline, 999999).map((e) => e.id);
+    expect(a).toEqual(b);
+  });
+  it("keeps an existing id", () => {
+    const stamped = stampFocusForMigration([{ id: "real", day: "2026-01-01" }], 1000);
+    expect(stamped[0].id).toBe("real");
   });
 });
 
