@@ -12,6 +12,10 @@ import {
   reconcileFocusSnapshot,
   stampFocusForMigration,
   seedFocusMerge,
+  sortGoalsByCreatedAt,
+  reconcileGoalsSnapshot,
+  stampGoalsForMigration,
+  seedGoalsMerge,
   prayerLogDelta,
   savedVersesDelta,
   mapMergeDelta,
@@ -29,29 +33,22 @@ describe("buildDirtyPayload — field-scoped writes", () => {
     qaza: { startDate: "d" }, savedVerses: [{ id: "v" }], notifications: { x: 1 },
   };
 
-  it("includes ONLY dirty fields", () => {
-    expect(buildDirtyPayload({ goals: true }, values)).toEqual({ goals: values.goals });
-    expect(buildDirtyPayload({ goals: true, qaza: true }, values)).toEqual({
-      goals: values.goals, qaza: values.qaza,
-    });
+  it("includes ONLY the qaza field (the sole remaining whole-object field)", () => {
+    expect(buildDirtyPayload({ qaza: true }, values)).toEqual({ qaza: values.qaza });
   });
 
   it("returns null when nothing is dirty (skip the round-trip)", () => {
     expect(buildDirtyPayload({}, values)).toBeNull();
   });
 
-  it("never emits muhasaba or focusLog (they are sharded)", () => {
-    const p = buildDirtyPayload({ goals: true, muhasaba: true, focusLog: true }, values);
-    expect(p).toEqual({ goals: values.goals });
-    expect(p).not.toHaveProperty("muhasaba");
-    expect(p).not.toHaveProperty("focusLog");
-  });
-
-  it("only goals/qaza remain — prayerLog/savedVerses/settings/notifications moved to the delta path", () => {
+  it("emits nothing for the sharded / delta fields", () => {
+    // goals -> subcollection; prayerLog/savedVerses/settings/notifications -> delta;
+    // muhasaba/focusLog -> subcollections. Only qaza survives on this lane.
     const p = buildDirtyPayload(
-      { goals: true, prayerLog: true, savedVerses: true, settings: true, notifications: true }, values
+      { goals: true, prayerLog: true, savedVerses: true, settings: true, notifications: true, muhasaba: true, focusLog: true },
+      values
     );
-    expect(p).toEqual({ goals: values.goals });
+    expect(p).toBeNull();
   });
 });
 
@@ -329,5 +326,51 @@ describe("seedFocusMerge — migration seeding", () => {
     const dup = out.find((e) => e.id === "dup");
     expect(dup.src).toBe("sub");
     expect(out.map((e) => e.id).sort()).toEqual(["dup", "only"]);
+  });
+});
+
+describe("goals shard reducers", () => {
+  const g = (id, createdAt) => ({ id, createdAt });
+
+  it("sortGoalsByCreatedAt is oldest-first and non-mutating", () => {
+    const input = [g("b", 3), g("a", 1), g("c", 2)];
+    expect(sortGoalsByCreatedAt(input).map((e) => e.id)).toEqual(["a", "c", "b"]);
+    expect(input.map((e) => e.id)).toEqual(["b", "a", "c"]); // untouched
+  });
+
+  it("reconcileGoalsSnapshot rebuilds from snapshot so deletes propagate", () => {
+    const out = reconcileGoalsSnapshot([g("a", 1), g("b", 2)], [g("a", 1)], new Set(), true);
+    expect(out.map((e) => e.id)).toEqual(["a"]); // b deleted server-side
+  });
+
+  it("reconcileGoalsSnapshot keeps a pending local add and honours a pending local delete", () => {
+    // pending add: local has it, snapshot doesn't yet
+    const add = reconcileGoalsSnapshot([g("new", 5)], [], new Set(["new"]), true);
+    expect(add.map((e) => e.id)).toEqual(["new"]);
+    // pending delete: local removed it, snapshot still has it
+    const del = reconcileGoalsSnapshot([], [g("del", 1)], new Set(["del"]), true);
+    expect(del).toEqual([]);
+  });
+
+  it("stampGoalsForMigration preserves array order (ascending) and adds createdAt", () => {
+    const inline = [{ id: "first" }, { id: "second" }, { id: "third" }];
+    const stamped = stampGoalsForMigration(inline, 1000);
+    expect(stamped.map((e) => e.createdAt)).toEqual([1000, 1001, 1002]);
+    expect(sortGoalsByCreatedAt(stamped).map((e) => e.id)).toEqual(["first", "second", "third"]);
+  });
+
+  it("stampGoalsForMigration keeps existing id/createdAt and synth-ids are deterministic", () => {
+    expect(stampGoalsForMigration([{ id: "real", createdAt: 42 }], 1000)[0]).toEqual({ id: "real", createdAt: 42 });
+    const a = stampGoalsForMigration([{ title: "x" }], 1000).map((e) => e.id);
+    const b = stampGoalsForMigration([{ title: "x" }], 999999).map((e) => e.id);
+    expect(a).toEqual(b); // base-independent id
+  });
+
+  it("seedGoalsMerge: subcollection wins on id collision, ascending order", () => {
+    const current = [{ id: "dup", createdAt: 100, src: "sub" }];
+    const stamped = [{ id: "dup", createdAt: 1, src: "inline" }, { id: "only", createdAt: 50 }];
+    const out = seedGoalsMerge(current, stamped);
+    expect(out.find((e) => e.id === "dup").src).toBe("sub");
+    expect(out.map((e) => e.id)).toEqual(["only", "dup"]); // 50 < 100
   });
 });

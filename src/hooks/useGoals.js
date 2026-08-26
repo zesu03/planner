@@ -17,7 +17,9 @@ export function useGoals({ applyGoalsUpdate }) {
   // form. Returns null if validation fails (empty title or no due date).
   const addGoal = useCallback((form) => {
     if (!form.title.trim() || !form.due) return null;
-    const g = { ...form, id: newId(), title: form.title.trim(), tasks: [], completedAt: null };
+    // createdAt is the stable sort key for the sharded goals subcollection
+    // (docs load unordered) — preserves oldest-first display + sort tiebreaks.
+    const g = { ...form, id: newId(), createdAt: Date.now(), title: form.title.trim(), tasks: [], completedAt: null };
     applyGoalsUpdate((gs) => [...gs, g]);
     return g;
   }, [applyGoalsUpdate]);

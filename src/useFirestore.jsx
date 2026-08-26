@@ -9,6 +9,7 @@ import {
   shouldAcceptField, gateOpenForDoc, gateOpenForCollection,
   diffMuhasabaDays, reconcileMuhasabaSnapshot, seedMuhasabaMerge,
   diffFocusIds, reconcileFocusSnapshot, stampFocusForMigration, seedFocusMerge,
+  reconcileGoalsSnapshot, stampGoalsForMigration, seedGoalsMerge,
   prayerLogDelta, savedVersesDelta, settingsDelta, mapMergeDelta,
   pickClientOwnedNotifications, deriveConnBadge, dUnion,
 } from "./lib/sync";
@@ -166,6 +167,14 @@ export function useUserData(userId) {
   const pendingFocusIdsRef = useRef(new Set());
   const focusTimerRef = useRef(null);
   const focusMigratedRef = useRef(false);
+  // ── goals also live in a subcollection (users/{uid}/goals/{goalId}), one doc
+  // per goal. Same self-contained machinery as focusLog, keyed by goal id.
+  // Sharding removes the last whole-object clobber surface and the 1MB user-doc
+  // growth risk. goals are ordered oldest-first by `createdAt` (see sortGoalsBy…).
+  const goalsLoadedRef = useRef(false);
+  const pendingGoalIdsRef = useRef(new Set());
+  const goalsTimerRef = useRef(null);
+  const goalsMigratedRef = useRef(false);
   useEffect(() => { userIdRef.current = userId; }, [userId]);
 
   // Build a write payload containing ONLY the fields with unflushed local
@@ -175,7 +184,6 @@ export function useUserData(userId) {
   // Returns null when nothing is dirty so callers can skip the round-trip.
   function buildDirtyPayload() {
     return buildDirtyPayloadPure(dirtyRef.current, {
-      goals: latestGoalsRef.current,
       qaza: latestQazaRef.current,
     });
   }
@@ -275,6 +283,29 @@ export function useUserData(userId) {
     }
   }, [trackWrite]);
 
+  // Flush pending goals doc-writes immediately. Each dirty goal id maps to one
+  // subcollection doc: write the current goal, or delete the doc if the goal was
+  // removed from the array (deleteGoal). Fire-and-forget, matching the others.
+  const flushGoalsNow = useCallback((track = true) => {
+    if (goalsTimerRef.current) {
+      clearTimeout(goalsTimerRef.current);
+      goalsTimerRef.current = null;
+    }
+    const ids = pendingGoalIdsRef.current;
+    if (ids.size === 0) return;
+    const uid = userIdRef.current;
+    if (!uid) return;
+    const byId = new Map((latestGoalsRef.current || []).map((e) => [e.id, e]));
+    const toWrite = Array.from(ids);
+    pendingGoalIdsRef.current = new Set();
+    for (const id of toWrite) {
+      const ref = doc(db, "users", uid, "goals", id);
+      const entry = byId.get(id);
+      const p = entry === undefined ? deleteDoc(ref) : setDoc(ref, entry);
+      if (track) trackWrite(p); else p.catch(() => {});
+    }
+  }, [trackWrite]);
+
   // Schedule a debounced write. Mutation hooks call this after updating
   // their ref + state. Bails out silently if the initial snapshot hasn't
   // returned yet — the refs still hold their empty defaults and writing
@@ -321,7 +352,9 @@ export function useUserData(userId) {
       };
       // asArray/asObject coerce a corrupt/wrong-typed field to its expected
       // container so a bad doc can't crash downstream .filter/.map/Object.keys.
-      applyField("goals", asArray(data.goals), setGoals, latestGoalsRef);
+      // goals is NOT read here anymore — it lives in the subcollection (separate
+      // subscription below); the only thing we do with a legacy inline copy is
+      // migrate it out, once (see the goals migration further down).
       applyField("prayerLog", asObject(data.prayerLog), setPrayerLog, latestPrayerRef);
       applyField("settings", asObject(data.settings), setSettings, latestSettingsRef);
       applyField("qaza", asObject(data.qaza), setQaza, latestQazaRef);
@@ -375,6 +408,31 @@ export function useUserData(userId) {
             await setDoc(doc(db, "users", uid), { focusLog: [] }, { merge: true });
           } catch {
             focusMigratedRef.current = false; // allow a retry on a later snapshot
+          }
+        })();
+      }
+
+      // Same one-time migration for legacy inline goals[] → subcollection.
+      // Stamp a synthetic ascending `createdAt` (+ id if missing) to preserve
+      // the prior array order under the oldest-first sort. Seed → write each
+      // goal doc → clear inline last; idempotent via goalsMigratedRef; gated on
+      // a server snapshot so a stale cache can't resurrect cleared inline goals.
+      const inlineGoals = Array.isArray(data.goals) ? data.goals : [];
+      if (serverSnapshot && !goalsMigratedRef.current && inlineGoals.length > 0) {
+        goalsMigratedRef.current = true;
+        const stamped = stampGoalsForMigration(inlineGoals);
+        const seeded = seedGoalsMerge(latestGoalsRef.current || [], stamped);
+        latestGoalsRef.current = seeded;
+        setGoals(seeded);
+        const uid = userId;
+        (async () => {
+          try {
+            await Promise.all(stamped.map((e) =>
+              setDoc(doc(db, "users", uid, "goals", e.id), e, { merge: true })
+            ));
+            await setDoc(doc(db, "users", uid), { goals: [] }, { merge: true });
+          } catch {
+            goalsMigratedRef.current = false; // allow a retry on a later snapshot
           }
         })();
       }
@@ -462,10 +520,34 @@ export function useUserData(userId) {
     };
   }, [userId, flushFocusNow]);
 
+  // goals subcollection subscription. Rebuilds the oldest-first array the app
+  // consumes from users/{uid}/goals/{goalId} docs, sorted by createdAt. Same
+  // rebuild-then-overlay-pending shape as focusLog so server-side deletes
+  // (deleteGoal) propagate and a snapshot can't clobber a just-added/-edited/
+  // -deleted goal the SDK hasn't round-tripped yet.
+  useEffect(() => {
+    if (!userId) return;
+    const col = collection(db, "users", userId, "goals");
+    const unsub = onSnapshot(col, (snap) => {
+      const serverEntries = [];
+      snap.forEach((d) => { serverEntries.push(d.data()); });
+      const arr = reconcileGoalsSnapshot(
+        latestGoalsRef.current || [], serverEntries, pendingGoalIdsRef.current, goalsLoadedRef.current
+      );
+      latestGoalsRef.current = arr;
+      setGoals(arr);
+      if (gateOpenForCollection(snap.metadata.fromCache)) goalsLoadedRef.current = true;
+    });
+    return () => {
+      flushGoalsNow(false); // persist the old user's pending goals before detaching
+      unsub();
+    };
+  }, [userId, flushGoalsNow]);
+
   // Unload listeners — three signals, single handler. Mounted once.
   useEffect(() => {
-    const onUnload = () => { flushNow(false); flushMuhasabaNow(false); flushFocusNow(false); };
-    const onVisibility = () => { if (document.visibilityState === "hidden") { flushNow(false); flushMuhasabaNow(false); flushFocusNow(false); } };
+    const onUnload = () => { flushNow(false); flushMuhasabaNow(false); flushFocusNow(false); flushGoalsNow(false); };
+    const onVisibility = () => { if (document.visibilityState === "hidden") { flushNow(false); flushMuhasabaNow(false); flushFocusNow(false); flushGoalsNow(false); } };
     window.addEventListener("beforeunload", onUnload);
     window.addEventListener("pagehide", onUnload);
     document.addEventListener("visibilitychange", onVisibility);
@@ -474,7 +556,7 @@ export function useUserData(userId) {
       window.removeEventListener("pagehide", onUnload);
       document.removeEventListener("visibilitychange", onVisibility);
     };
-  }, [flushNow, flushMuhasabaNow, flushFocusNow]);
+  }, [flushNow, flushMuhasabaNow, flushFocusNow, flushGoalsNow]);
 
   // Track browser online/offline so the badge can distinguish "you're offline"
   // (queue will replay) from "server unreachable" (something's blocking us).
@@ -507,15 +589,26 @@ export function useUserData(userId) {
   // re-render. All are useCallback'd with stable deps so consumers'
   // React.memo / useMemo dependencies hold across renders — without this,
   // every keystroke in any form re-derives Stats heatmaps and sparklines.
+  // goals writes go to the subcollection, one doc per goal — NOT through
+  // save()/the main-doc payload. Diff the new array against the previous (keyed
+  // by goal id, reusing diffFocusIds) to find which goals were added, changed,
+  // or removed, and queue just those ids for a debounced per-doc flush. Gated on
+  // goalsLoadedRef, mirroring updateFocusLog.
   const updateGoals = useCallback((updaterOrValue) => {
-    const next = typeof updaterOrValue === "function"
-      ? updaterOrValue(latestGoalsRef.current)
-      : updaterOrValue;
+    const prev = latestGoalsRef.current || [];
+    const next = typeof updaterOrValue === "function" ? updaterOrValue(prev) : updaterOrValue;
+    const ids = pendingGoalIdsRef.current;
+    for (const id of diffFocusIds(prev, next)) ids.add(id);
     latestGoalsRef.current = next;
-    dirtyRef.current.goals = true;
     setGoals(next);
-    save();
-  }, [save]);
+    if (goalsLoadedRef.current) {
+      if (goalsTimerRef.current) clearTimeout(goalsTimerRef.current);
+      goalsTimerRef.current = setTimeout(() => {
+        goalsTimerRef.current = null;
+        flushGoalsNow();
+      }, WRITE_DEBOUNCE_MS);
+    }
+  }, [flushGoalsNow]);
 
   // Fire a delta descriptor as an IMMEDIATE, UNGATED write. arrayUnion/
   // arrayRemove/increment are idempotent + merge-safe, so — unlike the

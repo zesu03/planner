@@ -16,16 +16,14 @@
 // `muhasaba` and `focusLog` are intentionally absent — they're sharded into
 // subcollections with their own write paths. Returns null when nothing is
 // dirty so the caller can skip the round-trip.
-// Only goals and qaza remain on the whole-object gated write path (they're
-// deeply structured and don't map cleanly to field sentinels). prayerLog,
-// savedVerses, settings, and notifications all moved to the immediate DELTA
-// path (arrayUnion/arrayRemove/nested-map merge; see the *Delta reducers below
-// and useFirestore.jsx) — ungated, not dirty-tracked, and (for notifications)
-// projected to client-owned sub-fields so the client never clobbers
-// server-owned keys (lastSentAt / fcmTokens pruning).
+// Only `qaza` remains on the whole-object gated write path (it's a structured
+// ledger and its settle/reconcile pass needs the load gate). Everything else
+// moved off: prayerLog/savedVerses/settings/notifications to the immediate
+// DELTA path (arrayUnion/arrayRemove/nested-map merge; notifications projected
+// to client-owned sub-fields), and goals to the users/{uid}/goals/{goalId}
+// subcollection (per-doc, like muhasaba/focusLog).
 export function buildDirtyPayload(dirty, values) {
   const payload = {};
-  if (dirty.goals) payload.goals = values.goals;
   if (dirty.qaza) payload.qaza = values.qaza;
   return Object.keys(payload).length ? payload : null;
 }
@@ -311,4 +309,58 @@ export function seedFocusMerge(currentArr, stampedArr) {
   const byId = new Map(currentArr.map((e) => [e.id, e]));
   for (const e of stampedArr) if (!byId.has(e.id)) byId.set(e.id, e);
   return sortFocusByCreatedAt(Array.from(byId.values()));
+}
+
+// ── goals (array of {id, createdAt, ...}) ────────────────────────────────────
+//
+// Sharded to users/{uid}/goals/{goalId}, one doc per goal. Mirrors the focusLog
+// machinery (rebuild-from-snapshot, id-diff, pending overlay, inline migration)
+// EXCEPT ordering: goals display oldest-first (addGoal appends), so we sort
+// ASCENDING by createdAt (focus is newest-first / descending). Goals had no
+// timestamp before sharding, so `createdAt` is introduced here — stamped on
+// migration to preserve the prior array order, and set by addGoal going forward.
+// The id-diff is identical to focus, so `diffFocusIds` is reused directly.
+
+// Oldest-first by createdAt. Non-mutating. Missing createdAt sorts first
+// (treated as 0) — defensive; every migrated/new goal has one.
+export function sortGoalsByCreatedAt(arr) {
+  return arr.slice().sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
+}
+
+// Rebuild the goals array from a subcollection snapshot (so server-side deletes
+// propagate), then overlay unflushed local edits so a snapshot can't clobber a
+// just-added/-edited/-deleted goal the SDK hasn't round-tripped yet. Same shape
+// as reconcileFocusSnapshot; only the sort differs.
+export function reconcileGoalsSnapshot(currentArr, serverEntries, pendingIds, loaded) {
+  const byId = new Map(serverEntries.map((e) => [e.id, e]));
+  if (loaded) {
+    const prevById = new Map(currentArr.map((e) => [e.id, e]));
+    for (const id of pendingIds) {
+      const local = prevById.get(id);
+      if (local === undefined) byId.delete(id);
+      else byId.set(id, local);
+    }
+  }
+  return sortGoalsByCreatedAt(Array.from(byId.values()));
+}
+
+// Backfill id + createdAt on legacy inline goals for migration. Ascending
+// stamps (base + i) preserve the existing array order (index 0 = oldest) under
+// sortGoalsByCreatedAt. Deterministic synth id (index-based) for the defensive
+// case of a goal without one — never Date.now()/uuid, so a retry overwrites the
+// same doc. Goals that already have id/createdAt keep them.
+export function stampGoalsForMigration(inlineArr, base = Date.now()) {
+  return inlineArr.map((e, i) => ({
+    ...e,
+    id: e.id || `legacy-goal-${i}`,
+    createdAt: e.createdAt || (base + i),
+  }));
+}
+
+// Seed the goals array from stamped inline goals during migration. Current
+// (subcollection) goals win over inline on any id collision.
+export function seedGoalsMerge(currentArr, stampedArr) {
+  const byId = new Map(currentArr.map((e) => [e.id, e]));
+  for (const e of stampedArr) if (!byId.has(e.id)) byId.set(e.id, e);
+  return sortGoalsByCreatedAt(Array.from(byId.values()));
 }

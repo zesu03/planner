@@ -16,6 +16,7 @@ const h = vi.hoisted(() => ({
   docCbs: [],
   muhasabaCbs: [],
   focusCbs: [],
+  goalsCbs: [],
   writes: [], // { op: "set"|"delete", segs: string[], data?, opts? }
 }));
 
@@ -29,6 +30,7 @@ vi.mock("firebase/firestore", () => ({
     if (ref.__type === "doc") h.docCbs.push(cb);
     else if (last === "muhasaba") h.muhasabaCbs.push(cb);
     else if (last === "focusLog") h.focusCbs.push(cb);
+    else if (last === "goals") h.goalsCbs.push(cb);
     return () => {};
   },
   setDoc: (ref, data, opts) => {
@@ -71,36 +73,44 @@ function emitFocus(arr = [], { fromCache = false } = {}) {
   const snap = { forEach: (fn) => docs.forEach(fn), empty: docs.length === 0, metadata: { fromCache } };
   act(() => { h.focusCbs.forEach((cb) => cb(snap)); });
 }
+function emitGoals(arr = [], { fromCache = false } = {}) {
+  const docs = arr.map((e) => ({ id: e.id, data: () => e }));
+  const snap = { forEach: (fn) => docs.forEach(fn), empty: docs.length === 0, metadata: { fromCache } };
+  act(() => { h.goalsCbs.forEach((cb) => cb(snap)); });
+}
 
 beforeEach(() => {
   h.docCbs.length = 0;
   h.muhasabaCbs.length = 0;
   h.focusCbs.length = 0;
+  h.goalsCbs.length = 0;
   h.writes.length = 0;
 });
 afterEach(() => cleanup());
 
+// qaza is the sole remaining whole-object gated main-doc field, so it's the
+// representative for the load-gate / clobber / field-scope invariants.
 describe("useUserData — load gate", () => {
   it("does not write before the first snapshot, and writes after", async () => {
     const { result } = renderHook(() => useUserData("u1"));
 
     // Premature edit before any snapshot → gated, no write.
-    act(() => result.current.updateGoals([{ id: "g1" }]));
+    act(() => result.current.updateQaza({ owed: { Fajr: 1 } }));
     await flushDebounce();
     expect(mainWrites()).toHaveLength(0);
 
     // Server confirms the doc → gate opens.
     emitMainDoc({});
-    act(() => result.current.updateGoals([{ id: "g2" }]));
+    act(() => result.current.updateQaza({ owed: { Fajr: 2 } }));
     await flushDebounce();
     expect(mainWrites().length).toBeGreaterThan(0);
-    expect(mainWrites().at(-1).data).toEqual({ goals: [{ id: "g2" }] });
+    expect(mainWrites().at(-1).data).toEqual({ qaza: { owed: { Fajr: 2 } } });
   });
 
   it("a cold fromCache miss does NOT open the gate", async () => {
     const { result } = renderHook(() => useUserData("u1"));
     emitMainDoc(undefined, { exists: false, fromCache: true }); // cold cache miss
-    act(() => result.current.updateGoals([{ id: "x" }]));
+    act(() => result.current.updateQaza({ owed: { Fajr: 1 } }));
     await flushDebounce();
     expect(mainWrites()).toHaveLength(0);
   });
@@ -110,18 +120,18 @@ describe("useUserData — load gate", () => {
     // A stale IndexedDB cache serves real-looking data, but fromCache:true →
     // the write gate must stay shut so a later flush can't stomp newer server
     // data (the recurring account-wipe).
-    emitMainDoc({ goals: [{ id: "stale" }] }, { exists: true, fromCache: true });
-    act(() => result.current.updateGoals([{ id: "edit" }]));
+    emitMainDoc({ qaza: { owed: { Fajr: 9 } } }, { exists: true, fromCache: true });
+    act(() => result.current.updateQaza({ owed: { Fajr: 1 } }));
     await flushDebounce();
     expect(mainWrites()).toHaveLength(0);
 
     // Once the SERVER snapshot arrives it wins (drops the stale edit) and the
     // gate opens; subsequent edits flush normally.
-    emitMainDoc({ goals: [{ id: "server" }] }); // fromCache:false (server)
-    act(() => result.current.updateGoals([{ id: "edit2" }]));
+    emitMainDoc({ qaza: { owed: { Fajr: 5 } } }); // fromCache:false (server)
+    act(() => result.current.updateQaza({ owed: { Fajr: 2 } }));
     await flushDebounce();
     expect(mainWrites().length).toBeGreaterThan(0);
-    expect(mainWrites().at(-1).data).toEqual({ goals: [{ id: "edit2" }] });
+    expect(mainWrites().at(-1).data).toEqual({ qaza: { owed: { Fajr: 2 } } });
   });
 });
 
@@ -129,10 +139,10 @@ describe("useUserData — field-scoped writes", () => {
   it("flushes ONLY the edited field", async () => {
     const { result } = renderHook(() => useUserData("u1"));
     emitMainDoc({});
-    act(() => result.current.updateGoals([{ id: "g1" }]));
+    act(() => result.current.updateQaza({ owed: { Fajr: 1 } }));
     await flushDebounce();
     const w = mainWrites().at(-1);
-    expect(Object.keys(w.data)).toEqual(["goals"]);
+    expect(Object.keys(w.data)).toEqual(["qaza"]);
     expect(w.opts).toEqual({ merge: true });
   });
 });
@@ -195,26 +205,81 @@ describe("useUserData — connection badge", () => {
 describe("useUserData — snapshot-clobber protection", () => {
   it("keeps a pending local edit when a competing snapshot arrives", async () => {
     const { result } = renderHook(() => useUserData("u1"));
-    emitMainDoc({ goals: [{ id: "server0" }] });
+    emitMainDoc({ qaza: { owed: { Fajr: 0 } } });
 
     // Local edit (pending, not yet flushed)…
-    act(() => result.current.updateGoals([{ id: "local1" }]));
+    act(() => result.current.updateQaza({ owed: { Fajr: 1 } }));
     // …then a competing snapshot for the SAME field lands.
-    emitMainDoc({ goals: [{ id: "server2" }] });
+    emitMainDoc({ qaza: { owed: { Fajr: 9 } } });
 
     // Local value survives in state…
-    expect(result.current.goals).toEqual([{ id: "local1" }]);
+    expect(result.current.qaza).toEqual({ owed: { Fajr: 1 } });
     // …and is what gets flushed.
     await flushDebounce();
-    expect(mainWrites().at(-1).data.goals).toEqual([{ id: "local1" }]);
+    expect(mainWrites().at(-1).data.qaza).toEqual({ owed: { Fajr: 1 } });
   });
 
   it("accepts a clean field's server value", () => {
     const { result } = renderHook(() => useUserData("u1"));
-    emitMainDoc({ goals: [{ id: "a" }] });
-    expect(result.current.goals).toEqual([{ id: "a" }]);
-    emitMainDoc({ goals: [{ id: "b" }] }); // no local edit → accept
-    expect(result.current.goals).toEqual([{ id: "b" }]);
+    emitMainDoc({ qaza: { owed: { Fajr: 1 } } });
+    expect(result.current.qaza).toEqual({ owed: { Fajr: 1 } });
+    emitMainDoc({ qaza: { owed: { Fajr: 2 } } }); // no local edit → accept
+    expect(result.current.qaza).toEqual({ owed: { Fajr: 2 } });
+  });
+});
+
+describe("useUserData — goals subcollection", () => {
+  it("exposes goals sorted oldest-first by createdAt", () => {
+    const { result } = renderHook(() => useUserData("u1"));
+    emitMainDoc({});
+    emitGoals([
+      { id: "b", createdAt: 3, title: "B" },
+      { id: "a", createdAt: 1, title: "A" },
+      { id: "c", createdAt: 2, title: "C" },
+    ]);
+    expect(result.current.goals.map((g) => g.id)).toEqual(["a", "c", "b"]);
+  });
+
+  it("writes an edited goal to its own subcollection doc (not the main doc)", async () => {
+    const { result } = renderHook(() => useUserData("u1"));
+    emitMainDoc({});
+    emitGoals([]); // goals subcollection loaded (empty, server-confirmed)
+    act(() => result.current.updateGoals((gs) => [...gs, { id: "g1", createdAt: 5, title: "New" }]));
+    await flushDebounce();
+    const w = h.writes.find((x) => key(x.segs) === "users/u1/goals/g1");
+    expect(w).toBeTruthy();
+    expect(w.data).toMatchObject({ id: "g1", title: "New" });
+    // …and nothing was written to the main user doc for goals.
+    expect(mainWrites().some((x) => x.data && "goals" in x.data)).toBe(false);
+  });
+
+  it("deletes a removed goal's subcollection doc", async () => {
+    const { result } = renderHook(() => useUserData("u1"));
+    emitMainDoc({});
+    emitGoals([{ id: "g1", createdAt: 1 }, { id: "g2", createdAt: 2 }]);
+    act(() => result.current.updateGoals((gs) => gs.filter((g) => g.id !== "g1")));
+    await flushDebounce();
+    const del = h.writes.find((x) => key(x.segs) === "users/u1/goals/g1" && x.op === "delete");
+    expect(del).toBeTruthy();
+  });
+
+  it("migrates inline goals[] into the subcollection then clears inline (server snapshot only)", async () => {
+    renderHook(() => useUserData("u1"));
+    // Cached snapshot must NOT migrate.
+    emitMainDoc({ goals: [{ id: "g1", title: "Legacy" }] }, { fromCache: true });
+    await act(async () => { await delay(30); });
+    expect(h.writes.find((w) => key(w.segs) === "users/u1/goals/g1")).toBeFalsy();
+    // Server snapshot → migrate once, stamping a createdAt.
+    emitMainDoc({ goals: [{ id: "g1", title: "Legacy" }] });
+    await act(async () => { await delay(30); });
+    const gWrite = h.writes.find((w) => key(w.segs) === "users/u1/goals/g1");
+    expect(gWrite).toBeTruthy();
+    expect(gWrite.data).toMatchObject({ id: "g1", title: "Legacy" });
+    expect(typeof gWrite.data.createdAt).toBe("number");
+    const inlineClear = h.writes.find(
+      (w) => key(w.segs) === "users/u1" && w.data && Array.isArray(w.data.goals) && w.data.goals.length === 0
+    );
+    expect(inlineClear).toBeTruthy();
   });
 });
 
