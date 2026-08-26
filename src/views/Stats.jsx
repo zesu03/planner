@@ -455,8 +455,11 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
     return `${sd} – ${ed}`;
   };
 
-  // direction: "up_good" | "down_good" | "down_bad" | "up_bad" | "neutral" | "missing"
-  const DigestRow = ({ icon, label, value, deltaLabel, direction, last }) => {
+  // A single digest fact as a hero stat chip (icon + label above, value +
+  // coloured delta below). direction picks the delta colour + arrow so we
+  // don't hard-code which way is "good" globally (Tahajjud up = good, missed
+  // prayers up = bad).
+  const StatChip = ({ icon, label, value, deltaLabel, direction }) => {
     const good = direction === "up_good" || direction === "down_good";
     const bad = direction === "down_bad" || direction === "up_bad";
     const color = good ? "var(--color-text-success)" : bad ? "#c79338" : "var(--text-muted)";
@@ -464,19 +467,14 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
       : direction === "down_good" || direction === "down_bad" ? "↓"
       : direction === "missing" ? "" : "→";
     return (
-      <div style={{
-        display: "flex", alignItems: "center", gap: 10,
-        padding: "10px 0",
-        borderBottom: last ? "none" : "0.5px dashed var(--color-border-tertiary)",
-      }}>
-        <span style={{ fontSize: 17, width: 24, textAlign: "center", flexShrink: 0 }}>{icon}</span>
-        <span style={{ flex: 1, fontSize: 13, color: "var(--text-secondary)" }}>{label}</span>
-        <span style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", whiteSpace: "nowrap" }}>{value}</span>
-        {deltaLabel && (
-          <span style={{ fontSize: 12, color, fontWeight: 600, minWidth: 70, textAlign: "right", whiteSpace: "nowrap" }}>
-            {arrow && <span style={{ marginRight: 4 }}>{arrow}</span>}{deltaLabel}
-          </span>
-        )}
+      <div className="stat-chip">
+        <div className="k">{icon}<span>{label}</span></div>
+        <div className="row">
+          <span className="v">{value}</span>
+          {deltaLabel && (
+            <span className="d" style={{ color }}>{arrow && <span>{arrow} </span>}{deltaLabel}</span>
+          )}
+        </div>
       </div>
     );
   };
@@ -576,33 +574,46 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
           doing" in three seconds before any grid loads. Spiritual signals
           first, focus + patterns after. Hidden only when the user has no
           prayer/focus/muhasaba data at all (brand-new account). */}
-      {digestRows.length > 0 && (
-        <div style={{ ...S.goldCard, marginBottom: 16 }}>
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 8, gap: 10, flexWrap: "wrap" }}>
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase" }}>
-                This week
+      {digestRows.length > 0 && (() => {
+        const heroPct = Math.round(weekDigest.prayer.thisRate * 100);
+        const RING_C = 2 * Math.PI * 29;
+        const chips = digestRows.filter((r) => r.label !== "Prayer rate");
+        return (
+          <div style={{ ...S.goldCard, marginBottom: 16 }}>
+            <div className="stats-hero-top">
+              <div className="stats-hero-ring">
+                <svg width="74" height="74" viewBox="0 0 74 74" aria-hidden="true">
+                  <circle cx="37" cy="37" r="29" fill="none" stroke="var(--bg-secondary)" strokeWidth="8" />
+                  <circle cx="37" cy="37" r="29" fill="none" stroke="var(--gold)" strokeWidth="8" strokeLinecap="round"
+                    strokeDasharray={RING_C} strokeDashoffset={RING_C * (1 - heroPct / 100)}
+                    transform="rotate(-90 37 37)" style={{ transition: "stroke-dashoffset 0.5s ease" }} />
+                </svg>
+                <div className="lab"><div><b>{heroPct}%</b><span>prayers</span></div></div>
               </div>
-              <div style={{ fontSize: 17, fontWeight: 600, color: "var(--text-primary)" }}>
-                Where you stand
+              <div style={{ flex: 1, minWidth: 160 }}>
+                <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase" }}>This week</div>
+                <div className="serif" style={{ fontSize: 20, fontWeight: 600, color: "var(--text-primary)" }}>Where you stand</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{fmtRange(weekDigest.range.start, weekDigest.range.end)}</div>
               </div>
             </div>
-            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-              {fmtRange(weekDigest.range.start, weekDigest.range.end)}
-            </div>
+            {chips.length > 0 && (
+              <div className="stats-hero-grid">
+                {chips.map((r, i) => <StatChip key={i} {...r} />)}
+              </div>
+            )}
           </div>
-          <div>
-            {digestRows.map((r, i) => (
-              <DigestRow key={i} {...r} last={i === digestRows.length - 1} />
-            ))}
-          </div>
-        </div>
-      )}
+        );
+      })()}
+
+      {/* Dashboard grid — the spiritual cards. Wide cards (Prayer Health,
+          Qaza, Patterns) span both columns; the two medium cards (Voluntary,
+          Habit) pair up. Collapses to one column below 900px (.stats-grid). */}
+      <div className="stats-grid">
 
       {/* PRAYER HEALTH — first section so the page reads as a spiritual
           dashboard, not a productivity tab. Per-prayer 30-day daily grid +
-          completion rate + this-month total + qaza balance. */}
-      <div style={{ ...S.card, marginBottom: 16 }}>
+          completion rate. */}
+      <div className="span-2" style={S.card}>
         <SectionHeader icon={<Icon name="mosque" size={16} />} title="Prayer health" right={`last ${prayerHealth.DAYS} days`} />
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {prayerHealth.perPrayer.map((p) => {
@@ -647,24 +658,26 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
           rendered (even when empty) so a user can seed a historical backlog
           or mark excused days from here. Sits right after Prayer Health so
           "how am I doing" and "what do I owe" are answered side-by-side. */}
-      <QazaLedger
-        qaza={qaza}
-        qazaOwed={qazaOwedMap}
-        payOneQaza={payOneQaza}
-        undoOneQaza={undoOneQaza}
-        adjustQaza={adjustQaza}
-        addQazaAll={addQazaAll}
-        qazaDailyTarget={qazaDailyTarget}
-        setQazaTarget={setQazaTarget}
-        addExcused={addExcused}
-        removeExcused={removeExcused}
-      />
+      <div className="span-2">
+        <QazaLedger
+          qaza={qaza}
+          qazaOwed={qazaOwedMap}
+          payOneQaza={payOneQaza}
+          undoOneQaza={undoOneQaza}
+          adjustQaza={adjustQaza}
+          addQazaAll={addQazaAll}
+          qazaDailyTarget={qazaDailyTarget}
+          setQazaTarget={setQazaTarget}
+          addExcused={addExcused}
+          removeExcused={removeExcused}
+        />
+      </div>
 
       {/* VOLUNTARY PRACTICE — Tahajjud and other nafl prayers. Hidden when
           the user has no voluntary entries at all, to keep the page quiet
           for someone not tracking nafl yet. */}
       {voluntary.some((v) => v.count > 0 || v.streak > 0) && (
-        <div style={{ ...S.card, marginBottom: 16 }}>
+        <div style={S.card}>
           <SectionHeader icon={<Icon name="night" size={16} />} title="Voluntary practice" accent="#5a4a8c" right="30-day window" />
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
             {voluntary.map((v) => {
@@ -705,7 +718,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
           first, then highest completion rate. Tapping a row opens the
           parent goal so the user can edit/tick from one click. */}
       {habitHealth.length > 0 && (
-        <div style={{ ...S.card, marginBottom: 16 }}>
+        <div style={S.card}>
           <SectionHeader icon={<Icon name="repeat" size={16} />} title="Habit health" accent="#3faa7e"
             right={`${habitHealth.length} habit${habitHealth.length === 1 ? "" : "s"} · 30-day window`} />
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -764,7 +777,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
           (was at the bottom) so the page lands on spiritual signals before
           dropping into productivity history. Stays expanded always. */}
       {mirrorPatterns.groups.length > 0 && (
-        <div style={{ ...S.card, marginBottom: 16 }}>
+        <div className="span-2" style={S.card}>
           <SectionHeader icon={<Icon name="mirror" size={16} />} title="Patterns from the mirror" accent="#5fa8aa"
             right={`across ${mirrorPatterns.reportsScanned} report${mirrorPatterns.reportsScanned === 1 ? "" : "s"} · last ${mirrorPatterns.windowDays} days`} />
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -816,6 +829,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
           </div>
         </div>
       )}
+      </div>{/* .stats-grid */}
 
       {/* Productivity sections below are collapsed by default — see the
           CollapsibleSection wrappers. The four-tile Productivity Overview

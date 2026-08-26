@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mizan — redesign options</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --gold:#7cc39d; --noor:#e0c06a; --on-accent:#10160f;
+    --bg-primary:#0f1310; --bg-secondary:#1f271e; --bg-card:#171d17;
+    --border:rgba(210,180,99,0.3); --border-soft:rgba(210,180,99,0.16);
+    --text-primary:#f1efe4; --text-secondary:#c7c3b0; --text-muted:#a8a289;
+    --danger:#e88b7c; --warning:#d6a85f; --success:#7fbe8f;
+    --fajr:#4f7cc9; --dhuhr:#c79338; --asr:#3faa7e; --maghrib:#d4744a; --isha:#8378d0; --teal:#5fa8aa;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Space Grotesk",sans-serif;background:
+    radial-gradient(1200px 700px at 30% -10%, rgba(124,195,157,.05), transparent 55%),
+    var(--bg-primary);color:var(--text-primary);padding:36px 30px 90px;line-height:1.5}
+  .serif{font-family:"Fraunces",serif}
+  .page-title{font-family:"Fraunces",serif;font-size:28px;font-weight:600;margin-bottom:5px}
+  .page-sub{color:var(--text-secondary);font-size:14px;margin-bottom:34px;max-width:820px}
+  .opt{max-width:1060px;margin:0 auto 70px}
+  .opt-tag{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--gold);background:rgba(124,195,157,.12);border:1px solid var(--border-soft);border-radius:99px;padding:5px 12px;margin-bottom:8px}
+  .opt-tag.rec{color:var(--noor);background:rgba(224,192,106,.13)}
+  .opt-name{font-family:"Fraunces",serif;font-size:22px;font-weight:600;margin-bottom:4px}
+  .opt-desc{color:var(--text-secondary);font-size:14px;margin-bottom:18px;max-width:840px}
+  .frame{background:var(--bg-card);border:1px solid var(--border-soft);border-radius:20px;padding:22px;box-shadow:0 18px 50px rgba(0,0,0,.35)}
+
+  .card{background:var(--bg-card);border:0.5px solid var(--border-soft);border-radius:14px;padding:16px 18px}
+  .card.inner{background:var(--bg-secondary)}
+  .sh{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;padding-bottom:10px;border-bottom:0.5px solid var(--border-soft)}
+  .sh .l{display:flex;align-items:center;gap:9px}
+  .sh .ic{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-size:13px}
+  .sh .t{font-family:"Fraunces",serif;font-size:15px;font-weight:600}
+  .sh .r{font-size:12px;color:var(--text-muted)}
+  .overline{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--gold)}
+
+  /* hero */
+  .hero{background:linear-gradient(135deg, rgba(124,195,157,.14), rgba(124,195,157,.03));border:0.5px solid rgba(124,195,157,.3);border-radius:16px;padding:18px 20px;margin-bottom:16px}
+  .hero-top{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:14px}
+  .ring{position:relative;width:74px;height:74px;flex:none}
+  .ring .lab{position:absolute;inset:0;display:grid;place-items:center;text-align:center}
+  .ring .lab b{font-family:"Fraunces",serif;font-size:19px;font-weight:600;display:block;line-height:1}
+  .ring .lab span{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-muted)}
+  .hero-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+  .stat{background:rgba(0,0,0,.14);border:0.5px solid var(--border-soft);border-radius:11px;padding:10px 12px}
+  .stat .k{font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:6px}
+  .stat .row{display:flex;align-items:baseline;justify-content:space-between;margin-top:5px;gap:6px}
+  .stat .v{font-family:"Fraunces",serif;font-size:18px;font-weight:600}
+  .stat .d{font-size:12px;font-weight:600}
+  .up{color:var(--success)} .down{color:var(--warning)} .mut{color:var(--text-muted)}
+  . dot{}
+
+  /* prayer health rows */
+  .ph{display:flex;align-items:center;gap:10px}
+  .ph .nm{width:74px;font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}
+  .ph .strip{flex:1;display:flex;gap:2px}
+  .ph .strip i{flex:1;height:15px;border-radius:2px;background:var(--bg-secondary)}
+  .ph .rate{width:40px;text-align:right;font-size:13px;font-weight:600}
+
+  /* qaza */
+  .qz-sum{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-bottom:12px}
+  .qz-big{font-family:"Fraunces",serif;font-size:30px;font-weight:600;color:var(--gold)}
+  .qz-tiles{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+  .qz-tile{background:var(--bg-secondary);border:0.5px solid var(--border-soft);border-radius:10px;padding:9px 6px;text-align:center}
+  .qz-tile .n{font-family:"Fraunces",serif;font-size:18px;font-weight:600}
+  .qz-tile .k{font-size:10px;color:var(--text-muted);margin-top:2px}
+  .qz-explain{font-size:12px;color:var(--text-secondary);background:var(--bg-secondary);border:0.5px solid var(--border-soft);border-radius:9px;padding:9px 12px;margin:12px 0}
+  .qz-explain b{color:var(--text-primary)}
+  .qz-row{display:flex;align-items:center;gap:12px;padding:10px 12px 10px 14px;border-radius:10px;margin-bottom:8px;position:relative;overflow:hidden}
+  .qz-row .edge{position:absolute;left:0;top:0;bottom:0;width:3px}
+  .qz-row .nm{width:82px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px;flex-shrink:0}
+  .qz-row .mid{flex:1;min-width:0}
+  .qz-row .bar{height:5px;border-radius:99px;background:var(--bg-card);overflow:hidden}
+  .qz-row .bar>i{display:block;height:100%}
+  .qz-row .cap{font-size:11px;color:var(--text-muted);margin-top:4px}
+  .qz-row .ctrl{display:flex;align-items:center;gap:8px;flex-shrink:0}
+  .qz-row .step{width:28px;height:28px;border-radius:99px;display:grid;place-items:center;font-size:15px;border:0.5px solid var(--border-soft);background:var(--bg-card);color:var(--text-muted)}
+  .qz-row .cnt{font-family:"Fraunces",serif;font-size:20px;font-weight:700;min-width:32px;text-align:center;border-bottom:1px dotted var(--border-soft);cursor:pointer}
+  .qz-row .mark{display:inline-flex;align-items:center;gap:6px;padding:7px 13px;border-radius:9px;font-size:13px;font-weight:600;border:none;color:#fff;cursor:pointer;white-space:nowrap}
+
+  /* habit / voluntary */
+  .habit{padding:10px 12px;background:var(--bg-secondary);border-radius:10px;border-left:3px solid var(--asr);margin-bottom:8px}
+  .habit .r1{display:flex;justify-content:space-between;gap:8px;font-size:14px;font-weight:500;margin-bottom:3px}
+  .habit .r2{font-size:12px;color:var(--text-muted)}
+  .vol{padding:12px 14px;border-radius:11px;background:rgba(131,120,208,.08);border:0.5px solid rgba(131,120,208,.3)}
+  .vol .big{font-family:"Fraunces",serif;font-size:22px;font-weight:600;color:var(--isha)}
+
+  .pat{position:relative;padding:10px 12px 10px 16px;border-radius:10px;background:rgba(95,168,170,.08);border:0.5px solid rgba(95,168,170,.35);margin-bottom:8px;overflow:hidden}
+  .pat .edge{position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--teal)}
+  .pat .h{display:flex;justify-content:space-between;gap:8px;margin-bottom:3px}
+  .pat .kind{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--teal)}
+  .pat .cnt{font-size:11px;color:var(--text-secondary);background:var(--bg-secondary);border-radius:99px;padding:1px 7px}
+  .pat .cm{font-size:13px;color:var(--text-secondary)}
+
+  .collapsed{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg-card);border:0.5px solid var(--border-soft);border-radius:12px;margin-bottom:10px}
+  .collapsed .chev{color:var(--text-muted)}
+  .collapsed .ic{width:28px;height:28px;border-radius:8px;background:rgba(124,195,157,.14);color:var(--gold);display:grid;place-items:center;font-size:13px}
+  .collapsed .t{font-family:"Fraunces",serif;font-size:15px;font-weight:600;flex:1}
+  .collapsed .r{font-size:12px;color:var(--text-muted)}
+
+  /* dashboard grid */
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .grid .full{grid-column:1 / -1}
+
+  .skel{background:var(--bg-secondary);border:0.5px dashed var(--border-soft);border-radius:12px;padding:14px 16px;color:var(--text-muted);font-size:13px}
+  .skel .st{font-family:"Fraunces",serif;color:var(--text-secondary);font-size:14px;font-weight:600;margin-bottom:2px}
+  .pillnav{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+  .pillnav .p{font-size:13px;padding:7px 14px;border-radius:99px;border:0.5px solid var(--border-soft);background:transparent;color:var(--text-secondary);cursor:pointer}
+  .pillnav .p.on{background:var(--text-primary);color:var(--bg-card);border-color:var(--text-primary);font-weight:600}
+  .note{background:rgba(124,195,157,.06);border:1px solid var(--border-soft);border-radius:12px;padding:13px 15px;font-size:13px;color:var(--text-secondary);margin-top:16px}
+  .note b{color:var(--text-primary)}
+</style>
+</head>
+<body>
+  <div style="max-width:1060px;margin:0 auto">
+    <div class="page-title serif">Mizan — redesign options</div>
+    <div class="page-sub">Mizan is already well-organised (decluttered, spiritual-first, productivity behind collapsibles). The one real weakness is the tall single column of full-width cards that wastes desktop width. Three ways to fix it. Content is representative.</div>
+  </div>
+
+  <!-- ============ OPTION 1 — DASHBOARD GRID ============ -->
+  <div class="opt">
+    <div class="opt-tag rec">Option 1 · recommended</div>
+    <div class="opt-name serif">Dashboard grid — hero + paired cards</div>
+    <div class="opt-desc">A stronger “This week” hero (prayer-rate ring + the digest as a scannable stat grid), then a responsive 2-column grid: wide cards (Prayer Health, Qaza) span full width; medium cards (Voluntary + Habit Health, Patterns) pair up. Productivity stays behind collapsibles at the bottom. Fills the width; reads as a composed dashboard, not a scroll.</div>
+    <div class="frame">
+      <!-- hero -->
+      <div class="hero">
+        <div class="hero-top">
+          <div class="ring">
+            <svg width="74" height="74" viewBox="0 0 74 74"><circle cx="37" cy="37" r="29" fill="none" stroke="var(--bg-secondary)" stroke-width="8"/><circle cx="37" cy="37" r="29" fill="none" stroke="var(--gold)" stroke-width="8" stroke-linecap="round" stroke-dasharray="182" stroke-dashoffset="33" transform="rotate(-90 37 37)"/></svg>
+            <div class="lab"><div><b>82%</b><span>prayers</span></div></div>
+          </div>
+          <div style="flex:1;min-width:180px">
+            <div class="overline">This week</div>
+            <div class="serif" style="font-size:20px;font-weight:600">Where you stand</div>
+            <div style="font-size:12px;color:var(--text-muted)">Aug 15 – Aug 21</div>
+          </div>
+        </div>
+        <div class="hero-grid">
+          <div class="stat"><div class="k">Most missed</div><div class="row"><span class="v">Asr</span><span class="d down">3/7 days</span></div></div>
+          <div class="stat"><div class="k">Tahajjud</div><div class="row"><span class="v">3 / 7</span><span class="d up">↑ +1</span></div></div>
+          <div class="stat"><div class="k">Niyyah avg</div><div class="row"><span class="v">4.0</span><span class="d up">rising</span></div></div>
+          <div class="stat"><div class="k">Focus</div><div class="row"><span class="v">5h 10m</span><span class="d up">↑ +1h</span></div></div>
+          <div class="stat"><div class="k">Pattern</div><div class="row"><span class="v" style="font-size:14px">Asr slipping</span><span class="d down">×3</span></div></div>
+        </div>
+      </div>
+
+      <div class="grid">
+        <!-- prayer health : full -->
+        <div class="card full">
+          <div class="sh"><div class="l"><span class="ic" style="background:rgba(124,195,157,.14);color:var(--gold)">☪</span><span class="t">Prayer health</span></div><span class="r">last 30 days</span></div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div class="ph"><span class="nm" style="color:var(--fajr)">Fajr</span><span class="strip"><i style="background:var(--fajr)"></i><i></i><i style="background:var(--fajr)"></i><i style="background:var(--fajr)"></i><i></i><i style="background:var(--fajr)"></i><i style="background:var(--fajr)"></i><i style="background:var(--fajr)"></i><i></i><i style="background:var(--fajr)"></i><i style="background:var(--fajr)"></i><i style="background:var(--fajr)"></i><i style="background:var(--fajr)"></i><i></i><i style="background:var(--fajr)"></i><i style="background:var(--fajr)"></i></span><span class="rate" style="color:var(--warning)">68%</span></div>
+            <div class="ph"><span class="nm" style="color:var(--dhuhr)">Dhuhr</span><span class="strip"><i style="background:var(--dhuhr)"></i><i style="background:var(--dhuhr)"></i><i style="background:var(--dhuhr)"></i><i style="background:var(--dhuhr)"></i><i style="background:var(--dhuhr)"></i><i></i><i style="background:var(--dhuhr)"></i><i style="background:var(--dhuhr)"></i><i style="background:var(--dhuhr)"></i><i style="background:var(--dhuhr)"></i><i style="background:var(--dhuhr)"></i><i style="background:var(--dhuhr)"></i><i style="background:var(--dhuhr)"></i><i style="background:var(--dhuhr)"></i><i style="background:var(--dhuhr)"></i><i style="background:var(--dhuhr)"></i></span><span class="rate" style="color:var(--success)">94%</span></div>
+            <div class="ph"><span class="nm" style="color:var(--asr)">Asr</span><span class="strip"><i style="background:var(--asr)"></i><i></i><i></i><i style="background:var(--asr)"></i><i></i><i style="background:var(--asr)"></i><i></i><i style="background:var(--asr)"></i><i></i><i style="background:var(--asr)"></i><i style="background:var(--asr)"></i><i></i><i style="background:var(--asr)"></i><i></i><i style="background:var(--asr)"></i><i></i></span><span class="rate" style="color:var(--danger)">48%</span></div>
+            <div class="ph"><span class="nm" style="color:var(--maghrib)">Maghrib</span><span class="strip"><i style="background:var(--maghrib)"></i><i style="background:var(--maghrib)"></i><i style="background:var(--maghrib)"></i><i style="background:var(--maghrib)"></i><i style="background:var(--maghrib)"></i><i style="background:var(--maghrib)"></i><i style="background:var(--maghrib)"></i><i style="background:var(--maghrib)"></i><i></i><i style="background:var(--maghrib)"></i><i style="background:var(--maghrib)"></i><i style="background:var(--maghrib)"></i><i style="background:var(--maghrib)"></i><i style="background:var(--maghrib)"></i><i style="background:var(--maghrib)"></i><i style="background:var(--maghrib)"></i></span><span class="rate" style="color:var(--success)">96%</span></div>
+            <div class="ph"><span class="nm" style="color:var(--isha)">Isha</span><span class="strip"><i style="background:var(--isha)"></i><i style="background:var(--isha)"></i><i></i><i style="background:var(--isha)"></i><i style="background:var(--isha)"></i><i style="background:var(--isha)"></i><i style="background:var(--isha)"></i><i></i><i style="background:var(--isha)"></i><i style="background:var(--isha)"></i><i style="background:var(--isha)"></i><i></i><i style="background:var(--isha)"></i><i style="background:var(--isha)"></i><i style="background:var(--isha)"></i><i style="background:var(--isha)"></i></span><span class="rate" style="color:var(--gold)">82%</span></div>
+          </div>
+        </div>
+
+        <!-- qaza : full — the FULL interactive ledger (marking kept, clearer) -->
+        <div class="card full">
+          <div class="sh"><div class="l"><span class="ic" style="background:rgba(224,192,106,.14);color:var(--noor)">↺</span><span class="t">Qaza ledger</span></div><span class="r">at 5/day → cleared ~Nov · since 12 Aug</span></div>
+          <!-- hero -->
+          <div class="qz-sum" style="padding:14px 16px;border-radius:12px;background:linear-gradient(135deg,rgba(199,147,56,.12),rgba(199,147,56,.03));border:0.5px solid rgba(199,147,56,.3)">
+            <div><div class="qz-big">128</div><div style="font-size:12px;color:var(--text-muted)">prayers to make up</div></div>
+            <div style="flex:1"></div>
+            <span style="font-size:12px;font-weight:600;color:var(--gold);background:rgba(124,195,157,.16);border-radius:99px;padding:4px 10px">+2 made up today</span>
+          </div>
+          <!-- explainer: makes marking obvious -->
+          <div class="qz-explain">Missed prayers land here <b>after the day ends</b> (today stays on the Prayer tab). Tap <b>＋ Made up</b> each time you pray one back — the count drops. Tap a number to bulk-edit.</div>
+          <!-- per-prayer rows with the mark control -->
+          <div class="qz-row" style="background:linear-gradient(135deg,rgba(79,124,201,.08),transparent 65%);border:0.5px solid rgba(79,124,201,.4)"><span class="edge" style="background:var(--fajr)"></span>
+            <span class="nm" style="color:var(--fajr)">Fajr</span>
+            <span class="mid"><span class="bar"><i style="width:28%;background:var(--fajr)"></i></span><span class="cap">12 of 43 made up · 28%</span></span>
+            <span class="ctrl"><button class="step" title="Undo one made up today">−</button><span class="cnt">31</span><button class="mark" style="background:var(--fajr)">＋ Made up</button></span>
+          </div>
+          <div class="qz-row" style="background:linear-gradient(135deg,rgba(199,147,56,.08),transparent 65%);border:0.5px solid rgba(199,147,56,.4)"><span class="edge" style="background:var(--dhuhr)"></span>
+            <span class="nm" style="color:var(--dhuhr)">Dhuhr</span>
+            <span class="mid"><span class="bar"><i style="width:60%;background:var(--dhuhr)"></i></span><span class="cap">27 of 45 made up · 60%</span></span>
+            <span class="ctrl"><button class="step" title="Undo one made up today">−</button><span class="cnt">18</span><button class="mark" style="background:var(--dhuhr)">＋ Made up</button></span>
+          </div>
+          <div class="qz-row" style="background:linear-gradient(135deg,rgba(63,170,126,.08),transparent 65%);border:0.5px solid rgba(63,170,126,.4)"><span class="edge" style="background:var(--asr)"></span>
+            <span class="nm" style="color:var(--asr)">Asr</span>
+            <span class="mid"><span class="bar"><i style="width:15%;background:var(--asr)"></i></span><span class="cap">7 of 47 made up · 15%</span></span>
+            <span class="ctrl"><button class="step" title="Undo one made up today">−</button><span class="cnt">40</span><button class="mark" style="background:var(--asr)">＋ Made up</button></span>
+          </div>
+          <div class="qz-row" style="border:0.5px solid var(--border-soft)"><span class="edge" style="background:var(--maghrib)"></span>
+            <span class="nm" style="color:var(--maghrib)">Maghrib</span>
+            <span class="mid"><span class="bar"><i style="width:70%;background:var(--maghrib)"></i></span><span class="cap">28 of 40 made up · 70%</span></span>
+            <span class="ctrl"><button class="step" title="Undo one made up today">−</button><span class="cnt">12</span><button class="mark" style="background:var(--maghrib)">＋ Made up</button></span>
+          </div>
+          <div class="qz-row" style="border:0.5px solid var(--border-soft)"><span class="edge" style="background:var(--isha)"></span>
+            <span class="nm" style="color:var(--isha)">Isha</span>
+            <span class="mid"><span class="bar"><i style="width:40%;background:var(--isha)"></i></span><span class="cap">18 of 45 made up · 40%</span></span>
+            <span class="ctrl"><button class="step" title="Undo one made up today">−</button><span class="cnt">27</span><button class="mark" style="background:var(--isha)">＋ Made up</button></span>
+          </div>
+          <!-- actions -->
+          <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+            <button style="flex:1;padding:9px 12px;font-size:13px;border-radius:9px;border:0.5px solid var(--border-soft);background:transparent;color:var(--text-secondary)">＋ Add older missed prayers</button>
+            <button style="flex:1;padding:9px 12px;font-size:13px;border-radius:9px;border:0.5px solid var(--border-soft);background:transparent;color:var(--text-secondary)">▦ Excused days</button>
+          </div>
+        </div>
+
+        <!-- voluntary : half -->
+        <div class="card">
+          <div class="sh"><div class="l"><span class="ic" style="background:rgba(131,120,208,.14);color:var(--isha)">☾</span><span class="t">Voluntary</span></div><span class="r">30 days</span></div>
+          <div class="vol"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="color:var(--isha);font-weight:600">Tahajjud</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><div><div class="big">40%</div><div style="font-size:11px;color:var(--text-muted)">12 of 30 days</div></div><div style="text-align:right"><div style="font-size:16px;font-weight:600;color:var(--isha)">🔥 3</div><div style="font-size:11px;color:var(--text-muted)">streak</div></div></div>
+          </div>
+        </div>
+
+        <!-- habit health : half -->
+        <div class="card">
+          <div class="sh"><div class="l"><span class="ic" style="background:rgba(63,170,126,.14);color:var(--asr)">↻</span><span class="t">Habit health</span></div><span class="r">2 habits</span></div>
+          <div class="habit" style="border-color:var(--asr)"><div class="r1"><span>Morning adhkar</span><span style="color:var(--asr)">🔥 12 · 90%</span></div><div class="r2">Spiritual growth · Daily</div></div>
+          <div class="habit" style="border-color:var(--fajr)"><div class="r1"><span>Read 5 pages</span><span style="color:var(--gold)">🔥 4 · 63%</span></div><div class="r2">Learn Arabic · Mon, Thu</div></div>
+        </div>
+
+        <!-- patterns : full -->
+        <div class="card full">
+          <div class="sh"><div class="l"><span class="ic" style="background:rgba(95,168,170,.14);color:var(--teal)">◈</span><span class="t">Patterns from the mirror</span></div><span class="r">across 6 reports · 30 days</span></div>
+          <div class="pat"><div class="edge"></div><div class="h"><span class="kind">Neglected prayer</span><span class="cnt">×4</span></div><div class="cm">Asr keeps slipping on busy weekday afternoons — you've named it four times.</div></div>
+          <div class="pat" style="background:rgba(63,170,126,.08);border-color:rgba(63,170,126,.35)"><div class="edge" style="background:var(--asr)"></div><div class="h"><span class="kind" style="color:var(--asr)">Momentum</span><span class="cnt">×3</span></div><div class="cm">Your Quran habit is holding — three weeks unbroken.</div></div>
+        </div>
+      </div>
+
+      <!-- productivity collapsibles -->
+      <div style="margin-top:16px">
+        <div class="collapsed"><span class="chev">›</span><span class="ic">◷</span><span class="t">Focus heatmap</span><span class="r">42 active days · 12 weeks</span></div>
+        <div class="collapsed"><span class="chev">›</span><span class="ic">✎</span><span class="t">Niyyah trend</span><span class="r">21 entries · avg 3.9/5</span></div>
+        <div class="collapsed"><span class="chev">›</span><span class="ic">↗</span><span class="t">Per-goal focus</span><span class="r">4 goals · 30 days</span></div>
+        <div class="collapsed"><span class="chev">›</span><span class="ic">▤</span><span class="t">Recent sessions</span><span class="r">63 total</span></div>
+      </div>
+    </div>
+    <div class="note"><b>Note:</b> below ~900px the grid collapses to one column — identical to today's order, so mobile is unaffected. The Qaza ledger keeps its full internals; it just sits in the grid full-width.</div>
+  </div>
+
+  <!-- ============ OPTION 2 — REFINED SINGLE COLUMN ============ -->
+  <div class="opt">
+    <div class="opt-tag">Option 2</div>
+    <div class="opt-name serif">Refined single column</div>
+    <div class="opt-desc">Today's exact order and interactions, just polished: stronger hero (same ring + stat grid), one consistent card system, calmer spacing, glyph chrome swapped for icons. Centered ~740px. Lowest risk — no layout change, so nothing can reflow oddly.</div>
+    <div class="frame">
+      <div style="max-width:700px;margin:0 auto;display:flex;flex-direction:column;gap:12px">
+        <div class="hero" style="margin:0">
+          <div class="hero-top" style="margin:0">
+            <div class="ring"><svg width="74" height="74" viewBox="0 0 74 74"><circle cx="37" cy="37" r="29" fill="none" stroke="var(--bg-secondary)" stroke-width="8"/><circle cx="37" cy="37" r="29" fill="none" stroke="var(--gold)" stroke-width="8" stroke-linecap="round" stroke-dasharray="182" stroke-dashoffset="33" transform="rotate(-90 37 37)"/></svg><div class="lab"><div><b>82%</b><span>prayers</span></div></div></div>
+            <div style="flex:1"><div class="overline">This week</div><div class="serif" style="font-size:20px;font-weight:600">Where you stand</div></div>
+          </div>
+        </div>
+        <div class="skel"><div class="st">Prayer health</div>per-prayer 30-day strips + rate</div>
+        <div class="skel"><div class="st">Qaza ledger</div>full interactive make-up ledger</div>
+        <div class="skel"><div class="st">Voluntary · Habit health · Patterns</div>each full-width, stacked</div>
+        <div class="collapsed"><span class="chev">›</span><span class="ic">◷</span><span class="t">Focus heatmap · Niyyah trend · Recent…</span><span class="r">collapsed</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ OPTION 3 — SECTIONED SUB-NAV ============ -->
+  <div class="opt">
+    <div class="opt-tag">Option 3</div>
+    <div class="opt-name serif">Sectioned sub-nav</div>
+    <div class="opt-desc">A pill nav swaps one section into view at a time — least scrolling, most focused, most “app-like.” Trade-off: you lose the at-a-glance full picture, and it's the biggest interaction change (Overview would carry the hero + a couple of summaries).</div>
+    <div class="frame">
+      <div class="pillnav"><span class="p on">Overview</span><span class="p">Prayer</span><span class="p">Qaza</span><span class="p">Habits</span><span class="p">Focus</span><span class="p">Patterns</span></div>
+      <div class="hero" style="margin:0 0 12px">
+        <div class="hero-top" style="margin:0">
+          <div class="ring"><svg width="74" height="74" viewBox="0 0 74 74"><circle cx="37" cy="37" r="29" fill="none" stroke="var(--bg-secondary)" stroke-width="8"/><circle cx="37" cy="37" r="29" fill="none" stroke="var(--gold)" stroke-width="8" stroke-linecap="round" stroke-dasharray="182" stroke-dashoffset="33" transform="rotate(-90 37 37)"/></svg><div class="lab"><div><b>82%</b><span>prayers</span></div></div></div>
+          <div style="flex:1"><div class="overline">This week</div><div class="serif" style="font-size:20px;font-weight:600">Where you stand</div></div>
+        </div>
+      </div>
+      <div class="skel"><div class="st">Overview</div>the “This week” digest + a summary of each area; tap a pill to drill into Prayer / Qaza / Habits / Focus / Patterns.</div>
+    </div>
+  </div>
+
+</body>
+</html>

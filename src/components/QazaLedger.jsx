@@ -127,8 +127,18 @@ export default function QazaLedger({
         </div>
       )}
 
+      {/* How-to explainer — kept ABOVE the rows so the "＋ Made up" action is
+          obvious before the user reaches it (was a hint below the rows). */}
+      <div style={{
+        fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5, marginTop: 14,
+        padding: "9px 12px", borderRadius: 9,
+        background: "var(--color-background-secondary)", border: "0.5px solid var(--color-border-tertiary)",
+      }}>
+        Missed prayers land here <strong style={{ color: "var(--text-primary)" }}>after their day ends</strong> (today stays on the Prayer tab). Tap <strong style={{ color: "var(--text-primary)" }}>＋ Made up</strong> each time you pray one back; tap a number to adjust in bulk.
+      </div>
+
       {/* per-prayer rows */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 14 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 12 }}>
         {QAZA_PRAYERS.map((p) => (
           <QazaRow key={p}
             p={p}
@@ -140,10 +150,6 @@ export default function QazaLedger({
             onAdjust={adjustQaza}
           />
         ))}
-      </div>
-
-      <div style={{ fontSize: 11.5, color: "var(--text-muted)", marginTop: 10, lineHeight: 1.5 }}>
-        A missed prayer settles here after its day ends. Tap <strong>+</strong> as you make one up, or tap a number to adjust it in bulk.
       </div>
 
       {/* completion projection */}
@@ -251,12 +257,13 @@ function QazaRow({ p, owed, paidToday, paidTotalP, onPay, onUndo, onAdjust }) {
             aria-label={`Mark one ${p} qaza as made up`}
             title={owed === 0 ? `No ${p} qaza outstanding` : `Mark one ${p} qaza as made up`}
             style={{
-              ...roundBtn, fontWeight: 600,
+              display: "inline-flex", alignItems: "center", gap: 5,
+              padding: "7px 12px", borderRadius: 9, fontSize: 13, fontWeight: 600, whiteSpace: "nowrap",
               background: owed === 0 ? "transparent" : color,
               color: owed === 0 ? "var(--text-muted)" : "#fff",
               border: `0.5px solid ${owed === 0 ? "var(--color-border-tertiary)" : color}`,
               opacity: owed === 0 ? 0.45 : 1, cursor: owed === 0 ? "not-allowed" : "pointer",
-            }}>+</button>
+            }}>＋ Made up</button>
         </div>
       </div>
 
