@@ -588,7 +588,9 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
                     strokeDasharray={RING_C} strokeDashoffset={RING_C * (1 - heroPct / 100)}
                     transform="rotate(-90 37 37)" style={{ transition: "stroke-dashoffset 0.5s ease" }} />
                 </svg>
-                <div className="lab"><div><b>{heroPct}%</b><span>prayers</span></div></div>
+                {/* "100%" is 4 glyphs — nudge it down so it stays clear of the
+                    ring stroke (same guard as the Goals hero ring). */}
+                <div className="lab"><div><b style={heroPct === 100 ? { fontSize: "var(--font-size-md)" } : undefined}>{heroPct}%</b><span>prayers</span></div></div>
               </div>
               <div style={{ flex: 1, minWidth: 160 }}>
                 <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase" }}>This week</div>
