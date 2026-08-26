@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useLayoutEffect } from "react";
 import {
   PRAYERS,
   VOLUNTARY_PRAYERS,
@@ -253,6 +253,13 @@ export default function Muhasaba({
 }) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyOpenDay, setHistoryOpenDay] = useState(null);
+  // The candid AI reflection opens in a focused modal rather than sitting as
+  // another card at the bottom of an already-long page.
+  const [mirrorOpen, setMirrorOpen] = useState(false);
+  // Day strip renders as many recent days as fit its width (no horizontal
+  // scroll) + a "Pick" cell for older dates; stripDayCount is measured below.
+  const stripRef = useRef(null);
+  const [stripDayCount, setStripDayCount] = useState(14);
   const day = muhasabaDay;
   const entry = muhasaba[day] || emptyMuhasabaEntry();
   const isToday = day === todayStr();
@@ -306,10 +313,11 @@ export default function Muhasaba({
   const dayFocusMins = focusLog.filter((l) => l.day === day).reduce((s, l) => s + (l.mins || 0), 0);
   const streak = muhasabaStreak(muhasaba);
 
-  // last 14 days strip — anchored to IST so the rightmost cell is always
-  // today in the user's calendar, not UTC.
+  // Day strip — the most-recent N days ending today (today is always the
+  // rightmost cell, so it needs no scroll-into-view). N is measured from the
+  // container width (below) so the row fills without horizontal scroll.
   const stripDays = [];
-  for (let i = 13; i >= 0; i--) stripDays.push(addDays(-i));
+  for (let i = stripDayCount - 1; i >= 0; i--) stripDays.push(addDays(-i));
 
   // Render labels by anchoring the calendar date at NOON UTC and formatting
   // in UTC (the codebase's weekdayOf convention). A midnight-UTC anchor
@@ -330,32 +338,84 @@ export default function Muhasaba({
   const canGenerate = canGenerateMirror(entry, day, prayerLog, focusLog);
   const report = entry.aiReport;
   const generating = aiLoadingDay === day;
+  const reportPreview = report ? reportPreviewText(report) : null;
+
+  // How many of the five pillars the user has touched tonight — drives the
+  // context band's "reckoning" meter. Prayers/focus are auto context, so
+  // pillar 1 counts only the user-entered Quran/dhikr/make-up.
+  const pillarsTouched = [
+    !!(entry.quranPages || entry.dhikr || entry.makeupNote),
+    !!(entry.repentText || (entry.sinTags || []).length || Object.keys(entry.relations || {}).length),
+    !!entry.ghaflahNote,
+    !!(entry.niyyahRating > 0 || entry.bestDeed),
+    (entry.shukr || []).some((s) => s && s.trim()),
+  ].filter(Boolean).length;
+
+  // Measure the strip and render as many day cells as fit one row (no
+  // horizontal scroll). Reserve one slot for the "Pick" cell. Re-measures on
+  // resize via ResizeObserver (window-resize fallback for older engines).
+  // Layout effect so the count is set before paint — no one-frame flash of
+  // clipped cells on a narrow (mobile) first render.
+  useLayoutEffect(() => {
+    const el = stripRef.current;
+    if (!el) return;
+    const CELL = 52, GAP = 6;
+    const measure = () => {
+      const w = el.clientWidth;
+      if (!w) return;
+      const fit = Math.floor((w + GAP) / (CELL + GAP));
+      setStripDayCount(Math.max(5, Math.min(31, fit - 1)));
+    };
+    measure();
+    if (typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(measure);
+      ro.observe(el);
+      return () => ro.disconnect();
+    }
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+
+  const openMirror = () => setMirrorOpen(true);
+  const generateAndOpen = () => { generateReport(day, { force: true }); setMirrorOpen(true); };
 
   return (
     <div className="view-content">
-      {/* Header / streak */}
-      <div style={{ ...S.goldCard, marginBottom: 16 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-          <div>
-            <div style={{ fontSize: 13, color: "var(--gold)", fontWeight: 600, letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: 4 }}>
-              محاسبة النفس · Muhasaba
-            </div>
-            <div className="serif" style={{ fontSize: 20, fontWeight: 600, color: "var(--text-primary)" }}>
-              {isToday ? "Tonight's reckoning" : dayLabel}
-            </div>
-            <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 3, fontStyle: "italic" }}>
-              "Hold yourselves accountable before you are held accountable." — ʿUmar ibn al-Khattab
-            </div>
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <div className="serif" style={{ fontSize: 26, fontWeight: 600, color: "var(--gold)" }}>{streak}</div>
-            <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>day streak</div>
+      {/* Header */}
+      <div style={{ marginBottom: 14 }}>
+        <div style={{ fontSize: 13, color: "var(--gold)", fontWeight: 600, letterSpacing: "0.4px", textTransform: "uppercase", marginBottom: 4 }}>
+          محاسبة النفس · Muhasaba
+        </div>
+        <div className="serif" style={{ fontSize: 22, fontWeight: 600, color: "var(--text-primary)" }}>
+          {isToday ? "Tonight's reckoning" : dayLabel}
+        </div>
+        <div style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 3, fontStyle: "italic" }}>
+          "Hold yourselves accountable before you are held accountable." — ʿUmar ibn al-Khattab
+        </div>
+      </div>
+
+      {/* Context band — streak + the day's facts (replaces the old right-rail
+          idea; a full-width band leaves no empty column). */}
+      <div className="muhasaba-band">
+        <div className="muhasaba-band-streak">
+          <span className="n serif">{streak}</span>
+          <span className="k">day streak</span>
+        </div>
+        <div className="muhasaba-band-sep" />
+        <div className="muhasaba-band-stats">
+          <div className="mb-stat"><span className="k">Prayers</span><span className="v" style={{ color: "#3faa7e" }}>{dayPrayersDone.length} / {PRAYERS.length}</span></div>
+          <div className="mb-stat"><span className="k">Focus</span><span className="v" style={{ color: "#8378d0" }}>{fmtMins(dayFocusMins)}</span></div>
+          <div className="mb-stat">
+            <span className="k">Reckoning</span>
+            <span className="v">{pillarsTouched} / 5</span>
+            <div className="muhasaba-band-prog"><i style={{ width: `${(pillarsTouched / 5) * 100}%` }} /></div>
           </div>
         </div>
       </div>
 
-      {/* Day picker strip */}
-      <div style={{ display: "flex", gap: 6, overflowX: "auto", marginBottom: 14, paddingBottom: 6 }}>
+      {/* Day picker strip — fills the width, no scroll; "Pick" jumps to any
+          older date via the native date picker. */}
+      <div className="muhasaba-strip" ref={stripRef}>
         {stripDays.map((d) => {
           const isFilled = isMuhasabaFilled(muhasaba[d]);
           const active = d === day;
@@ -367,28 +427,25 @@ export default function Muhasaba({
           const dayNum = Number(d.split("-")[2]);
           return (
             <button key={d} onClick={() => setMuhasabaDay(d)}
-              style={{
-                flexShrink: 0,
-                minWidth: 48,
-                padding: "7px 4px",
-                borderRadius: "var(--border-radius-md)",
-                background: active ? goldA(18) : "var(--color-background-secondary)",
-                border: `0.5px solid ${active ? goldA(60) : "var(--color-border-tertiary)"}`,
-                color: active ? "var(--text-primary)" : "var(--text-secondary)",
-                cursor: "pointer",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 3,
-              }}>
-              <span style={{ fontSize: 11, letterSpacing: "0.4px", textTransform: "uppercase", color: "var(--text-muted)" }}>
-                {weekday}
-              </span>
-              <span style={{ fontSize: 15, fontWeight: active ? 600 : 500 }}>{dayNum}</span>
-              <span style={{ width: 5, height: 5, borderRadius: "50%", background: isFilled ? "var(--gold)" : "transparent" }} />
+              className={`muhasaba-day${active ? " on" : ""}`}
+              aria-pressed={active}>
+              <span className="w">{weekday}</span>
+              <span className="n" style={{ fontWeight: active ? 600 : 500 }}>{dayNum}</span>
+              <span className={`dot${isFilled ? " f" : ""}`} />
             </button>
           );
         })}
+        {/* Pick — a near-invisible native date input fills the cell, so tapping
+            anywhere on it opens the OS date picker (reaches any past day). */}
+        <label className="muhasaba-day muhasaba-day--pick" title="Jump to a date">
+          <span className="w">Pick</span>
+          <span className="n" aria-hidden>▾</span>
+          <span className="dot" />
+          <input type="date" max={todayStr()} value=""
+            onChange={(e) => { if (e.target.value) setMuhasabaDay(e.target.value); }}
+            aria-label="Jump to a date"
+            style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer", padding: 0, border: "none" }} />
+        </label>
       </div>
 
       {/* Yesterday's du'a → today's verdict. The user wrote a commitment
@@ -810,14 +867,15 @@ export default function Muhasaba({
           style={{ width: "100%", resize: "vertical", boxSizing: "border-box", background: "rgba(0,0,0,0.2)" }} />
       </div>
 
-      {/* AI reflection */}
+      {/* The mirror — a slim trigger; the full reflection opens in a focused
+          modal (below) so it doesn't add another long card to the page. */}
       {!canGenerate && !report && !generating ? (
         <div style={{
           ...S.card, marginBottom: 14, textAlign: "center",
-          padding: "20px 16px", borderStyle: "dashed",
+          padding: "18px 16px", borderStyle: "dashed",
           borderColor: "var(--color-border-tertiary)",
         }}>
-          <div style={{ marginBottom: 8, color: "var(--gold)", display: "flex", justifyContent: "center" }}><Icon name="mirror" size={26} /></div>
+          <div style={{ marginBottom: 6, color: "var(--gold)", display: "flex", justifyContent: "center" }}><Icon name="mirror" size={24} /></div>
           <div style={{ fontSize: 14, color: "var(--text-secondary)", fontWeight: 500, marginBottom: 3 }}>
             The mirror needs something to read
           </div>
@@ -826,41 +884,29 @@ export default function Muhasaba({
           </div>
         </div>
       ) : (
-        <div style={{ ...S.card, marginBottom: 14, borderColor: "var(--color-border-secondary)" }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
-            <div>
-              <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase" }}>
-                The mirror · candid reflection
-              </div>
-              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3 }}>
-                {report
-                  ? `Generated ${new Date(report.generatedAt).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}${report.model ? ` · ${report.model}` : ""}`
-                  : filled
-                    ? "Hold yourself to your own niyyah, not your own comfort."
-                    : "Reflection will be sharper if you fill the sections above first."}
-              </div>
+        <div className="muhasaba-mirror">
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 7 }}>
+              <Icon name="mirror" size={14} /> The mirror · candid reflection
             </div>
-            <button onClick={() => generateReport(day, { force: true })}
-              disabled={generating || !canGenerate}
-              style={{ fontSize: 13, padding: "5px 12px" }}>
-              {generating ? "Generating…" : report ? "Regenerate" : "Generate"}
-            </button>
+            <div className="teaser">
+              {generating ? "Reading your day…"
+                : reportPreview ? `"${reportPreview}"`
+                : "A candid mentor's note on your day."}
+            </div>
+            {!generating && aiError && aiLoadingDay === null && (
+              <div role="alert" aria-live="polite" style={{ fontSize: 12, color: "var(--color-text-danger)", marginTop: 6 }}>
+                {aiError}
+              </div>
+            )}
           </div>
-          {generating && (
-            <div style={{ fontSize: 14, color: "var(--text-secondary)", fontStyle: "italic", padding: "6px 0" }}>
-              Reading your day…
-            </div>
-          )}
-          {!generating && aiError && aiLoadingDay === null && (
-            <div role="alert" aria-live="polite" style={{
-              fontSize: 13, color: "var(--color-text-danger)",
-              padding: "6px 10px", background: "var(--color-background-danger)",
-              borderRadius: "var(--border-radius-md)",
-            }}>
-              {aiError}
-            </div>
-          )}
-          {!generating && (report?.data || report?.text) && <MirrorContent report={report} />}
+          <button
+            onClick={report && !generating ? openMirror : generateAndOpen}
+            disabled={generating || (!report && !canGenerate)}
+            className="btn-primary"
+            style={{ fontSize: 13, padding: "8px 15px", flexShrink: 0 }}>
+            {generating ? "Generating…" : report ? "Read reflection →" : "Generate reflection"}
+          </button>
         </div>
       )}
 
@@ -950,6 +996,55 @@ export default function Muhasaba({
             </div>
           );
         })()}
+      </Modal>
+
+      {/* The mirror — focused reading of the current day's reflection. Handles
+          the generating / error / result states, plus Regenerate (and a first
+          Generate if opened before a report exists). */}
+      <Modal
+        open={mirrorOpen}
+        onClose={() => setMirrorOpen(false)}
+        title={`The mirror · ${fmt(day)}`}>
+        {generating ? (
+          <div style={{ fontSize: 14, color: "var(--text-secondary)", fontStyle: "italic", padding: "8px 0", textAlign: "center" }}>
+            Reading your day…
+          </div>
+        ) : aiError && aiLoadingDay === null ? (
+          <div role="alert" aria-live="polite" style={{
+            fontSize: 13, color: "var(--color-text-danger)",
+            padding: "8px 12px", background: "var(--color-background-danger)",
+            borderRadius: "var(--border-radius-md)",
+          }}>
+            {aiError}
+          </div>
+        ) : (report?.data || report?.text) ? (
+          <div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>
+              Generated {new Date(report.generatedAt).toLocaleString([], { dateStyle: "short", timeStyle: "short" })}
+              {report.model ? ` · ${report.model}` : ""}
+            </div>
+            <MirrorContent report={report} />
+            <div style={{ marginTop: 16, textAlign: "center" }}>
+              <button onClick={() => generateReport(day, { force: true })}
+                disabled={generating || !canGenerate}
+                style={{ fontSize: 13, padding: "5px 14px" }}>
+                Regenerate
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ textAlign: "center", padding: "8px 0" }}>
+            <div style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 12 }}>
+              {filled ? "Hold yourself to your own niyyah, not your own comfort." : "Reflection will be sharper if you fill the sections above first."}
+            </div>
+            <button onClick={() => generateReport(day, { force: true })}
+              disabled={generating || !canGenerate}
+              className="btn-primary"
+              style={{ fontSize: 13, padding: "7px 16px" }}>
+              Generate reflection
+            </button>
+          </div>
+        )}
       </Modal>
 
       <div style={{ fontSize: 12, color: "var(--text-muted)", textAlign: "center", marginBottom: 24 }}>

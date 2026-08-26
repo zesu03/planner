@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Muhasaba — redesign options</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Space+Grotesk:wght@400;500;600&family=Amiri&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --gold:#7cc39d; --noor:#e0c06a; --on-accent:#10160f;
+    --bg-primary:#0f1310; --bg-secondary:#1f271e; --bg-card:#171d17;
+    --border:rgba(210,180,99,0.3); --border-soft:rgba(210,180,99,0.16);
+    --text-primary:#f1efe4; --text-secondary:#c7c3b0; --text-muted:#a8a289;
+    --danger:#e88b7c; --warning:#d6a85f; --success:#7fbe8f;
+    --p1:#3faa7e; --p2:#d4744a; --p3:#8378d0; --p4:#7cc39d; --p5:#4f95c9; --teal:#5fa8aa;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Space Grotesk",sans-serif;background:
+    radial-gradient(1200px 700px at 30% -10%, rgba(124,195,157,.05), transparent 55%),
+    var(--bg-primary);color:var(--text-primary);padding:40px 32px 90px;line-height:1.5}
+  .serif{font-family:"Fraunces",serif}
+  .amiri{font-family:"Amiri",serif}
+  .page-title{font-family:"Fraunces",serif;font-size:30px;font-weight:600;margin-bottom:6px}
+  .page-sub{color:var(--text-secondary);font-size:15px;margin-bottom:40px;max-width:800px}
+  .opt{max-width:1060px;margin:0 auto 70px}
+  .opt-tag{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--gold);background:rgba(124,195,157,.12);border:1px solid var(--border-soft);
+    border-radius:99px;padding:5px 12px;margin-bottom:8px}
+  .opt-tag.rec{color:var(--noor);background:rgba(224,192,106,.13)}
+  .opt-name{font-family:"Fraunces",serif;font-size:22px;font-weight:600;margin-bottom:4px}
+  .opt-desc{color:var(--text-secondary);font-size:14px;margin-bottom:18px;max-width:840px}
+  .frame{background:var(--bg-card);border:1px solid var(--border-soft);border-radius:20px;padding:22px;box-shadow:0 18px 50px rgba(0,0,0,.35)}
+
+  .card{background:var(--bg-secondary);border:0.5px solid var(--border-soft);border-radius:14px;padding:16px 18px}
+  .gold-card{background:linear-gradient(135deg, rgba(124,195,157,.14), rgba(124,195,157,.04));border:0.5px solid rgba(124,195,157,.3);border-radius:14px;padding:16px 18px}
+  .overline{font-size:12px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--gold)}
+  .hint{font-size:13px;color:var(--text-muted)}
+  .lbl{font-size:12px;color:var(--text-secondary);display:block;margin-bottom:5px}
+  .inp{background:var(--bg-card);border:0.5px solid var(--border-soft);border-radius:9px;padding:9px 11px;color:var(--text-muted);font-size:13px}
+  .ta{background:var(--bg-card);border:0.5px solid var(--border-soft);border-radius:9px;padding:9px 11px;color:var(--text-muted);font-size:13px;min-height:44px}
+  .chip{font-size:12px;padding:5px 11px;border-radius:99px;border:0.5px solid var(--border-soft);background:var(--bg-card);color:var(--text-secondary);display:inline-flex;gap:5px;align-items:center}
+  .chip.on{font-weight:600}
+  .rate{display:flex;gap:6px}
+  .rate .n{width:32px;height:32px;border-radius:8px;display:grid;place-items:center;font-size:13px;border:0.5px solid var(--border-soft);background:var(--bg-card);color:var(--text-secondary)}
+  .rate .n.on{background:rgba(124,195,157,.2);border-color:var(--gold);color:var(--gold);font-weight:600}
+
+  /* day strip */
+  .strip{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
+  .strip .d{flex:none;min-width:46px;padding:7px 4px;border-radius:11px;background:var(--bg-secondary);border:0.5px solid var(--border-soft);
+    display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer}
+  .strip .d.on{background:rgba(124,195,157,.16);border-color:rgba(124,195,157,.55)}
+  .strip .d .w{font-size:10px;text-transform:uppercase;color:var(--text-muted)}
+  .strip .d .n{font-size:14px;font-weight:500}
+  .strip .d .dot{width:5px;height:5px;border-radius:50%}
+  .strip .d .dot.f{background:var(--gold)}
+
+  /* pillar */
+  .pillar{position:relative;background:var(--bg-secondary);border:0.5px solid var(--border-soft);border-radius:14px;padding:16px 18px 16px 20px;overflow:hidden}
+  .pillar .edge{position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--pc)}
+  .pillar .ph{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+  .pillar .ph .num{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--pc)}
+  .pillar .ph .t{font-family:"Fraunces",serif;font-size:16px;font-weight:600}
+  .pillar .ph .chk{margin-left:auto;font-size:11px;color:var(--pc)}
+  .pillar .phint{font-size:12px;color:var(--text-muted);margin-bottom:12px;font-style:italic}
+
+  /* rail */
+  .rail{position:sticky;top:20px;display:flex;flex-direction:column;gap:14px}
+  .stat{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--border-soft)}
+  .stat:last-child{border-bottom:none}
+  .stat .k{font-size:13px;color:var(--text-secondary)}
+  .stat .v{font-size:14px;font-weight:600}
+  .ring{position:relative;width:64px;height:64px;flex:none}
+  .ring .lab{position:absolute;inset:0;display:grid;place-items:center;font-family:"Fraunces",serif;font-size:20px;font-weight:600}
+
+  /* verdict pills */
+  .vpills{display:flex;gap:6px;flex-wrap:wrap}
+  .vp{font-size:12px;padding:5px 11px;border-radius:99px;border:0.5px solid var(--border-soft);background:var(--bg-card);color:var(--text-secondary)}
+  .vp.ok{background:color-mix(in srgb,var(--success) 16%,transparent);border-color:var(--success);color:var(--success);font-weight:600}
+
+  .two{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:22px;align-items:start}
+  .stack{display:flex;flex-direction:column;gap:14px}
+  .mirror{background:linear-gradient(135deg, rgba(124,195,157,.1), transparent 70%);border:0.5px solid rgba(124,195,157,.3);border-radius:14px;padding:16px 18px}
+  .mirror .body{font-size:14px;color:var(--text-primary);line-height:1.6;margin-top:8px}
+  .mirror .tom{margin-top:12px;padding:10px 13px;border-radius:10px;background:rgba(124,195,157,.14);border:0.5px solid rgba(124,195,157,.35);font-size:13px}
+  .btn{font-size:13px;padding:7px 14px;border-radius:10px;border:0.5px solid var(--border-soft);background:transparent;color:var(--text-secondary);cursor:pointer;font-family:inherit}
+  .btn.gold{background:var(--gold);color:var(--on-accent);border:none;font-weight:600}
+
+  .progressbar{height:6px;border-radius:99px;background:var(--bg-secondary);overflow:hidden;margin-top:8px}
+  .progressbar > i{display:block;height:100%;background:var(--gold);border-radius:99px}
+
+  /* stepper */
+  .steps{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
+  .steps .s{display:flex;align-items:center;gap:8px}
+  .steps .dot{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:600;
+    background:var(--bg-secondary);border:0.5px solid var(--border-soft);color:var(--text-muted)}
+  .steps .dot.on{background:var(--gold);color:var(--on-accent);border:none}
+  .steps .dot.done{background:rgba(124,195,157,.2);border-color:var(--gold);color:var(--gold)}
+  .steps .line{width:22px;height:1px;background:var(--border-soft)}
+  .note{background:rgba(124,195,157,.06);border:1px solid var(--border-soft);border-radius:12px;padding:13px 15px;font-size:13px;color:var(--text-secondary);margin-top:16px;max-width:1060px}
+  .note b{color:var(--text-primary)}
+</style>
+</head>
+<body>
+  <div style="max-width:1060px;margin:0 auto">
+    <div class="page-title serif">Muhasaba — redesign options</div>
+    <div class="page-sub">Three ways to hold the nightly reckoning. Content is representative (pillars shown abbreviated — every current field stays). The goal: keep the reverence, cut the long-scroll wall, and give the ritual a sense of place and progress.</div>
+  </div>
+
+  <!-- ============ OPTION 1 — WORKSPACE ============ -->
+  <div class="opt">
+    <div class="opt-tag rec">Option 1 · recommended</div>
+    <div class="opt-name serif">Reckoning workspace — reflection + a “Tonight” rail</div>
+    <div class="opt-desc">The reflection flows down the main column; a sticky right rail holds the day’s facts (streak, prayers, focus, how much of tonight you’ve done) and the Mirror. Context sits beside the ritual instead of scattered through it, and the desktop width finally earns its keep. On mobile the rail folds to a compact summary card on top.</div>
+    <div class="frame">
+      <div class="two">
+        <!-- main column -->
+        <div class="stack">
+          <div>
+            <div class="overline amiri" style="font-size:14px">محاسبة النفس · Muhasaba</div>
+            <div class="serif" style="font-size:22px;font-weight:600;margin:2px 0 3px">Tonight’s reckoning</div>
+            <div style="font-size:12px;color:var(--text-muted);font-style:italic">“Hold yourselves accountable before you are held accountable.” — ʿUmar</div>
+          </div>
+          <div class="strip">
+            <div class="d"><span class="w">Sun</span><span class="n">17</span><span class="dot f"></span></div>
+            <div class="d"><span class="w">Mon</span><span class="n">18</span><span class="dot f"></span></div>
+            <div class="d"><span class="w">Tue</span><span class="n">19</span><span class="dot"></span></div>
+            <div class="d"><span class="w">Wed</span><span class="n">20</span><span class="dot f"></span></div>
+            <div class="d on"><span class="w">Thu</span><span class="n">21</span><span class="dot"></span></div>
+          </div>
+
+          <div class="pillar" style="--pc:var(--p1)"><div class="edge"></div>
+            <div class="ph"><span class="num">Pillar 1</span><span class="t serif">Fara’id — Obligations</span><span class="chk">4 / 5 prayers</span></div>
+            <div class="phint">The first thing accounted for is the prayer.</div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px">
+              <span class="chip on" style="color:var(--p1);border-color:var(--p1)">Fajr ✓</span>
+              <span class="chip on" style="color:var(--p1);border-color:var(--p1)">Dhuhr ✓</span>
+              <span class="chip on" style="color:var(--p1);border-color:var(--p1)">Asr ✓</span>
+              <span class="chip">Maghrib</span>
+              <span class="chip on" style="color:var(--p1);border-color:var(--p1)">Isha ✓</span>
+            </div>
+            <div class="lbl">Quran today · Dhikr</div>
+            <div class="inp">2 pages, Surah Mulk v.1–10</div>
+          </div>
+
+          <div class="pillar" style="--pc:var(--p2)"><div class="edge"></div>
+            <div class="ph"><span class="num">Pillar 2</span><span class="t serif">Manhiyat — Forbidden acts</span></div>
+            <div class="phint">Repent sincerely, with intention not to return.</div>
+            <div class="ta" style="margin-bottom:8px">What do I seek Allah’s forgiveness for today?</div>
+            <div style="display:flex;gap:5px;flex-wrap:wrap"><span class="chip">Tongue</span><span class="chip">Gaze</span><span class="chip">Anger</span><span class="chip">+ relational audit</span></div>
+          </div>
+
+          <div class="pillar" style="--pc:var(--p3)"><div class="edge"></div>
+            <div class="ph"><span class="num">Pillar 3</span><span class="t serif">Ghaflah — Heedlessness</span><span class="chk">Focus 1h 20m</span></div>
+          </div>
+          <div class="pillar" style="--pc:var(--p4)"><div class="edge"></div>
+            <div class="ph"><span class="num">Pillar 4</span><span class="t serif">Niyyah — Intention</span></div>
+            <div class="phint">Were today’s actions for Allah?</div>
+            <div class="rate"><span class="n">1</span><span class="n">2</span><span class="n">3</span><span class="n on">4</span><span class="n">5</span></div>
+          </div>
+          <div class="pillar" style="--pc:var(--p5)"><div class="edge"></div>
+            <div class="ph"><span class="num">Pillar 5</span><span class="t serif">Shukr — Gratitude</span></div>
+          </div>
+
+          <div class="gold-card">
+            <div class="overline">Du‘a / commitment for tomorrow</div>
+            <div class="ta" style="margin-top:8px;background:rgba(0,0,0,.2)">One specific thing I’m asking Allah for tomorrow.</div>
+          </div>
+        </div>
+
+        <!-- rail -->
+        <div class="rail">
+          <div class="gold-card">
+            <div style="display:flex;align-items:center;gap:14px">
+              <div class="ring">
+                <svg width="64" height="64" viewBox="0 0 64 64"><circle cx="32" cy="32" r="25" fill="none" stroke="var(--bg-secondary)" stroke-width="7"/><circle cx="32" cy="32" r="25" fill="none" stroke="var(--gold)" stroke-width="7" stroke-linecap="round" stroke-dasharray="157" stroke-dashoffset="47" transform="rotate(-90 32 32)"/></svg>
+                <div class="lab" style="color:var(--gold)">12</div>
+              </div>
+              <div><div style="font-size:13px;color:var(--text-secondary)">day streak</div><div style="font-size:12px;color:var(--text-muted)">Thu, 21 Aug</div></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="overline" style="margin-bottom:8px">Tonight</div>
+            <div class="stat"><span class="k">Prayers</span><span class="v" style="color:var(--p1)">4 / 5</span></div>
+            <div class="stat"><span class="k">Focus</span><span class="v" style="color:var(--p3)">1h 20m</span></div>
+            <div class="stat"><span class="k">Reckoning</span><span class="v">3 / 5 pillars</span></div>
+            <div class="progressbar"><i style="width:60%"></i></div>
+          </div>
+          <div class="card" style="background:rgba(63,140,160,.08);border-color:rgba(63,140,160,.32)">
+            <div class="overline" style="color:var(--teal);margin-bottom:6px">Yesterday’s du‘a</div>
+            <div style="font-size:13px;font-style:italic;color:var(--text-secondary);margin-bottom:8px">“Guard my tongue in every meeting.”</div>
+            <div class="vpills"><span class="vp ok">Honoured</span><span class="vp">Partial</span><span class="vp">Missed</span></div>
+          </div>
+          <div class="mirror">
+            <div class="overline">The mirror · candid reflection</div>
+            <div style="font-size:12px;color:var(--text-muted);margin:6px 0 10px">A candid mentor’s note on your day.</div>
+            <button class="btn gold" style="width:100%">Generate reflection</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="note"><b>Note:</b> the two collapsibles today (Yesterday’s du‘a, goal check) split — the du‘a verdict + a compact goal-check move to the rail as context; everything else (the 5 pillars, relational audit, tawbah, du‘a-for-tomorrow) stays in the main column exactly as now.</div>
+  </div>
+
+  <!-- ============ OPTION 2 — GUIDED LADDER ============ -->
+  <div class="opt">
+    <div class="opt-tag">Option 2</div>
+    <div class="opt-name serif">Guided ladder — refined single column</div>
+    <div class="opt-desc">Today’s flow, disciplined: a centered ~680px column, a calmer header, a “pillars touched” progress meter under the day strip, and the five pillars as one consistent numbered ladder (thinner accent, serif titles, a subtle ✓ when a pillar has content). Depth blocks (yesterday’s du‘a, goal check) stay as clean collapsibles. Lowest-risk — same interactions, just calmer and finished.</div>
+    <div class="frame">
+      <div style="max-width:680px;margin:0 auto" class="stack">
+        <div class="gold-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+            <div>
+              <div class="overline amiri" style="font-size:14px">محاسبة النفس · Muhasaba</div>
+              <div class="serif" style="font-size:20px;font-weight:600;margin-top:2px">Tonight’s reckoning</div>
+            </div>
+            <div style="text-align:right"><div class="serif" style="font-size:26px;font-weight:600;color:var(--gold)">12</div><div style="font-size:12px;color:var(--text-secondary)">day streak</div></div>
+          </div>
+        </div>
+        <div class="strip">
+          <div class="d"><span class="w">Tue</span><span class="n">19</span><span class="dot"></span></div>
+          <div class="d"><span class="w">Wed</span><span class="n">20</span><span class="dot f"></span></div>
+          <div class="d on"><span class="w">Thu</span><span class="n">21</span><span class="dot"></span></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted)"><span>Reckoning tonight</span><span>3 of 5 pillars</span></div>
+          <div class="progressbar"><i style="width:60%"></i></div>
+        </div>
+        <div class="pillar" style="--pc:var(--p1)"><div class="edge"></div>
+          <div class="ph"><span class="num">Pillar 1</span><span class="t serif">Fara’id — Obligations</span><span class="chk">✓</span></div>
+          <div class="phint">The first thing accounted for is the prayer.</div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap"><span class="chip on" style="color:var(--p1);border-color:var(--p1)">Fajr ✓</span><span class="chip on" style="color:var(--p1);border-color:var(--p1)">Dhuhr ✓</span><span class="chip">Asr</span><span class="chip on" style="color:var(--p1);border-color:var(--p1)">Maghrib ✓</span><span class="chip on" style="color:var(--p1);border-color:var(--p1)">Isha ✓</span></div>
+        </div>
+        <div class="pillar" style="--pc:var(--p2)"><div class="edge"></div>
+          <div class="ph"><span class="num">Pillar 2</span><span class="t serif">Manhiyat — Forbidden acts</span></div>
+          <div class="ta" style="margin-top:8px">What do I seek Allah’s forgiveness for today?</div>
+        </div>
+        <div class="pillar" style="--pc:var(--p4)"><div class="edge"></div>
+          <div class="ph"><span class="num">Pillar 4</span><span class="t serif">Niyyah — Intention</span><span class="chk">✓</span></div>
+          <div class="rate" style="margin-top:8px"><span class="n">1</span><span class="n">2</span><span class="n">3</span><span class="n on">4</span><span class="n">5</span></div>
+        </div>
+        <div class="mirror">
+          <div class="overline">The mirror · candid reflection</div>
+          <div class="body">You held four of five prayers and named your gaze honestly — that’s not nothing. But the Asr gap keeps recurring on busy afternoons…</div>
+          <div class="tom"><b style="color:var(--gold)">Tomorrow →</b> Pray Asr the moment you hear it, before the meeting.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ OPTION 3 — STEPPER ============ -->
+  <div class="opt">
+    <div class="opt-tag">Option 3</div>
+    <div class="opt-name serif">Stepper — one pillar at a time</div>
+    <div class="opt-desc">The reckoning as a paced ritual: a progress rail across the top, then one pillar filling the frame at a time (Back / Next), ending in Du‘a + the Mirror. Most reverent and focused — you sit with one question before moving on. Trade-off: reviewing or quickly editing a past day takes more taps (mitigated by letting you jump via the step dots).</div>
+    <div class="frame">
+      <div style="max-width:620px;margin:0 auto">
+        <div class="steps">
+          <span class="s"><span class="dot done">1</span></span><span class="line"></span>
+          <span class="s"><span class="dot on">2</span></span><span class="line"></span>
+          <span class="s"><span class="dot">3</span></span><span class="line"></span>
+          <span class="s"><span class="dot">4</span></span><span class="line"></span>
+          <span class="s"><span class="dot">5</span></span><span class="line"></span>
+          <span class="s"><span class="dot">✦</span></span>
+        </div>
+        <div style="font-size:12px;color:var(--text-muted);margin-bottom:16px">Pillar 2 of 5 · then Du‘a &amp; the Mirror</div>
+
+        <div class="pillar" style="--pc:var(--p2);padding:22px 24px 22px 26px"><div class="edge" style="width:5px"></div>
+          <div class="ph"><span class="num">Pillar 2</span><span class="t serif" style="font-size:19px">Manhiyat — Forbidden acts</span></div>
+          <div class="phint">Repent sincerely, with the intention not to return.</div>
+          <div class="ta" style="min-height:80px;margin-bottom:10px">What do I seek Allah’s forgiveness for today?</div>
+          <div class="lbl">Tag (optional)</div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px"><span class="chip">Tongue</span><span class="chip on" style="color:var(--p2);border-color:var(--p2)">Gaze</span><span class="chip">Anger</span><span class="chip">Pride</span></div>
+          <div style="font-size:12px;color:var(--text-secondary);font-style:italic;border-top:0.5px dashed var(--border-soft);padding-top:12px">Who did I owe today? — <span style="color:var(--text-muted)">relational audit appears here</span></div>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;margin-top:18px">
+          <button class="btn">← Fara’id</button>
+          <button class="btn gold">Ghaflah →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
