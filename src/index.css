@@ -401,6 +401,97 @@ select:focus-visible {
     bottom: calc(86px + env(safe-area-inset-bottom));
   }
 }
+/* FAB is a mobile affordance — on desktop the header "+ New goal" button is
+   always visible, so the floating button is redundant there. */
+@media (min-width: 641px) { .fab--mobile { display: none; } }
+
+/* ── Goals portfolio grid (GoalsList) ── */
+.goals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(258px, 1fr));
+  gap: 14px;
+  padding-bottom: 80px;
+}
+/* Summary hero: overall-progress ring + tappable at-a-glance counts, with a
+   right-aligned "Next up" block filling the width. */
+.goals-hero {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  padding: 18px 22px;
+  margin-bottom: 18px;
+  border: 0.5px solid var(--color-border-tertiary);
+  border-radius: var(--border-radius-lg);
+  background: linear-gradient(120deg,
+    color-mix(in srgb, var(--gold) 10%, transparent),
+    color-mix(in srgb, var(--noor) 5%, transparent) 60%, transparent);
+  flex-wrap: wrap;
+}
+.goals-hero-counts { display: flex; gap: 22px; flex-wrap: wrap; }
+.goals-hero-count {
+  background: none; border: none; padding: 0; cursor: pointer; text-align: left;
+  font-family: inherit; border-radius: var(--border-radius-sm);
+}
+.goals-hero-count .n {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: var(--font-size-2xl); font-weight: var(--fw-semibold); line-height: 1;
+  display: block; font-variant-numeric: tabular-nums;
+}
+.goals-hero-count .k { font-size: var(--font-size-sm); color: var(--text-muted); margin-top: 3px; }
+.goals-hero-count:hover .k { color: var(--text-secondary); }
+
+/* "Next up" — the soonest-due (or most-urgent) goal, pushed to the right edge
+   with a hairline divider, tappable to open. Drops below + left-aligns when
+   the hero wraps on a phone. */
+.goals-hero-next {
+  margin-left: auto;
+  display: flex; flex-direction: column; gap: 3px; align-items: flex-end; text-align: right;
+  max-width: 240px; padding: 2px 2px 2px 22px;
+  border-left: 1px solid var(--color-border-tertiary);
+  background: none; cursor: pointer; font-family: inherit; border-radius: var(--border-radius-sm);
+}
+.goals-hero-next .lbl { font-size: var(--font-size-xs); letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); }
+.goals-hero-next .ttl {
+  font-size: var(--font-size-md); font-weight: var(--fw-semibold); color: var(--text-primary); line-height: 1.25;
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.goals-hero-next .due { font-size: var(--font-size-sm); font-weight: var(--fw-medium); }
+.goals-hero-next:hover .ttl { color: var(--gold); }
+@media (max-width: 640px) {
+  .goals-hero-next {
+    margin-left: 0; align-items: flex-start; text-align: left;
+    padding: 12px 2px 2px; border-left: none; border-top: 1px solid var(--color-border-tertiary);
+    width: 100%; max-width: none;
+  }
+}
+
+/* Goal-detail header overflow menu (Edit + Delete grouped behind ⋯). */
+.goal-action-menu {
+  position: absolute; top: 42px; right: 0; z-index: 50;
+  background: var(--bg-card); border: 0.5px solid var(--border);
+  border-radius: 12px; padding: 6px; width: 168px; box-shadow: var(--shadow-pop);
+}
+.goal-action-menu button {
+  display: block; width: 100%; text-align: left; background: none; border: none;
+  color: var(--text-secondary); font-size: var(--font-size-base);
+  padding: 9px 11px; border-radius: 8px; cursor: pointer; font-family: inherit;
+}
+.goal-action-menu button:hover { background: var(--bg-secondary); }
+.goal-action-menu button.danger { color: var(--color-text-danger); }
+
+/* ── New-goal Compose layout (GoalAdd): fields + sticky live preview ── */
+.goal-compose {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 28px;
+  align-items: start;
+}
+.goal-compose-preview { position: sticky; top: 20px; }
+@media (max-width: 760px) {
+  .goal-compose { grid-template-columns: 1fr; gap: 18px; }
+  /* On a phone the preview sits above the fields, not stuck to the side. */
+  .goal-compose-preview { position: static; order: -1; }
+}
 
 /* Stats > Prayer Health — per-prayer row. Desktop is a flat 3-column
    strip: [name 76px | 30-cell heatmap | rate %]. Mobile cramps that to

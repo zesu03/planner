@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>New-goal form — redesign options</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --gold:#7cc39d; --noor:#e0c06a; --on-accent:#10160f;
+    --bg-primary:#0f1310; --bg-secondary:#1f271e; --bg-card:#171d17;
+    --border:rgba(210,180,99,0.3); --border-soft:rgba(210,180,99,0.16);
+    --text-primary:#f1efe4; --text-secondary:#c7c3b0; --text-muted:#a8a289;
+    --danger:#e88b7c; --warning:#d6a85f; --success:#7fbe8f;
+    --radius:16px; --radius-sm:11px;
+    --c-health:#3faa7e; --c-career:#8378d0; --c-learning:#4f95c9;
+    --c-finance:#c79338; --c-personal:#d4744a; --c-deen:#d9b85e; --c-other:#9a9078;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Space Grotesk",sans-serif;background:
+      radial-gradient(1200px 600px at 20% -10%, rgba(124,195,157,.06), transparent 55%),
+      radial-gradient(900px 500px at 90% 20%, rgba(224,192,106,.05), transparent 60%),
+      var(--bg-primary);color:var(--text-primary);padding:40px 32px 80px;line-height:1.5}
+  .serif{font-family:"Fraunces",serif}
+  .page-title{font-family:"Fraunces",serif;font-size:30px;font-weight:600;margin-bottom:6px}
+  .page-sub{color:var(--text-secondary);font-size:15px;margin-bottom:40px;max-width:760px}
+  .opt{max-width:1060px;margin:0 auto 64px}
+  .opt-tag{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:600;
+    letter-spacing:.08em;text-transform:uppercase;color:var(--gold);background:rgba(124,195,157,.12);
+    border:1px solid var(--border-soft);border-radius:99px;padding:5px 12px;margin-bottom:8px}
+  .opt-tag.rec{color:var(--noor);background:rgba(224,192,106,.13)}
+  .opt-name{font-family:"Fraunces",serif;font-size:22px;font-weight:600;margin-bottom:4px}
+  .opt-desc{color:var(--text-secondary);font-size:14px;margin-bottom:18px;max-width:820px}
+  .frame{background:var(--bg-card);border:1px solid var(--border-soft);border-radius:20px;
+    padding:26px 28px 30px;box-shadow:0 18px 50px rgba(0,0,0,.35)}
+
+  .vhead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:6px}
+  .vtitle{font-family:"Fraunces",serif;font-size:24px;font-weight:600}
+  .vsub{color:var(--text-muted);font-size:13.5px;font-style:italic;margin-bottom:22px}
+  .cancel{background:transparent;border:1px solid var(--border-soft);color:var(--text-secondary);
+    font-size:13px;padding:8px 15px;border-radius:10px;cursor:pointer;font-family:inherit}
+
+  /* form fields */
+  .field{margin-bottom:18px}
+  .flabel{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;
+    color:var(--text-muted);margin-bottom:8px;display:block}
+  .input{width:100%;background:var(--bg-secondary);border:1px solid var(--border-soft);border-radius:11px;
+    padding:12px 14px;color:var(--text-primary);font-family:inherit;font-size:15px}
+  .input::placeholder{color:var(--text-muted)}
+  .input.focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(124,195,157,.15);outline:none}
+  textarea.input{resize:vertical;min-height:64px}
+
+  .tf{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .tf .t{border:1px solid var(--border-soft);border-radius:12px;padding:12px 15px;cursor:pointer;background:var(--bg-secondary)}
+  .tf .t.on{border-color:var(--gold);background:rgba(124,195,157,.10)}
+  .tf .t .n{font-weight:600;font-size:14px}
+  .tf .t .s{font-size:12px;color:var(--text-muted);margin-top:2px}
+
+  .chips{display:flex;gap:8px;flex-wrap:wrap}
+  .catchip{display:inline-flex;align-items:center;gap:7px;padding:7px 13px;border-radius:99px;
+    border:1px solid var(--border-soft);background:var(--bg-secondary);font-size:13px;cursor:pointer;color:var(--text-secondary)}
+  .catchip .d{width:8px;height:8px;border-radius:50%}
+  .catchip.on{border-color:currentColor;background:rgba(255,255,255,.04);font-weight:600}
+  .chip{font-size:13px;padding:8px 13px;border-radius:99px;border:1px solid var(--border-soft);
+    background:var(--bg-secondary);color:var(--text-secondary);cursor:pointer;font-family:inherit}
+  .chip.on{background:rgba(124,195,157,.16);border-color:var(--gold);color:var(--gold);font-weight:600}
+  .date{background:var(--bg-secondary);border:1px solid var(--border-soft);border-radius:11px;
+    padding:10px 13px;color:var(--text-muted);font-size:14px;display:inline-flex;align-items:center;gap:8px;min-width:150px}
+  .sugg{display:flex;gap:8px;flex-wrap:wrap;margin-top:9px}
+  .sugg .s{font-size:12px;padding:6px 11px;border-radius:99px;border:1px solid var(--border-soft);
+    background:transparent;color:var(--text-muted);cursor:pointer;font-style:italic}
+  .create{width:100%;background:var(--gold);color:var(--on-accent);border:none;border-radius:12px;
+    padding:13px;font-weight:600;font-size:15px;cursor:pointer;font-family:inherit;margin-top:4px}
+
+  /* preview (matches the new portfolio-grid card) */
+  .pvwrap{position:sticky;top:20px}
+  .pvlabel{font-size:11px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--noor);margin-bottom:10px}
+  .gcard{position:relative;background:var(--bg-secondary);border:1px solid var(--border-soft);
+    border-radius:14px;padding:15px 17px 15px 20px;overflow:hidden}
+  .gcard .edge{position:absolute;left:0;top:0;bottom:0;width:4px}
+  .gtop{display:flex;align-items:center;gap:9px;margin-bottom:10px}
+  .gtitle{flex:1;font-family:"Fraunces",serif;font-weight:600;font-size:16px;line-height:1.3}
+  .cat{font-size:11px;font-weight:600;padding:3px 10px;border-radius:99px;white-space:nowrap}
+  .bar{height:7px;border-radius:99px;background:var(--bg-primary);overflow:hidden;flex:1;min-width:0}
+  .bar > i{display:block;height:100%;border-radius:99px}
+  .prow{display:flex;align-items:center;gap:10px}
+  .pnum{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums;flex-shrink:0}
+  .gmeta{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:9px;font-size:13px}
+  .gmeta .l{color:var(--text-muted)}
+  .pvnote{background:rgba(124,195,157,.06);border:1px solid var(--border-soft);border-radius:12px;
+    padding:11px 13px;font-size:12.5px;color:var(--text-secondary);margin-top:12px;font-style:italic}
+
+  .compose{display:grid;grid-template-columns:1fr 340px;gap:28px;align-items:start}
+  .rule{height:1px;background:var(--border-soft);margin:2px 0 18px}
+  .group-h{font-family:"Fraunces",serif;font-size:14px;font-weight:600;color:var(--text-secondary);
+    margin:2px 0 12px;display:flex;align-items:center;gap:10px}
+  .group-h::after{content:"";flex:1;height:1px;background:var(--border-soft)}
+  .note{background:rgba(124,195,157,.06);border:1px solid var(--border-soft);border-radius:12px;
+    padding:12px 14px;font-size:13px;color:var(--text-secondary);margin-top:16px}
+  .note b{color:var(--text-primary)}
+  .hero-niyyah{background:linear-gradient(120deg, rgba(224,192,106,.10), transparent 70%);
+    border:1px solid var(--border-soft);border-radius:14px;padding:16px 18px;margin-bottom:20px}
+  .hero-niyyah .q{font-family:"Fraunces",serif;font-size:16px;margin-bottom:10px}
+</style>
+</head>
+<body>
+  <div style="max-width:1060px;margin:0 auto">
+    <div class="page-title serif">New goal — form options</div>
+    <div class="page-sub">Three ways to finish the New-goal form, drawn to scale. All of them fix the concrete issues: the doubled “New goal” heading, edge-to-edge inputs, and the preview that only appears after typing. Pick one (or mix) and I’ll build it alongside the portfolio-grid list.</div>
+  </div>
+
+  <!-- ============ OPTION A — COMPOSE ============ -->
+  <div class="opt">
+    <div class="opt-tag rec">Option A · recommended</div>
+    <div class="opt-name serif">Compose — two columns with a living preview</div>
+    <div class="opt-desc">Fields on the left in a readable column; on the right, a preview card rendered <b>exactly like the portfolio-grid card</b>, always visible and updating as you type. It ties the form to the list you just picked and uses the desktop width. On mobile the preview moves to the top and the fields stack beneath.</div>
+    <div class="frame">
+      <div class="vhead">
+        <div><div class="vtitle serif">New goal</div></div>
+        <button class="cancel">Cancel</button>
+      </div>
+      <div class="vsub">Set an intention, not just a task.</div>
+      <div class="compose">
+        <div>
+          <div class="field">
+            <label class="flabel">Goal title</label>
+            <input class="input focus" placeholder="What do you want to achieve?" value="Memorise Surah Al-Mulk"/>
+          </div>
+          <div class="field">
+            <label class="flabel">Timeframe</label>
+            <div class="tf">
+              <div class="t on"><div class="n">Short-term</div><div class="s">≤ 3 months</div></div>
+              <div class="t"><div class="n">Long-term</div><div class="s">3 months+</div></div>
+            </div>
+          </div>
+          <div class="field">
+            <label class="flabel">Category</label>
+            <div class="chips">
+              <span class="catchip" style="color:var(--c-health)"><span class="d" style="background:var(--c-health)"></span>Health</span>
+              <span class="catchip" style="color:var(--c-career)"><span class="d" style="background:var(--c-career)"></span>Career</span>
+              <span class="catchip" style="color:var(--c-learning)"><span class="d" style="background:var(--c-learning)"></span>Learning</span>
+              <span class="catchip" style="color:var(--c-finance)"><span class="d" style="background:var(--c-finance)"></span>Finance</span>
+              <span class="catchip on" style="color:var(--c-deen)"><span class="d" style="background:var(--c-deen)"></span>Deen</span>
+              <span class="catchip" style="color:var(--c-other)"><span class="d" style="background:var(--c-other)"></span>Other</span>
+            </div>
+          </div>
+          <div class="field">
+            <label class="flabel">Due date</label>
+            <div class="chips">
+              <span class="chip">1 week</span><span class="chip">1 month</span>
+              <span class="chip on">3 months</span><span class="chip">End of year</span>
+              <span class="date">📅 07/10/2026</span>
+            </div>
+          </div>
+          <div class="field">
+            <label class="flabel">Niyyah / Intention</label>
+            <input class="input" placeholder="Why are you doing this? (for Allah’s pleasure…)"/>
+            <div class="sugg">
+              <span class="s">To please Allah and earn reward…</span>
+              <span class="s">This effort is my sadaqah jariyah.</span>
+            </div>
+          </div>
+          <div class="field">
+            <label class="flabel">Notes</label>
+            <textarea class="input" placeholder="Anything else you want to remember about this goal."></textarea>
+          </div>
+          <button class="create">Bismillah — Create goal</button>
+        </div>
+        <div class="pvwrap">
+          <div class="pvlabel">Live preview</div>
+          <div class="gcard"><div class="edge" style="background:var(--c-deen)"></div>
+            <div class="gtop"><div class="gtitle serif">Memorise Surah Al-Mulk</div><span class="cat" style="background:#d9b85e22;color:var(--c-deen)">Deen</span></div>
+            <div class="prow"><div class="bar"><i style="width:0;background:var(--c-deen)"></i></div><span class="pnum" style="color:var(--c-deen)">0%</span></div>
+            <div class="gmeta"><span class="l">No tasks yet · Short-term</span><span class="l">Due 7 Oct</span></div>
+          </div>
+          <div class="pvnote">This is exactly how it will appear in your Goals portfolio.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ OPTION B — FOCUSED SHEET ============ -->
+  <div class="opt">
+    <div class="opt-tag">Option B</div>
+    <div class="opt-name serif">Focused sheet — narrower, grouped What / When / Why</div>
+    <div class="opt-desc">One centered ~620px column so inputs stay readable, a single serif heading with a quiet subtitle, and the fields grouped into three labelled sections. The preview is a slim card pinned at the top (always present, no “empty until you type”). Lowest-risk, very clean, closest to today.</div>
+    <div class="frame">
+      <div style="max-width:620px;margin:0 auto">
+        <div class="vhead">
+          <div class="vtitle serif">New goal</div>
+          <button class="cancel">Cancel</button>
+        </div>
+        <div class="vsub">Set an intention, not just a task.</div>
+
+        <div class="gcard" style="margin-bottom:22px"><div class="edge" style="background:var(--c-deen)"></div>
+          <div class="gtop"><div class="gtitle serif">Memorise Surah Al-Mulk</div><span class="cat" style="background:#d9b85e22;color:var(--c-deen)">Deen</span></div>
+          <div class="prow"><div class="bar"><i style="width:0;background:var(--c-deen)"></i></div><span class="pnum" style="color:var(--c-deen)">0%</span></div>
+          <div class="gmeta"><span class="l">Preview · Short-term</span><span class="l">Due 7 Oct</span></div>
+        </div>
+
+        <div class="group-h serif">What</div>
+        <div class="field"><label class="flabel">Goal title</label>
+          <input class="input focus" value="Memorise Surah Al-Mulk"/></div>
+        <div class="field"><label class="flabel">Category</label>
+          <div class="chips">
+            <span class="catchip" style="color:var(--c-health)"><span class="d" style="background:var(--c-health)"></span>Health</span>
+            <span class="catchip" style="color:var(--c-learning)"><span class="d" style="background:var(--c-learning)"></span>Learning</span>
+            <span class="catchip on" style="color:var(--c-deen)"><span class="d" style="background:var(--c-deen)"></span>Deen</span>
+            <span class="catchip" style="color:var(--c-other)"><span class="d" style="background:var(--c-other)"></span>Other</span>
+          </div></div>
+        <div class="field"><label class="flabel">Timeframe</label>
+          <div class="tf"><div class="t on"><div class="n">Short-term</div><div class="s">≤ 3 months</div></div>
+            <div class="t"><div class="n">Long-term</div><div class="s">3 months+</div></div></div></div>
+
+        <div class="group-h serif" style="margin-top:20px">When</div>
+        <div class="field"><label class="flabel">Due date</label>
+          <div class="chips"><span class="chip">1 week</span><span class="chip">1 month</span>
+            <span class="chip on">3 months</span><span class="chip">End of year</span><span class="date">📅 07/10/2026</span></div></div>
+
+        <div class="group-h serif" style="margin-top:20px">Why</div>
+        <div class="field"><label class="flabel">Niyyah / Intention</label>
+          <input class="input" placeholder="For Allah’s pleasure…"/>
+          <div class="sugg"><span class="s">To please Allah and earn reward…</span><span class="s">My sadaqah jariyah.</span></div></div>
+        <div class="field"><label class="flabel">Notes</label>
+          <textarea class="input" placeholder="Anything else to remember."></textarea></div>
+
+        <button class="create">Bismillah — Create goal</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ OPTION C — INTENTION-FIRST ============ -->
+  <div class="opt">
+    <div class="opt-tag">Option C · a flavour, layers onto A or B</div>
+    <div class="opt-name serif">Intention-first — lead with the niyyah</div>
+    <div class="opt-desc">The same fields, but the <b>Why</b> comes first, elevated into a hero band: “Before anything — why are you doing this?” It reframes goal-setting as intention-setting and leans into the app’s reverent identity. Shown here on the two-column Compose layout, but it works on the focused sheet too.</div>
+    <div class="frame">
+      <div class="vhead">
+        <div class="vtitle serif">New goal</div>
+        <button class="cancel">Cancel</button>
+      </div>
+      <div class="compose" style="margin-top:14px">
+        <div>
+          <div class="hero-niyyah">
+            <div class="q serif">Before anything — why are you doing this?</div>
+            <input class="input focus" placeholder="For the pleasure of Allah, and a light in the grave…"/>
+            <div class="sugg">
+              <span class="s">To please Allah and earn reward…</span>
+              <span class="s">This effort is my sadaqah jariyah.</span>
+              <span class="s">Ya Allah, accept this from me.</span>
+            </div>
+          </div>
+          <div class="field"><label class="flabel">Goal title</label>
+            <input class="input" value="Memorise Surah Al-Mulk"/></div>
+          <div class="field"><label class="flabel">Category</label>
+            <div class="chips">
+              <span class="catchip" style="color:var(--c-health)"><span class="d" style="background:var(--c-health)"></span>Health</span>
+              <span class="catchip" style="color:var(--c-learning)"><span class="d" style="background:var(--c-learning)"></span>Learning</span>
+              <span class="catchip on" style="color:var(--c-deen)"><span class="d" style="background:var(--c-deen)"></span>Deen</span>
+              <span class="catchip" style="color:var(--c-other)"><span class="d" style="background:var(--c-other)"></span>Other</span>
+            </div></div>
+          <div class="field"><label class="flabel">Timeframe &amp; due</label>
+            <div class="chips" style="margin-bottom:9px">
+              <div class="tf" style="width:100%"><div class="t on"><div class="n">Short-term</div><div class="s">≤ 3 months</div></div>
+                <div class="t"><div class="n">Long-term</div><div class="s">3 months+</div></div></div>
+            </div>
+            <div class="chips"><span class="chip">1 week</span><span class="chip">1 month</span>
+              <span class="chip on">3 months</span><span class="chip">End of year</span><span class="date">📅 07/10/2026</span></div></div>
+          <div class="field"><label class="flabel">Notes</label>
+            <textarea class="input" placeholder="Anything else to remember."></textarea></div>
+          <button class="create">Bismillah — Create goal</button>
+        </div>
+        <div class="pvwrap">
+          <div class="pvlabel">Live preview</div>
+          <div class="gcard"><div class="edge" style="background:var(--c-deen)"></div>
+            <div class="gtop"><div class="gtitle serif">Memorise Surah Al-Mulk</div><span class="cat" style="background:#d9b85e22;color:var(--c-deen)">Deen</span></div>
+            <div class="prow"><div class="bar"><i style="width:0;background:var(--c-deen)"></i></div><span class="pnum" style="color:var(--c-deen)">0%</span></div>
+            <div class="gmeta"><span class="l">No tasks yet · Short-term</span><span class="l">Due 7 Oct</span></div>
+          </div>
+          <div class="pvnote">Your niyyah is saved with the goal and shown on its detail page.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>

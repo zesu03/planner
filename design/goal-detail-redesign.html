@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Goal detail — redesign</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --gold:#7cc39d; --noor:#e0c06a; --on-accent:#10160f;
+    --bg-primary:#0f1310; --bg-secondary:#1f271e; --bg-card:#171d17;
+    --border:rgba(210,180,99,0.3); --border-soft:rgba(210,180,99,0.16);
+    --text-primary:#f1efe4; --text-secondary:#c7c3b0; --text-muted:#a8a289;
+    --danger:#e88b7c; --warning:#d6a85f; --success:#7fbe8f;
+    --radius:16px; --radius-sm:11px;
+    --c-other:#9a9078; --c-deen:#d9b85e;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Space Grotesk",sans-serif;background:
+      radial-gradient(1200px 600px at 20% -10%, rgba(124,195,157,.06), transparent 55%),
+      var(--bg-primary);color:var(--text-primary);padding:40px 32px 80px;line-height:1.5}
+  .serif{font-family:"Fraunces",serif}
+  .page-title{font-family:"Fraunces",serif;font-size:30px;font-weight:600;margin-bottom:6px}
+  .page-sub{color:var(--text-secondary);font-size:15px;margin-bottom:34px;max-width:760px}
+  .wrap{max-width:760px;margin:0 auto}
+  .back{background:none;border:none;color:var(--text-secondary);font-size:15px;cursor:pointer;padding:0;margin-bottom:14px;font-family:inherit}
+  .card{background:var(--bg-card);border:0.5px solid var(--border-soft);border-radius:16px;padding:20px 22px;margin-bottom:14px;position:relative;overflow:hidden}
+
+  /* header */
+  .fade{position:absolute;top:0;left:0;right:0;height:80px;pointer-events:none;
+    background:linear-gradient(180deg, color-mix(in srgb, var(--c) 22%, transparent), transparent 90%)}
+  .hrow{position:relative;display:flex;gap:18px;align-items:flex-start}
+  .ring{position:relative;flex:none;width:66px;height:66px}
+  .ring .lab{position:absolute;inset:0;display:grid;place-items:center}
+  .ring .lab b{font-family:"Fraunces",serif;font-size:16px;font-weight:600}
+  .htitle{flex:1;min-width:0}
+  .htitle h1{font-family:"Fraunces",serif;font-size:22px;font-weight:600;margin-bottom:8px}
+  .pills{display:flex;gap:6px;flex-wrap:wrap}
+  .pill{font-size:12px;font-weight:600;padding:3px 10px;border-radius:99px}
+  .pill.cat{color:var(--c-other);background:color-mix(in srgb, var(--c-other) 18%, transparent)}
+  .pill.due{color:var(--text-secondary);background:var(--bg-secondary)}
+
+  /* action cluster */
+  .actions{display:flex;gap:8px;align-items:center;flex:none;position:relative}
+  .btn{font-size:14px;padding:8px 14px;border-radius:10px;border:0.5px solid var(--border-soft);
+    background:transparent;color:var(--text-secondary);cursor:pointer;font-family:inherit;white-space:nowrap}
+  .btn.primary{border-color:color-mix(in srgb, var(--gold) 40%, transparent);color:var(--gold)}
+  .btn.kebab{padding:8px 11px;font-size:17px;line-height:1;color:var(--text-secondary)}
+  .menu{position:absolute;top:42px;right:0;background:var(--bg-card);border:0.5px solid var(--border);
+    border-radius:12px;padding:6px;box-shadow:0 18px 40px rgba(0,0,0,.5);width:160px;z-index:5}
+  .menu button{display:block;width:100%;text-align:left;background:none;border:none;color:var(--text-secondary);
+    font-size:14px;padding:9px 11px;border-radius:8px;cursor:pointer;font-family:inherit}
+  .menu button:hover{background:var(--bg-secondary)}
+  .menu button.danger{color:var(--danger)}
+
+  .divider{height:1px;background:var(--border-soft);margin:16px 0 12px}
+  .statline{display:flex;gap:20px;flex-wrap:wrap;font-size:13px}
+  .statline .s{display:flex;flex-direction:column;gap:2px}
+  .statline .s .k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted)}
+  .statline .s .v{font-size:16px;font-weight:600}
+  .niyyah{background:linear-gradient(120deg, color-mix(in srgb,var(--noor) 12%,transparent), transparent 70%);
+    border:0.5px solid var(--border-soft);border-radius:12px;padding:10px 14px;margin-top:14px}
+  .niyyah .k{font-size:12px;color:var(--noor);margin-bottom:2px}
+  .niyyah .v{font-size:14px;font-style:italic}
+
+  /* tasks */
+  .thead{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+  .thead .t{font-family:"Fraunces",serif;font-size:18px;font-weight:600;display:flex;align-items:baseline;gap:10px}
+  .thead .t .c{font-size:13px;color:var(--text-muted);font-family:"Space Grotesk"}
+  .tctrl{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+  .seg{font-size:13px;padding:5px 12px;border-radius:99px;border:0.5px solid var(--border-soft);background:transparent;color:var(--text-secondary);cursor:pointer}
+  .seg.on{background:var(--text-primary);color:var(--bg-card);border-color:var(--text-primary);font-weight:600}
+  .sel{background:var(--bg-secondary);border:0.5px solid var(--border-soft);color:var(--text-secondary);border-radius:8px;padding:5px 9px;font-size:13px}
+
+  .addbar{background:var(--bg-secondary);border-radius:12px;padding:10px;margin-bottom:12px;display:flex;gap:8px;align-items:center}
+  .addbar input{flex:1;background:var(--bg-primary);border:0.5px solid var(--border-soft);border-radius:9px;
+    padding:10px 12px;color:var(--text-primary);font-family:inherit;font-size:14px}
+  .addbar .add{background:var(--gold);color:var(--on-accent);border:none;border-radius:9px;padding:9px 16px;font-weight:600;cursor:pointer;font-family:inherit}
+  .addbar .more{background:transparent;border:0.5px solid var(--border-soft);border-radius:9px;padding:9px 11px;color:var(--text-secondary);cursor:pointer}
+
+  .task{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;background:var(--bg-secondary);border:0.5px solid transparent}
+  .task .grip{color:var(--text-muted);opacity:.6;cursor:grab;font-size:15px}
+  .task .box{width:17px;height:17px;border-radius:5px;border:2px solid var(--text-muted);flex:none}
+  .task.done .box{border-color:var(--success);background:var(--success)}
+  .task.done .tt{color:var(--text-muted);text-decoration:line-through}
+  .task .mid{flex:1;min-width:0}
+  .task .tt{font-size:15px}
+  .task .meta{font-size:12px;color:var(--text-secondary);margin-top:2px}
+  .ppill{font-size:11px;font-weight:600;padding:2px 9px;border-radius:99px}
+  .ppill.med{color:var(--warning);background:color-mix(in srgb,var(--warning) 16%,transparent)}
+  .ppill.hi{color:var(--danger);background:color-mix(in srgb,var(--danger) 16%,transparent)}
+  .task .start{font-size:13px;padding:6px 12px;border-radius:9px;border:0.5px solid var(--border-soft);background:transparent;color:var(--text-secondary);cursor:pointer}
+  .task .dots{font-size:16px;color:var(--text-secondary);background:none;border:none;cursor:pointer;padding:4px 8px}
+
+  .notes-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .notes-h .t{font-family:"Fraunces",serif;font-size:18px;font-weight:600}
+  .muted{color:var(--text-muted);font-size:15px}
+
+  .callout{background:rgba(124,195,157,.06);border:1px solid var(--border-soft);border-radius:12px;
+    padding:14px 16px;font-size:14px;color:var(--text-secondary);margin:26px 0 10px;max-width:760px}
+  .callout b{color:var(--text-primary)}
+  .callout .old{color:var(--danger)} .callout .new{color:var(--success)}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="page-title serif">Goal detail — redesign</div>
+    <div class="page-sub">The same view, re-housed: goal actions unified into one header cluster (Delete no longer floats at the bottom), the two “0m” tiles folded into a compact stat line beside a progress ring, and a tidier Tasks header. All functional pieces (add-task panel, drag reorder, recurring habits, focus-rhythm sparkline, the 7-night muhasaba strip) are unchanged — just relocated.</div>
+
+    <button class="back">← Back</button>
+
+    <!-- HEADER CARD -->
+    <div class="card" style="--c:var(--c-other);padding-top:26px">
+      <div class="fade"></div>
+      <div class="hrow">
+        <div class="ring">
+          <svg width="66" height="66" viewBox="0 0 66 66">
+            <circle cx="33" cy="33" r="26" fill="none" stroke="var(--bg-secondary)" stroke-width="7"/>
+            <circle cx="33" cy="33" r="26" fill="none" stroke="var(--c-other)" stroke-width="7" stroke-linecap="round"
+              stroke-dasharray="163.4" stroke-dashoffset="163.4" transform="rotate(-90 33 33)"/>
+          </svg>
+          <div class="lab"><b>0%</b></div>
+        </div>
+        <div class="htitle">
+          <h1>xxx</h1>
+          <div class="pills">
+            <span class="pill cat">Other</span>
+            <span class="pill due">Due 02/09/2026</span>
+          </div>
+        </div>
+        <div class="actions">
+          <button class="btn primary">Mark complete</button>
+          <button class="btn kebab" title="More">⋯</button>
+          <!-- the ⋯ menu (shown open here for illustration) -->
+          <div class="menu">
+            <button>Edit goal</button>
+            <button class="danger">Delete goal</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="statline">
+        <div class="s"><span class="k">ETA</span><span class="v" style="color:#4f95c9">0m</span></div>
+        <div class="s"><span class="k">Logged</span><span class="v" style="color:#3faa7e">0m</span></div>
+        <div class="s"><span class="k">Sessions</span><span class="v" style="color:var(--text-secondary)">0</span></div>
+        <div class="s"><span class="k">Remaining</span><span class="v" style="color:var(--text-secondary)">7d</span></div>
+      </div>
+
+      <div class="niyyah">
+        <div class="k">Niyyah</div>
+        <div class="v">To please Allah and leave something beneficial behind.</div>
+      </div>
+    </div>
+
+    <!-- TASKS CARD -->
+    <div class="card">
+      <div class="thead">
+        <div class="t serif">Tasks <span class="c">2 of 3</span></div>
+        <div class="tctrl">
+          <button class="seg on">All</button>
+          <button class="seg">Open</button>
+          <button class="seg">Done</button>
+          <select class="sel"><option>All priorities</option></select>
+        </div>
+      </div>
+
+      <div class="addbar">
+        <input placeholder="+ Add a task…" />
+        <button class="add">Add</button>
+        <button class="more" title="Priority, ETA, repeats, due">⋯</button>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="task">
+          <span class="grip">⋮⋮</span>
+          <span class="box"></span>
+          <div class="mid">
+            <div class="tt">Draft the outline</div>
+            <div class="meta">ETA 45m · Logged 25m · 1 session</div>
+          </div>
+          <span class="ppill med">Medium</span>
+          <button class="start">Start</button>
+          <button class="dots">⋯</button>
+        </div>
+        <div class="task done">
+          <span class="grip">⋮⋮</span>
+          <span class="box"></span>
+          <div class="mid">
+            <div class="tt">Research references</div>
+            <div class="meta">ETA 30m · Logged 30m · 1 session</div>
+          </div>
+          <span class="ppill hi">High</span>
+          <button class="start">Start</button>
+          <button class="dots">⋯</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTES CARD -->
+    <div class="card" style="margin-bottom:8px">
+      <div class="notes-h">
+        <span class="t serif">Notes</span>
+        <button class="btn">Edit</button>
+      </div>
+      <div class="muted">No notes added.</div>
+    </div>
+
+    <div class="callout">
+      <b>What changed with actions:</b><br>
+      <span class="old">Before:</span> “Mark complete” + “Edit goal” top-right, “Delete goal” alone at the very bottom.<br>
+      <span class="new">After:</span> one header cluster — <b>Mark complete</b> stays prominent, and <b>Edit</b> + <b>Delete</b> live in the ⋯ menu (shown open above). One place for every goal action; the destructive one is present but not a floating red button.
+    </div>
+  </div>
+</body>
+</html>

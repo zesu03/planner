@@ -4,7 +4,6 @@ import { daysLeft, fmt, todayStr, localDateStr, addDays } from "../lib/dates";
 import { isGoalDone, pct, isRecurring, isScheduledOn, isDoneOn, recurringStreak, scheduleLabel, DOW_LABELS, DOW_LONG } from "../lib/goals";
 import { fmtMins, fmtTime } from "../lib/focus";
 import { goldA, goldLight, S } from "../lib/styles";
-import ProgressBar from "../components/ProgressBar";
 import EmptyState from "../components/EmptyState";
 import { Icon } from "../components/icons";
 import TypeToggle from "../components/goal-form/TypeToggle";
@@ -172,6 +171,14 @@ export default function GoalDetail({ selected, goBack }) {
   const onTime = done && selected.completedAt && selected.completedAt <= selected.due;
   const totalEta = selected.tasks.reduce((s, t) => s + (t.eta || 0), 0);
   const totalLogged = selected.tasks.reduce((s, t) => s + (t.totalTime || 0), 0);
+  const totalSessions = selected.tasks.reduce((s, t) => s + (t.sessions || 0), 0);
+  const oneShots = selected.tasks.filter((t) => !isRecurring(t));
+  const habits = selected.tasks.filter((t) => isRecurring(t));
+  const doneOneShots = oneShots.filter((t) => t.done).length;
+  // Header progress ring (matches the Goals-list hero) + the "Remaining" stat.
+  const RING_C = 2 * Math.PI * 26;
+  const remainingLabel = done ? "Done" : dl < 0 ? `${Math.abs(dl)}d over` : dl === 0 ? "today" : `${dl}d`;
+  const remainingColor = done ? "var(--color-text-success)" : overdue ? "var(--color-text-danger)" : dl <= 7 ? "var(--color-text-warning)" : "var(--text-secondary)";
   const filteredTasks = selected.tasks.filter((t) => {
     // "Done" semantics differ between task flavours:
     //  - One-shot task: t.done
@@ -279,6 +286,10 @@ export default function GoalDetail({ selected, goBack }) {
   // calm at rest — six visible buttons per row was too crowded, especially
   // on mobile where the row already wraps.
   const [menuOpenTaskId, setMenuOpenTaskId] = useState(null);
+  // Goal-level action overflow (Edit + Delete). Mark complete stays a visible
+  // button; the rest live behind ⋯ so all goal actions sit in one header
+  // cluster instead of Delete floating alone at the bottom of the page.
+  const [goalMenuOpen, setGoalMenuOpen] = useState(false);
 
   const lastActivityLabel = (() => {
     if (!focusRhythm.lastActivityDay) return null;
@@ -312,13 +323,23 @@ export default function GoalDetail({ selected, goBack }) {
             pointerEvents: "none",
           }}
         />
-        {/* header */}
-        <div style={{ position: "relative", display: "flex", gap: 10, marginBottom: 12, alignItems: "flex-start" }}>
-          <div style={{ width: 10, height: 10, borderRadius: "50%", background: CAT_COLORS[selected.category], marginTop: 6, flexShrink: 0 }} />
-          <div style={{ flex: 1 }}>
-            <h3 style={{
-              margin: "0 0 6px",
-              fontSize: 19,
+        {/* header — progress ring · title + pills · unified action cluster */}
+        <div style={{ position: "relative", display: "flex", gap: 16, marginBottom: 4, alignItems: "flex-start" }}>
+          <div style={{ position: "relative", flex: "none", width: 66, height: 66 }}>
+            <svg width="66" height="66" viewBox="0 0 66 66" aria-hidden="true">
+              <circle cx="33" cy="33" r="26" fill="none" stroke="var(--bg-secondary)" strokeWidth="7" />
+              <circle cx="33" cy="33" r="26" fill="none" stroke={CAT_COLORS[selected.category]} strokeWidth="7" strokeLinecap="round"
+                strokeDasharray={RING_C} strokeDashoffset={RING_C * (1 - p / 100)}
+                transform="rotate(-90 33 33)" style={{ transition: "stroke-dashoffset 0.5s ease", opacity: done ? 0.6 : 1 }} />
+            </svg>
+            <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>
+              <span className="serif" style={{ fontSize: p === 100 ? 13 : 16, fontWeight: 600, color: CAT_COLORS[selected.category] }}>{p}%</span>
+            </div>
+          </div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h3 className="serif" style={{
+              margin: "0 0 8px",
+              fontSize: 20,
               fontWeight: 600,
               textDecoration: done ? "line-through" : "none",
               textDecorationColor: done ? "var(--text-muted)" : "transparent",
@@ -356,7 +377,7 @@ export default function GoalDetail({ selected, goBack }) {
             </div>
           </div>
           {!editingGoal && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flex: "none", position: "relative" }}>
               <button onClick={() => toggleGoalCompleted(selected.id)}
                 style={{
                   fontSize: 14,
@@ -365,7 +386,18 @@ export default function GoalDetail({ selected, goBack }) {
                 }}>
                 {done ? "Reopen" : "Mark complete"}
               </button>
-              <button onClick={startGoalEdit} style={{ fontSize: 14 }}>Edit goal</button>
+              <button onClick={() => setGoalMenuOpen((v) => !v)}
+                aria-label="More goal actions" aria-haspopup="true" aria-expanded={goalMenuOpen} title="More actions"
+                style={{ fontSize: 17, lineHeight: 1, padding: "8px 11px", color: "var(--text-secondary)" }}>⋯</button>
+              {goalMenuOpen && (
+                <>
+                  <div onClick={() => setGoalMenuOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+                  <div className="goal-action-menu" role="menu">
+                    <button role="menuitem" onClick={() => { setGoalMenuOpen(false); startGoalEdit(); }}>Edit goal</button>
+                    <button role="menuitem" className="danger" onClick={() => { setGoalMenuOpen(false); deleteGoal(selected.id); }}>Delete goal</button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -407,54 +439,33 @@ export default function GoalDetail({ selected, goBack }) {
           </div>
         )}
 
+        {/* compact stat line — replaces the two big ETA/Logged tiles + the
+            separate progress bar (progress now lives in the header ring), so
+            each number shows once and a fresh goal isn't dominated by "0m"
+            tiles. The old tasks-count + status text moved to the Tasks header
+            and the "Remaining" stat respectively. */}
+        <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginTop: 4, paddingTop: 14, borderTop: "0.5px solid var(--color-border-tertiary)" }}>
+          {[
+            ["ETA", fmtMins(totalEta), "#4f95c9"],
+            ["Logged", fmtMins(totalLogged), "#3faa7e"],
+            ["Sessions", String(totalSessions), "var(--text-secondary)"],
+            ["Remaining", remainingLabel, remainingColor],
+          ].map(([l, v, c]) => (
+            <div key={l} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              <span style={{ fontSize: 11, letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--text-muted)" }}>{l}</span>
+              <span className="serif" style={{ fontSize: 17, fontWeight: 600, color: c }}>{v}</span>
+            </div>
+          ))}
+        </div>
+
         {selected.intention && (
-          <div style={{ ...S.goldCard, marginBottom: 14, padding: "10px 14px" }}>
+          <div style={{ ...S.goldCard, marginTop: 14, padding: "10px 14px" }}>
             <div style={{ fontSize: 13, color: "var(--gold)", marginBottom: 3 }}>Niyyah</div>
             <div style={{ fontSize: 15, fontStyle: "italic", color: "var(--text-primary)" }}>
               {selected.intention}
             </div>
           </div>
         )}
-
-        {/* metrics — ETA + Logged only. Progress used to be a third tile,
-            but it's now folded onto the bar below (inline %), so the area
-            shows each number once instead of three times. */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
-          {[
-            ["ETA", fmtMins(totalEta), "#4f95c9"],
-            ["Logged", fmtMins(totalLogged), "#3faa7e"],
-          ].map(([l, v, c]) => (
-            <div key={l} style={{ background: "var(--color-background-secondary)", borderRadius: "var(--border-radius-md)", padding: "12px 14px" }}>
-              <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 4 }}>{l}</div>
-              <div className="serif" style={{ fontSize: 22, fontWeight: 600, color: c }}>{v}</div>
-            </div>
-          ))}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <ProgressBar val={p} color={CAT_COLORS[selected.category]} height={8} />
-          </div>
-          <span style={{ fontSize: 14, fontWeight: 600, color: CAT_COLORS[selected.category], fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>{p}%</span>
-        </div>
-        <div style={{ fontSize: 14, color: "var(--text-secondary)", marginTop: 5, marginBottom: 0 }}>
-          {(() => {
-            const oneShots = selected.tasks.filter((t) => !isRecurring(t));
-            const habits = selected.tasks.filter((t) => isRecurring(t));
-            const parts = [];
-            if (oneShots.length > 0) parts.push(`${oneShots.filter((t) => t.done).length}/${oneShots.length} tasks`);
-            if (habits.length > 0) parts.push(`${habits.length} habit${habits.length === 1 ? "" : "s"}`);
-            return parts.length > 0 ? parts.join(" · ") + " · " : "";
-          })()}
-          {done
-            ? selected.completedAt
-              ? `Completed ${fmt(selected.completedAt)}`
-              : "Completed"
-            : overdue
-            ? `${Math.abs(dl)}d overdue`
-            : dl === 0
-            ? "Due today"
-            : `${dl}d remaining`}
-        </div>
 
         {/* Focus rhythm — recent activity windowed from focusLog.
             "Logged" tile above is the lifetime total; this row is about
@@ -588,11 +599,19 @@ export default function GoalDetail({ selected, goBack }) {
 
         {/* tasks */}
         <div style={{ ...S.card, marginBottom: 14 }}>
-          <div className="task-toolbar" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, marginBottom: 10 }}>
-            <div style={{ fontSize: 18, fontWeight: 600 }}>
-              <span className="serif">Tasks</span> <span style={{ color: "var(--text-muted)", fontWeight: 400, fontSize: 13 }}>— use Start to begin focus</span>
+          <div className="task-toolbar" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10, marginBottom: 12 }}>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 10, flex: "1 1 auto" }}>
+              <span className="serif" style={{ fontSize: 18, fontWeight: 600 }}>Tasks</span>
+              {oneShots.length > 0 && (
+                <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                  {doneOneShots} of {oneShots.length}{habits.length > 0 ? ` · ${habits.length} habit${habits.length === 1 ? "" : "s"}` : ""}
+                </span>
+              )}
+              {oneShots.length === 0 && habits.length > 0 && (
+                <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{habits.length} habit{habits.length === 1 ? "" : "s"}</span>
+              )}
             </div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
               {["all", "open", "done"].map((f) => (
                 <button key={f} onClick={() => setTaskStatusFilter(f)} style={S.filterBtn(taskStatusFilter === f)}>
                   {f === "all" ? "All" : f === "open" ? "Open" : "Done"}
@@ -966,16 +985,6 @@ export default function GoalDetail({ selected, goBack }) {
           )}
         </div>
 
-        <div style={{ marginTop: 4 }}>
-          <button onClick={() => deleteGoal(selected.id)}
-            style={{
-              fontSize: 15, color: "var(--color-text-danger)", background: "none",
-              border: "0.5px solid var(--color-border-danger)", borderRadius: "var(--border-radius-md)",
-              padding: "6px 14px", cursor: "pointer",
-            }}>
-            Delete goal
-          </button>
-        </div>
     </div>
   );
 }
