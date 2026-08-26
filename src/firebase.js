@@ -43,7 +43,19 @@ export const provider = new GoogleAuthProvider();
 //     writes including the unload flush).
 //   • The debounced writes continue to work — pending writes that the
 //     debounce flushes after going offline simply queue instead of fail.
+// experimentalAutoDetectLongPolling: the default WebChannel streaming transport
+// gets silently buffered/stalled by some intermediaries — ad-blocker / privacy
+// browser extensions, corporate proxies, and certain antivirus. The symptom is
+// nasty: the Listen request returns 200 OK but the SDK never receives the
+// server's document data, so onSnapshot only ever fires fromCache:true, the
+// write gate (`loaded`) never opens, and the app is stuck on stale cached data
+// (this is the root cause behind the "Can't reach server — saved locally" badge
+// and the earlier silent-write-loss). Auto-detect probes for a hung stream and
+// transparently falls back to long-polling, which gets through those layers. We
+// use auto-detect (not experimentalForceLongPolling) so healthy networks keep
+// the faster WebChannel. Independent of the localCache setting below.
 export const db = initializeFirestore(app, {
+  experimentalAutoDetectLongPolling: true,
   localCache: persistentLocalCache({
     tabManager: persistentMultipleTabManager(),
   }),
