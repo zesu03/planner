@@ -7,3 +7,6 @@ dist
 
 # Plaintext backup artifact — only the encrypted .gpg is ever committed
 _backup.json
+
+# Rollback copy of the live rules, written by scripts/deploy-rules.mjs
+firestore.rules.live-backup

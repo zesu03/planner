@@ -8,7 +8,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "backup": "node scripts/backup.mjs"
+    "backup": "node scripts/backup.mjs",
+    "deploy:rules": "node scripts/deploy-rules.mjs --apply"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
