@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>TodayStrip — redesign preview</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --gold:#7cc39d; --noor:#e0c06a; --on-accent:#10160f;
+    --bg-primary:#0f1310; --bg-secondary:#1f271e; --bg-card:#171d17;
+    --text-primary:#f1efe4; --text-secondary:#c7c3b0; --text-muted:#a8a289;
+    --color-background-secondary:#1f271e;
+    --color-border-tertiary:rgba(210,180,99,0.3);
+    --color-border-secondary:rgba(210,180,99,0.46);
+    --color-text-success:#7fbe8f;
+    --border-radius-lg:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Space Grotesk",sans-serif;
+    background:radial-gradient(1200px 600px at 20% -10%, rgba(124,195,157,.06), transparent 55%),
+      radial-gradient(900px 500px at 90% 20%, rgba(224,192,106,.05), transparent 60%), #0a0d0a;
+    color:var(--text-primary);padding:44px 24px 80px;line-height:1.5}
+  .serif{font-family:"Fraunces",serif}
+  .wrap{max-width:1080px;margin:0 auto}
+  h1{font-family:"Fraunces",serif;font-size:26px;font-weight:600;margin-bottom:4px}
+  .sub{color:var(--text-secondary);font-size:14px;margin-bottom:34px}
+  .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px}
+  .col-title{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+    color:var(--text-muted);margin:0 0 12px 2px}
+  .col-title.bad{color:#c98b7c}
+  .col-title.good{color:var(--gold)}
+  .card{background:var(--bg-card);border:0.5px solid var(--color-border-tertiary);
+    border-radius:var(--border-radius-lg);padding:20px 22px;margin-bottom:22px}
+  .ico{width:1em;height:1em;display:inline-block;vertical-align:-.13em;stroke:currentColor;
+    stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="serif">Focus “Today” strip — redesign</h1>
+  <div class="sub">Same card, dark palette. Left = current build (your screenshot). Right = redesigned, shown empty and busy.</div>
+
+  <div class="grid">
+    <!-- ============ BEFORE ============ -->
+    <div>
+      <p class="col-title bad">Before</p>
+      <div class="card" id="before"></div>
+    </div>
+
+    <!-- ============ AFTER ============ -->
+    <div>
+      <p class="col-title good">After · empty day (0m, 6h goal)</p>
+      <div class="card" id="after-empty"></div>
+
+      <p class="col-title good" style="margin-top:26px">After · a productive week</p>
+      <div class="card" id="after-busy"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const goldA = p => `color-mix(in srgb, var(--gold) ${p}%, transparent)`;
+const noorA = p => `color-mix(in srgb, var(--noor) ${p}%, transparent)`;
+const fmtMins = m => { m=Math.round(m); if(m<60) return m+"m"; const h=Math.floor(m/60), r=m%60; return r? `${h}h ${r}m` : `${h}h`; };
+const flame = `<svg class="ico" viewBox="0 0 24 24"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>`;
+const check = `<svg class="ico" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><path d="m9 11 3 3L22 4"/></svg>`;
+const DOW = ["S","M","T","W","T","F","S"]; // narrow labels, representative
+
+// ---- BEFORE (current build) ----
+function renderBefore(el, {today, goal, streak, week}){
+  const max = Math.max(goal, ...week, 1);
+  const pct = Math.min(100, Math.round(today/Math.max(1,goal)*100));
+  const met = today>=goal && goal>0;
+  el.innerHTML = `
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap">
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--text-muted)">Today</span>
+        <span class="serif" style="font-size:22px;font-weight:600;color:${met?'var(--color-text-success)':'var(--text-primary)'};line-height:1">${fmtMins(today)}</span>
+        <span style="font-size:13px;color:var(--text-muted)">/ <span style="color:var(--gold)">${fmtMins(goal)}</span> goal</span>
+      </div>
+      ${streak>0?`<span style="font-size:13px;font-weight:600;color:var(--gold);display:inline-flex;align-items:center;gap:6px">${flame} ${streak}-day streak</span>`:``}
+    </div>
+    <div style="height:6px;background:var(--color-background-secondary);border-radius:99px;overflow:hidden;margin-bottom:14px">
+      <div style="height:100%;width:${pct}%;background:${met?'var(--color-text-success)':'var(--gold)'};border-radius:99px"></div>
+    </div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:6px;height:46px">
+      ${week.map((m,i)=>{const h=(m/max)*100;const hit=m>=goal&&goal>0;const isToday=i===week.length-1;return `
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
+          <div style="width:100%;height:32px;display:flex;align-items:flex-end">
+            <div style="width:100%;height:${Math.max(2,h)}%;background:${hit?'var(--gold)':'var(--color-background-secondary)'};border:${isToday?`1px solid ${hit?'var(--gold)':'var(--color-border-secondary)'}`:'none'};border-radius:3px"></div>
+          </div>
+          <div style="font-size:10px;color:${isToday?'var(--gold)':'var(--text-muted)'};font-weight:${isToday?600:400}">${DOW[i]}</div>
+        </div>`}).join("")}
+    </div>`;
+}
+
+// ---- AFTER (redesign) ----
+function renderAfter(el, {today, goal, streak, week}){
+  const pct = Math.min(100, Math.round(today/Math.max(1,goal)*100));
+  const met = today>=goal && goal>0;
+  const remaining = Math.max(0, goal-today);
+  const weekTotal = week.reduce((s,m)=>s+m,0);
+  const plotMax = Math.max(goal*1.15, ...week, 1);
+  const goalLinePct = goal>0 ? Math.min(94, goal/plotMax*100) : 0;
+  el.innerHTML = `
+    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+        <span style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted)">Today</span>
+        <span class="serif" style="font-size:26px;font-weight:600;color:${met?'var(--color-text-success)':'var(--text-primary)'};line-height:1">${fmtMins(today)}</span>
+        <span style="font-size:13px;color:var(--text-muted)">/ <span style="color:var(--gold)">${fmtMins(goal)}</span> goal</span>
+      </div>
+      ${streak>0?`<span style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:99px;background:${noorA(15)};color:var(--noor)">${flame} ${streak}-day streak</span>`:``}
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+      <div style="flex:1;height:6px;background:var(--color-background-secondary);border-radius:99px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${met?'var(--color-text-success)':'var(--gold)'};border-radius:99px"></div>
+      </div>
+      <span style="font-size:12px;font-weight:600;white-space:nowrap;color:${met?'var(--color-text-success)':'var(--text-muted)'};display:inline-flex;align-items:center;gap:5px">
+        ${met?`${check} goal met`:`${fmtMins(remaining)} to go`}
+      </span>
+    </div>
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px">
+      <span style="font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--text-muted)">This week</span>
+      <span style="font-size:12px;color:var(--text-secondary)">${fmtMins(weekTotal)} total</span>
+    </div>
+    <div style="position:relative;height:56px">
+      ${goalLinePct>0?`<div style="position:absolute;left:0;right:0;bottom:${goalLinePct}%;border-top:1px dashed ${noorA(55)};pointer-events:none">
+        <span style="position:absolute;right:0;top:-7px;font-size:9px;font-weight:600;letter-spacing:.3px;text-transform:uppercase;color:var(--noor);background:var(--bg-card);padding:0 3px;line-height:1">goal</span></div>`:``}
+      <div style="position:absolute;left:0;right:0;bottom:0;height:1px;background:var(--color-border-tertiary)"></div>
+      <div style="position:absolute;inset:0;display:flex;align-items:flex-end;gap:6px">
+        ${week.map((m,i)=>{const hit=m>=goal&&goal>0;const h=Math.max(4,(m/plotMax)*100);const isToday=i===week.length-1;return `
+          <div style="flex:1;align-self:stretch;display:flex;align-items:flex-end;border-radius:6px;background:${isToday?goldA(9):'transparent'}">
+            <div style="width:100%;height:${m>0?h+'%':'3px'};background:${m>0?(hit?'var(--gold)':goldA(30)):goldA(15)};border-radius:${m>0?'4px 4px 0 0':'99px'}"></div>
+          </div>`}).join("")}
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:7px">
+      ${week.map((m,i)=>{const isToday=i===week.length-1;return `<div style="flex:1;text-align:center;font-size:10px;color:${isToday?'var(--gold)':'var(--text-muted)'};font-weight:${isToday?700:400}">${DOW[i]}</div>`}).join("")}
+    </div>`;
+}
+
+// Empty-day data mirrors the screenshot: 6h goal, today 0m, no streak.
+const empty = { today:0, goal:360, streak:0, week:[0, 0, 95, 0, 40, 15, 0] };
+// Busy week: hit the goal a couple of days, mid streak.
+const busy  = { today:135, goal:360, streak:4, week:[210, 90, 380, 300, 60, 410, 135] };
+
+renderBefore(document.getElementById("before"), empty);
+renderAfter(document.getElementById("after-empty"), empty);
+renderAfter(document.getElementById("after-busy"), busy);
+</script>
+</body>
+</html>

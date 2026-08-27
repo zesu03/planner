@@ -7,7 +7,7 @@ import { todayStr, localDateStr } from "../lib/dates";
 import { fmtTime, fmtMins, getFocusSeconds, focusStreakDays } from "../lib/focus";
 import { isGoalDone, pct, isRecurring, isScheduledOn, isDoneOn } from "../lib/goals";
 import { getAudioCtx } from "../lib/audio";
-import { goldA, S } from "../lib/styles";
+import { goldA, noorA, S } from "../lib/styles";
 import { usePictureInPicture } from "../hooks/usePictureInPicture";
 import MiniTimer from "../components/MiniTimer";
 import FullscreenDial from "../components/FullscreenDial";
@@ -46,7 +46,7 @@ function durationInputValue(mins) {
 // note saves on Enter or on blur (when non-empty), persists onto the
 // focusLog entry, and surfaces a brief "Saved ✓" confirmation. Owns its
 // own input state so dismissing the banner clears it cleanly.
-function SessionBanner({ lastSession, goals, dismissLastSession, updateLastSessionNote }) {
+function SessionBanner({ lastSession, goals, toggleTask, dismissLastSession, updateLastSessionNote }) {
   const [note, setNote] = useState("");
   const [saved, setSaved] = useState(false);
   const inputRef = useRef(null);
@@ -64,10 +64,20 @@ function SessionBanner({ lastSession, goals, dismissLastSession, updateLastSessi
   const goal = lastSession.goalId ? goals.find((g) => g.id === lastSession.goalId) : null;
   const task = goal ? goal.tasks.find((t) => t.id === lastSession.taskId) : null;
   const cat = goal ? CAT_COLORS[goal.category] : "var(--gold)";
-  const goalPct = goal && goal.tasks.length
-    ? Math.round(goal.tasks.filter((t) => t.done).length / goal.tasks.length * 100)
-    : null;
+  // Progress excludes habits (see lib/goals pct) — this is the number that
+  // should tick up the instant you mark the task done below.
+  const goalPct = goal ? pct(goal) : null;
+  const isHabit = task ? isRecurring(task) : false;
+  const taskDone = task ? isDoneOn(task) : false;
   const eyebrow = lastSession.kind === "early" ? "Session ended" : "Session complete";
+
+  // Close the focus→completion loop from the celebration itself. Same path
+  // as the Goal-detail checkbox (toggleTask): a one-shot flips `done` and may
+  // auto-complete the parent goal; a habit ticks today into `completions`.
+  const markDone = () => {
+    if (!toggleTask || !goal || !task) return;
+    toggleTask(goal.id, task.id);
+  };
 
   const commit = () => {
     if (!updateLastSessionNote) return;
@@ -111,8 +121,13 @@ function SessionBanner({ lastSession, goals, dismissLastSession, updateLastSessi
           <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 700, letterSpacing: "0.6px", textTransform: "uppercase", marginBottom: 3 }}>
             {eyebrow} · Alhamdulillah
           </div>
-          <div style={{ fontSize: 17, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3 }}>
-            {lastSession.mins} {lastSession.mins === 1 ? "minute" : "minutes"} for Allah
+          <div style={{ display: "flex", alignItems: "baseline", gap: 7 }}>
+            <span className="serif" style={{ fontSize: 30, fontWeight: 600, color: "var(--text-primary)", lineHeight: 0.95 }}>
+              {lastSession.mins}
+            </span>
+            <span style={{ fontSize: 15, color: "var(--text-secondary)" }}>
+              {lastSession.mins === 1 ? "minute" : "minutes"} for Allah
+            </span>
           </div>
           {(task || goal) && (
             <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 4, lineHeight: 1.45 }}>
@@ -128,11 +143,40 @@ function SessionBanner({ lastSession, goals, dismissLastSession, updateLastSessi
               )}
             </div>
           )}
-          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 6, fontStyle: "italic" }}>
-            "إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ" — actions are by intentions.
-          </div>
         </div>
       </div>
+
+      {/* Close the loop: a focus session credits time but never completes the
+          task, so the goal wouldn't advance on its own. Offer completion here.
+          Optional — a multi-session task needs several blocks first, so this is
+          a choice, not automatic. A habit "logs today" instead of finishing. */}
+      {task && toggleTask && (
+        <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <button
+            onClick={markDone}
+            title={taskDone ? "Undo" : undefined}
+            className={taskDone ? undefined : "btn-primary"}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              fontSize: 13, fontWeight: 600, padding: "7px 14px", borderRadius: 99, cursor: "pointer",
+              ...(taskDone ? {
+                background: "var(--color-background-success)",
+                border: "0.5px solid var(--color-border-success)",
+                color: "var(--color-text-success)",
+              } : {}),
+            }}>
+            <Icon name="check" size={14} />
+            {taskDone
+              ? (isHabit ? "Logged for today" : "Task done")
+              : (isHabit ? "Log for today" : "Mark task done")}
+          </button>
+          {!taskDone && (
+            <span style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
+              or start another session
+            </span>
+          )}
+        </div>
+      )}
 
       {/* What-moved-forward prompt. Honest journal beats raw minutes —
           the note flows into Stats' Recent sessions and the AI Mirror,
@@ -164,6 +208,12 @@ function SessionBanner({ lastSession, goals, dismissLastSession, updateLastSessi
               : <span style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic", whiteSpace: "nowrap" }}>Optional</span>}
         </div>
       </div>
+
+      {/* Hadith footer — the niyyah closer, centered so it reads as the seal
+          on the whole card rather than a caption on the minutes line. */}
+      <div style={{ marginTop: 12, fontSize: 12, color: "var(--text-muted)", fontStyle: "italic", textAlign: "center", lineHeight: 1.5 }}>
+        "إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ" — actions are by intentions.
+      </div>
     </div>
   );
 }
@@ -189,6 +239,8 @@ function TodayStrip({ focusLog, todayMins, streak, goalMins, onEditGoal, style, 
     setEditing(false);
   };
 
+  const remaining = Math.max(0, goalMins - todayMins);
+
   const DAYS = 7;
   const days = [];
   for (let i = DAYS - 1; i >= 0; i--) {
@@ -196,22 +248,30 @@ function TodayStrip({ focusLog, todayMins, streak, goalMins, onEditGoal, style, 
     d.setDate(d.getDate() - i);
     const k = localDateStr(d);
     const isToday = i === 0;
+    const mins = minsForDay(focusLog, k) + (isToday ? liveSessionMins : 0);
     days.push({
       key: k,
-      mins: minsForDay(focusLog, k) + (isToday ? liveSessionMins : 0),
+      mins,
       label: d.toLocaleDateString("en", { weekday: "narrow" }),
+      // Richer native tooltip than the old "YYYY-MM-DD · Nm".
+      tip: `${d.toLocaleDateString("en", { weekday: "short", day: "numeric" })} · ${mins ? fmtMins(mins) : "no focus"}`,
       isToday,
     });
   }
-  const max = Math.max(goalMins, ...days.map((d) => d.mins), 1);
+  const weekTotal = days.reduce((s, d) => s + d.mins, 0);
+  // Scale so the goal line always sits on-chart with a little headroom, but a
+  // big day still sets the ceiling instead of being clipped. The goal line
+  // (not bar colour alone) is what makes "how close was I?" legible per day.
+  const plotMax = Math.max(goalMins * 1.15, ...days.map((d) => d.mins), 1);
+  const goalLinePct = goalMins > 0 ? Math.min(94, (goalMins / plotMax) * 100) : 0;
 
   return (
     <div style={{ ...S.card, ...style }}>
       {/* Header: today total · editable goal · streak */}
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-          <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.5px", textTransform: "uppercase", color: "var(--text-muted)" }}>Today</span>
-          <span className="serif" style={{ fontSize: 22, fontWeight: 600, color: met ? "var(--color-text-success)" : "var(--text-primary)", fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.6px", textTransform: "uppercase", color: "var(--text-muted)" }}>Today</span>
+          <span className="serif" style={{ fontSize: 26, fontWeight: 600, color: met ? "var(--color-text-success)" : "var(--text-primary)", fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
             {fmtMins(todayMins)}
           </span>
           <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
@@ -234,13 +294,18 @@ function TodayStrip({ focusLog, todayMins, streak, goalMins, onEditGoal, style, 
           </span>
         </div>
         {streak > 0 && (
-          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--gold)", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="flame" size={14} /> {streak}-day streak</span>
+          <span style={{ ...S.pill(noorA(15), "var(--noor)"), display: "inline-flex", alignItems: "center", gap: 6, fontWeight: 600 }}><Icon name="flame" size={13} /> {streak}-day streak</span>
         )}
       </div>
 
-      {/* Thin progress bar */}
-      <div style={{ height: 6, background: "var(--color-background-secondary)", borderRadius: 99, overflow: "hidden", marginBottom: 14 }}>
-        <div style={{ height: "100%", width: `${pct}%`, background: met ? "var(--color-text-success)" : "var(--gold)", borderRadius: 99, transition: "width 0.4s ease" }} />
+      {/* Progress meter toward today's goal, with a plain-language readout */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+        <div style={{ flex: 1, height: 6, background: "var(--color-background-secondary)", borderRadius: 99, overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${pct}%`, background: met ? "var(--color-text-success)" : "var(--gold)", borderRadius: 99, transition: "width 0.4s ease" }} />
+        </div>
+        <span style={{ fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", fontVariantNumeric: "tabular-nums", color: met ? "var(--color-text-success)" : "var(--text-muted)", display: "inline-flex", alignItems: "center", gap: 5 }}>
+          {met ? (<><Icon name="check" size={13} /> goal met</>) : `${fmtMins(remaining)} to go`}
+        </span>
       </div>
 
       {/* Goal presets — only while editing */}
@@ -268,29 +333,51 @@ function TodayStrip({ focusLog, todayMins, streak, goalMins, onEditGoal, style, 
         );
       })()}
 
-      {/* 7-day bars */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 6, height: 46 }}>
-        {days.map((d) => {
-          const h = (d.mins / max) * 100;
-          const hit = d.mins >= goalMins && goalMins > 0;
-          return (
-            <div key={d.key} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }} title={`${d.key} · ${d.mins}m`}>
-              <div style={{ width: "100%", height: 32, display: "flex", alignItems: "flex-end" }}>
+      {/* This-week rhythm — eyebrow + total */}
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 10 }}>
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.6px", textTransform: "uppercase", color: "var(--text-muted)" }}>This week</span>
+        <span style={{ fontSize: 12, color: "var(--text-secondary)", fontVariantNumeric: "tabular-nums" }}>{fmtMins(weekTotal)} total</span>
+      </div>
+
+      {/* 7-day bars over a shared baseline, with a dashed goal reference line.
+          Bars grow from the baseline (rounded top, square foot); a met day is
+          solid jade rising past the line, a partial day is a jade wash — so
+          height carries effort and the line carries "did I hit it". Today is
+          marked by a spotlight column + bold label, never a stroke on the bar. */}
+      <div style={{ position: "relative", height: 56 }}>
+        {goalLinePct > 0 && (
+          <div style={{ position: "absolute", left: 0, right: 0, bottom: `${goalLinePct}%`, borderTop: `1px dashed ${noorA(55)}`, pointerEvents: "none" }}>
+            <span style={{ position: "absolute", right: 0, top: -7, fontSize: 9, fontWeight: 600, letterSpacing: "0.3px", textTransform: "uppercase", color: "var(--noor)", background: "var(--bg-card)", padding: "0 3px", lineHeight: 1 }}>goal</span>
+          </div>
+        )}
+        {/* baseline the bars stand on */}
+        <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 1, background: "var(--color-border-tertiary)" }} />
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "flex-end", gap: 6 }}>
+          {days.map((d) => {
+            const hit = d.mins >= goalMins && goalMins > 0;
+            const h = Math.max(4, (d.mins / plotMax) * 100);
+            return (
+              <div key={d.key} title={d.tip}
+                style={{ flex: 1, alignSelf: "stretch", display: "flex", alignItems: "flex-end", borderRadius: 6, background: d.isToday ? goldA(9) : "transparent" }}>
                 <div style={{
                   width: "100%",
-                  height: `${Math.max(2, h)}%`,
-                  background: hit ? "var(--gold)" : "var(--color-background-secondary)",
-                  border: d.isToday ? `1px solid ${hit ? "var(--gold)" : "var(--color-border-secondary)"}` : "none",
-                  borderRadius: 3,
+                  height: d.mins > 0 ? `${h}%` : 3,
+                  background: d.mins > 0 ? (hit ? "var(--gold)" : goldA(30)) : goldA(15),
+                  borderRadius: d.mins > 0 ? "4px 4px 0 0" : 99,
                   transition: "height 0.4s ease",
                 }} />
               </div>
-              <div style={{ fontSize: 10, color: d.isToday ? "var(--gold)" : "var(--text-muted)", fontWeight: d.isToday ? 600 : 400 }}>
-                {d.label}
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
+      </div>
+      {/* weekday labels, aligned to the columns above */}
+      <div style={{ display: "flex", gap: 6, marginTop: 7 }}>
+        {days.map((d) => (
+          <div key={d.key} style={{ flex: 1, textAlign: "center", fontSize: 10, color: d.isToday ? "var(--gold)" : "var(--text-muted)", fontWeight: d.isToday ? 700 : 400 }}>
+            {d.label}
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -315,6 +402,7 @@ export default function Pomodoro({
   endFocusEarly,
   updatePomDuration,
   startTaskTimer,
+  toggleTask,
   dailyFocusGoalMins,
   updateDailyFocusGoal,
   lastSession,
@@ -449,6 +537,7 @@ export default function Pomodoro({
       <SessionBanner
         lastSession={lastSession}
         goals={goals}
+        toggleTask={toggleTask}
         dismissLastSession={dismissLastSession}
         updateLastSessionNote={updateLastSessionNote}
       />

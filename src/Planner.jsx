@@ -1273,6 +1273,7 @@ export default function Planner({ user }) {
           endFocusEarly={endFocusEarly}
           updatePomDuration={updatePomDuration}
           startTaskTimer={startTaskTimer}
+          toggleTask={toggleTask}
           dailyFocusGoalMins={dailyFocusGoalMins}
           updateDailyFocusGoal={updateDailyFocusGoal}
           lastSession={lastSession}

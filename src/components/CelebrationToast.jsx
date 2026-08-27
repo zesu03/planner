@@ -31,6 +31,19 @@ function Glyph({ name }) {
   );
 }
 
+// Small stroked UI glyphs (dismiss + action chevron) — SVG, not text "✕/›",
+// to match the app's icon convention and stay crisp at any zoom.
+const IconX = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+    <path d="M18 6 6 18M6 6l12 12" />
+  </svg>
+);
+const Chevron = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="m9 18 6-6-6-6" />
+  </svg>
+);
+
 // Smallest milestone strictly greater than `count` (null once maxed out).
 const nextMilestone = (count) => STREAK_MILESTONES.find((m) => m > count) ?? null;
 // Glow tier by milestone reached.
@@ -46,21 +59,21 @@ function variantFor(celebration) {
       eyebrow: "Alhamdulillah · goal complete",
       title: g.title,
       sub: "May Allah accept it. One niyyah closer.",
-      actionLabel: "Open ›",
+      actionLabel: "Open",
     };
   }
   const streakBase = { streak: true, count: celebration.count };
   if (celebration.kind === "focusStreak") {
     return { ...streakBase, accent: "var(--gold)", glyph: "flame", unit: "days",
-      eyebrow: "Focus streak", sub: "Consistency over intensity.", actionLabel: "Open Focus ›" };
+      eyebrow: "Focus streak", sub: "Consistency over intensity.", actionLabel: "Open Focus" };
   }
   if (celebration.kind === "muhasabaStreak") {
     return { ...streakBase, accent: "#5fa8aa", glyph: "moon", unit: "nights",
-      eyebrow: "Muhasaba streak", sub: "Accounting for yourself before you're brought to account.", actionLabel: "Open Muhasaba ›" };
+      eyebrow: "Muhasaba streak", sub: "Accounting for yourself before you're brought to account.", actionLabel: "Open Muhasaba" };
   }
   if (celebration.kind === "istiqamahStreak") {
     return { ...streakBase, accent: "var(--noor)", glyph: "flame", unit: "days",
-      eyebrow: "Istiqāmah", sub: "The most beloved deeds to Allah are the constant ones.", actionLabel: "Open ›" };
+      eyebrow: "Istiqāmah", sub: "The most beloved deeds to Allah are the constant ones.", actionLabel: "Open" };
   }
   return null;
 }
@@ -80,6 +93,9 @@ export default function CelebrationToast({ celebration, onDismiss, onOpen }) {
   const tier = v.streak ? glowTier(v.count) : 1;
   const next = v.streak ? nextMilestone(v.count) : null;
   const numberSize = tier >= 3 ? 46 : 40;
+  // Progress up the milestone ladder toward the next badge (count / next).
+  // Maxed out (365, no next) reads as a full bar.
+  const prog = v.streak ? (next ? Math.min(100, Math.round((v.count / next) * 100)) : 100) : 0;
 
   return (
     <div
@@ -108,7 +124,8 @@ export default function CelebrationToast({ celebration, onDismiss, onOpen }) {
         aria-label="Dismiss"
         style={{
           position: "absolute", top: 8, right: 10,
-          fontSize: 13, padding: "2px 7px",
+          width: 24, height: 24, padding: 0,
+          display: "flex", alignItems: "center", justifyContent: "center",
           background: "transparent",
           border: "0.5px solid var(--color-border-tertiary)",
           borderRadius: 99,
@@ -116,7 +133,7 @@ export default function CelebrationToast({ celebration, onDismiss, onOpen }) {
           cursor: "pointer", lineHeight: 1,
         }}
       >
-        ✕
+        <IconX />
       </button>
 
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -147,18 +164,21 @@ export default function CelebrationToast({ celebration, onDismiss, onOpen }) {
 
           {v.streak ? (
             <>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-                <span style={{ fontSize: numberSize, fontWeight: 800, color: accent, lineHeight: 1, letterSpacing: "-0.02em" }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                <span className="serif" style={{ fontSize: numberSize, fontWeight: 600, color: accent, lineHeight: 0.95, letterSpacing: "-0.01em" }}>
                   {v.count}
                 </span>
                 <span style={{ fontSize: 15, color: "var(--text-secondary)" }}>{v.unit}</span>
-                {next && (
-                  <span style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: "auto", whiteSpace: "nowrap" }}>
-                    → next {next}
-                  </span>
-                )}
+                <span style={{ fontSize: 12, fontWeight: 600, marginLeft: "auto", whiteSpace: "nowrap", color: next ? accent : "var(--text-muted)" }}>
+                  {next ? `${next - v.count} to ${next}` : "highest tier"}
+                </span>
               </div>
-              <div style={{ fontSize: 12.5, color: "var(--text-secondary)", marginTop: 5, lineHeight: 1.4 }}>
+              {/* Milestone meter — how far up the ladder toward the next badge.
+                  Same meter language as the Focus "Today" strip. */}
+              <div style={{ height: 5, background: tint(14), borderRadius: 99, overflow: "hidden", marginTop: 9 }}>
+                <div style={{ height: "100%", width: `${prog}%`, background: accent, borderRadius: 99, transition: "width 0.4s ease" }} />
+              </div>
+              <div style={{ fontSize: 12.5, color: "var(--text-secondary)", marginTop: 7, lineHeight: 1.4 }}>
                 {v.sub}
               </div>
             </>
@@ -182,15 +202,16 @@ export default function CelebrationToast({ celebration, onDismiss, onOpen }) {
             onClick={onOpen}
             style={{
               fontSize: 13, fontWeight: 500,
-              padding: "6px 12px", borderRadius: 99,
+              padding: "6px 10px 6px 12px", borderRadius: 99,
               background: "transparent",
               border: `0.5px solid ${tint(53)}`,
               color: accent,
               cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
               alignSelf: "center",
+              display: "inline-flex", alignItems: "center", gap: 4,
             }}
           >
-            {v.actionLabel}
+            {v.actionLabel}<Chevron />
           </button>
         )}
       </div>

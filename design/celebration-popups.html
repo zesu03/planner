@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Celebration pop-ups — before / after</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --gold:#7cc39d; --noor:#e0c06a; --on-accent:#10160f;
+    --bg-primary:#0f1310; --bg-secondary:#1f271e; --bg-card:#171d17;
+    --text-primary:#f1efe4; --text-secondary:#c7c3b0; --text-muted:#a8a289;
+    --color-background-secondary:#1f271e;
+    --color-border-tertiary:rgba(210,180,99,0.3);
+    --color-border-success:rgba(127,190,143,0.45);
+    --color-background-success:rgba(127,190,143,0.18);
+    --color-text-success:#7fbe8f;
+    --border-radius-lg:16px;
+    --shadow-modal:0 18px 50px rgba(0,0,0,.5);
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Space Grotesk",sans-serif;
+    background:radial-gradient(1200px 600px at 20% -10%, rgba(124,195,157,.06), transparent 55%),
+      radial-gradient(900px 500px at 90% 20%, rgba(224,192,106,.05), transparent 60%), #0a0d0a;
+    color:var(--text-primary);padding:44px 24px 90px;line-height:1.5}
+  .serif{font-family:"Fraunces",serif}
+  .wrap{max-width:1120px;margin:0 auto}
+  h1{font-family:"Fraunces",serif;font-size:28px;font-weight:600;margin-bottom:4px}
+  .sub{color:var(--text-secondary);font-size:14px;margin-bottom:20px;max-width:820px}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--text-muted);margin-bottom:34px}
+  .legend b{color:var(--text-secondary);font-weight:600}
+  .sec{margin-bottom:56px}
+  .tag{display:inline-flex;align-items:center;gap:8px;font-size:12px;font-weight:700;
+    letter-spacing:.08em;text-transform:uppercase;border-radius:99px;padding:5px 13px;margin-bottom:6px}
+  .tag.before{color:#d69a8b;background:rgba(214,120,110,.12);border:1px solid rgba(214,120,110,.28)}
+  .tag.after{color:var(--gold);background:rgba(124,195,157,.12);border:1px solid rgba(124,195,157,.28)}
+  .opt-name{font-family:"Fraunces",serif;font-size:21px;font-weight:600;margin-bottom:4px}
+  .opt-desc{color:var(--text-secondary);font-size:13.5px;margin-bottom:20px;max-width:840px}
+  .opt-desc b{color:var(--text-primary);font-weight:600}
+  .stage{background:
+      repeating-linear-gradient(45deg, rgba(255,255,255,.012) 0 12px, transparent 12px 24px),
+      var(--bg-primary);
+    border:1px solid rgba(255,255,255,.05);border-radius:20px;padding:26px 24px;
+    display:flex;flex-direction:column;gap:18px;align-items:center}
+  .stage .cap{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-muted);align-self:flex-start}
+  .ico{stroke:currentColor;stroke-width:2;fill:none;stroke-linecap:round;stroke-linejoin:round;display:block}
+
+  /* ---- toast base ---- */
+  .toast{position:relative;width:520px;max-width:100%;padding:14px 18px 14px 22px;border-radius:var(--border-radius-lg);
+    box-shadow:var(--shadow-modal);overflow:hidden}
+  .toast .rail{position:absolute;left:0;top:0;bottom:0;width:4px}
+  .toast .x{position:absolute;top:8px;right:10px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;
+    background:transparent;border:0.5px solid var(--color-border-tertiary);border-radius:99px;color:var(--text-muted);cursor:pointer}
+  .toast .row{display:flex;align-items:center;gap:14px}
+  .badge{width:46px;height:46px;border-radius:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase}
+  .subline{font-size:12.5px;color:var(--text-secondary);margin-top:5px;line-height:1.4}
+  .act{font-size:13px;font-weight:500;padding:6px 12px;border-radius:99px;background:transparent;cursor:pointer;
+    flex-shrink:0;white-space:nowrap;display:inline-flex;align-items:center;gap:5px}
+  /* number treatments */
+  .num-sans{font-size:40px;font-weight:800;line-height:1;letter-spacing:-.02em}
+  .num-serif{font-family:"Fraunces",serif;font-size:44px;font-weight:600;line-height:.95;letter-spacing:-.01em}
+  .unit{font-size:15px;color:var(--text-secondary)}
+  /* milestone meter (option A) */
+  .meter{height:5px;border-radius:99px;overflow:hidden;margin-top:9px}
+  .meter>i{display:block;height:100%;border-radius:99px}
+  .meterlab{display:flex;justify-content:space-between;font-size:11px;color:var(--text-muted);margin-top:5px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;width:100%;max-width:1080px}
+  @media(max-width:900px){.grid2{grid-template-columns:1fr}}
+
+  /* ---- session banner ---- */
+  .banner{position:relative;width:560px;max-width:100%;padding:18px 20px;border-radius:var(--border-radius-lg);overflow:hidden}
+  .banner .rail{position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--gold)}
+  .hint{font-size:12px;color:var(--text-muted);font-style:italic}
+  .btn-primary{background:var(--gold);color:var(--on-accent);border:none;font-weight:600;cursor:pointer;
+    display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:7px 14px;font-size:13px}
+  .field{flex:1;font-size:15px;padding:8px 12px;border-radius:10px;background:var(--bg-primary);
+    border:1px solid var(--color-border-tertiary);color:var(--text-primary)}
+  .arabic{font-family:"Fraunces",serif}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="serif">Celebration pop-ups — before / after</h1>
+  <div class="sub">The transient top toast (goal complete + the three streak milestones) and the inline focus-completion banner. Faithful to the real dark palette & tokens. Two redesign directions for the toast; one refined banner shared by both.</div>
+  <div class="legend">
+    <span><b>Streak milestones</b> 7 · 14 · 30 · 60 · 100 · 200 · 365</span>
+    <span><b>Kinds</b> goal · focus streak · muhasaba streak · istiqāmah</span>
+    <span><b>Auto-dismiss</b> 12s</span>
+  </div>
+
+  <!-- ============ BEFORE ============ -->
+  <div class="sec">
+    <span class="tag before">Before · current build</span>
+    <div class="opt-name serif">What ships today</div>
+    <div class="opt-desc">Number-hero streaks with a glowing glyph badge and a text-only “→ next N”. Solid, but: the count is a <b>heavy sans 800</b> numeral (every other big number in the app is Fraunces serif), momentum toward the next badge is words not a visual, and <b>✕ / ›</b> are raw text glyphs rather than the app’s SVG icons.</div>
+    <div class="grid2">
+      <div class="stage"><span class="cap">Focus streak · 14 days</span><div id="b1"></div></div>
+      <div class="stage"><span class="cap">Goal complete</span><div id="b2"></div></div>
+    </div>
+    <div class="stage" style="margin-top:16px"><span class="cap">Focus completion banner (inline, on the Focus tab)</span><div id="bBanner"></div></div>
+  </div>
+
+  <!-- ============ AFTER A ============ -->
+  <div class="sec">
+    <span class="tag after">After · Option A</span>
+    <div class="opt-name serif">Momentum — refined in place</div>
+    <div class="opt-desc">Same compact footprint, three fixes: the count becomes a <b>Fraunces serif</b> numeral (on-brand with the rest of the app), a <b>thin milestone meter</b> shows how far up the ladder you are (14 → 30 = 47%), and dismiss/action use <b>SVG icons</b>. Lowest risk; reuses the TodayStrip meter language so the whole app reads as one system.</div>
+    <div class="grid2">
+      <div class="stage"><span class="cap">Focus streak · 14 → 30</span><div id="a1"></div></div>
+      <div class="stage"><span class="cap">Muhasaba streak · 30 → 60</span><div id="a2"></div></div>
+      <div class="stage"><span class="cap">Istiqāmah · 100 → 200</span><div id="a3"></div></div>
+      <div class="stage"><span class="cap">Goal complete</span><div id="a4"></div></div>
+    </div>
+  </div>
+
+  <!-- ============ AFTER B ============ -->
+  <div class="sec">
+    <span class="tag after">After · Option B</span>
+    <div class="opt-name serif">Ring hero — the badge becomes the progress</div>
+    <div class="opt-desc">More celebratory without shouting: the glyph sits inside a <b>circular progress ring</b> that fills toward the next milestone, so the “achievement” reads instantly. Bigger serif number. Same colours, same quiet tone — just more of a moment when a milestone lands.</div>
+    <div class="grid2">
+      <div class="stage"><span class="cap">Focus streak · 14 → 30</span><div id="c1"></div></div>
+      <div class="stage"><span class="cap">Muhasaba streak · 30 → 60</span><div id="c2"></div></div>
+      <div class="stage"><span class="cap">Istiqāmah · 100 → 200 (tier 3 glow)</span><div id="c3"></div></div>
+      <div class="stage"><span class="cap">Goal complete</span><div id="c4"></div></div>
+    </div>
+  </div>
+
+  <!-- ============ REFINED BANNER ============ -->
+  <div class="sec">
+    <span class="tag after">After · shared</span>
+    <div class="opt-name serif">Focus-completion banner — tightened</div>
+    <div class="opt-desc">Sibling to the toast: same eyebrow + glyph-badge language, the minutes as a serif number, and the two actions (<b>Mark task done</b> / the note) given a clearer hierarchy. The goal % ticks up the instant you mark done.</div>
+    <div class="stage"><span class="cap">One-shot task · session complete</span><div id="rBanner"></div></div>
+  </div>
+</div>
+
+<script>
+const MILES=[7,14,30,60,100,200,365];
+const nextMile=c=>MILES.find(m=>m>c)??null;
+const tintV=(acc,p)=>`color-mix(in srgb, ${acc} ${p}%, transparent)`;
+const glowTier=c=>c>=365?4:c>=100?3:c>=30?2:1;
+
+const ICON={
+  flame:'<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+  moon:'<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>',
+  sparkle:'<path d="M12 2l1.8 6.2L20 10l-6.2 1.8L12 18l-1.8-6.2L4 10l6.2-1.8z"/>',
+};
+const fill=(name,size)=>`<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">${ICON[name]}</svg>`;
+const strokeIcon=(d,size)=>`<svg class="ico" width="${size}" height="${size}" viewBox="0 0 24 24">${d}</svg>`;
+const X=strokeIcon('<path d="M18 6 6 18M6 6l12 12"/>',13);
+const CHEV=strokeIcon('<path d="m9 18 6-6-6-6"/>',14);
+const CHECK=strokeIcon('<path d="M20 6 9 17l-5-5"/>',14);
+const ROSETTE='<svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 2.1 3.1-.5 1 3 2.9 1.3-1 3 1 3-2.9 1.3-1 3-3.1-.5L12 24l-2.4-2.1-3.1.5-1-3L2.6 18.5l1-3-1-3 2.9-1.3 1-3 3.1.5z" opacity=".22"/><path d="M9 12l2 2 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+
+function config(kind, count, goal){
+  if(kind==='goal') return {acc:goal.color, glyph:'sparkle', eyebrow:'Alhamdulillah · goal complete',
+    title:goal.title, sub:'May Allah accept it. One niyyah closer.', act:'Open', streak:false};
+  const base={streak:true, count};
+  if(kind==='focus') return {...base, acc:'var(--gold)', glyph:'flame', unit:'days', eyebrow:'Focus streak', sub:'Consistency over intensity.', act:'Open Focus'};
+  if(kind==='muhasaba') return {...base, acc:'#5fa8aa', glyph:'moon', unit:'nights', eyebrow:'Muhasaba streak', sub:"Accounting for yourself before you're brought to account.", act:'Open Muhasaba'};
+  if(kind==='istiqamah') return {...base, acc:'var(--noor)', glyph:'flame', unit:'days', eyebrow:'Istiqāmah', sub:'The most beloved deeds are the constant ones.', act:'Open'};
+}
+
+// ---------- BEFORE ----------
+function toastBefore(kind, count, goal){
+  const v=config(kind,count,goal), acc=v.acc, next=v.streak?nextMile(count):null;
+  const tier=v.streak?glowTier(count):1;
+  return `<div class="toast pop-in" style="background:linear-gradient(135deg, ${tintV(acc,13)} 0%, ${tintV(acc,4)} 100%), var(--bg-card);border:0.5px solid ${tintV(acc,53)}">
+    <div class="rail" style="background:${acc}"></div>
+    <button class="x">✕</button>
+    <div class="row">
+      <span class="badge" style="color:${acc};background:${tintV(acc,18)};border:0.5px solid ${tintV(acc,36)};box-shadow:0 0 ${8+tier*4}px ${tintV(acc,16+tier*12)}">${fill(v.glyph,22)}</span>
+      <div style="flex:1;min-width:0">
+        <div class="eyebrow" style="color:${acc};margin-bottom:${v.streak?1:3}px">${v.eyebrow}</div>
+        ${v.streak?`
+          <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+            <span class="num-sans" style="color:${acc}">${count}</span>
+            <span class="unit">${v.unit}</span>
+            ${next?`<span style="font-size:12px;color:var(--text-muted);margin-left:auto">→ next ${next}</span>`:''}
+          </div>
+          <div class="subline">${v.sub}</div>`
+        :`
+          <div style="font-size:16px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${v.title}</div>
+          <div class="subline" style="margin-top:3px">${v.sub}</div>`}
+      </div>
+      <button class="act" style="border:0.5px solid ${tintV(acc,53)};color:${acc}">${v.act} ›</button>
+    </div>
+  </div>`;
+}
+
+// ---------- AFTER A (meter) ----------
+function toastA(kind, count, goal){
+  const v=config(kind,count,goal), acc=v.acc, next=v.streak?nextMile(count):null;
+  const tier=v.streak?glowTier(count):1;
+  const prog=next?Math.round(count/next*100):100;
+  return `<div class="toast pop-in" style="background:linear-gradient(135deg, ${tintV(acc,13)} 0%, ${tintV(acc,4)} 100%), var(--bg-card);border:0.5px solid ${tintV(acc,53)}">
+    <div class="rail" style="background:${acc}"></div>
+    <button class="x">${X}</button>
+    <div class="row">
+      <span class="badge" style="color:${acc};background:${tintV(acc,18)};border:0.5px solid ${tintV(acc,36)};box-shadow:0 0 ${8+tier*4}px ${tintV(acc,16+tier*12)}">${fill(v.glyph,22)}</span>
+      <div style="flex:1;min-width:0">
+        <div class="eyebrow" style="color:${acc};margin-bottom:2px">${v.eyebrow}</div>
+        ${v.streak?`
+          <div style="display:flex;align-items:baseline;gap:8px">
+            <span class="num-serif" style="color:${acc}">${count}</span>
+            <span class="unit">${v.unit}</span>
+          </div>
+          <div class="meter" style="background:${tintV(acc,14)}"><i style="width:${prog}%;background:${acc}"></i></div>
+          <div class="meterlab"><span>${v.sub}</span>${next?`<span style="white-space:nowrap;color:${acc};font-weight:600">${next-count} to ${next}</span>`:`<span style="color:${acc};font-weight:600">highest tier</span>`}</div>`
+        :`
+          <div style="font-size:16px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${v.title}</div>
+          <div class="subline" style="margin-top:3px">${v.sub}</div>`}
+      </div>
+      <button class="act" style="border:0.5px solid ${tintV(acc,53)};color:${acc}">${kind==='goal'?CHECK:''}${v.act} ${CHEV}</button>
+    </div>
+  </div>`;
+}
+
+// ---------- AFTER B (ring) ----------
+function ring(acc,progress,tier,glyph){
+  const R=26, C=2*Math.PI*R, off=C*(1-progress);
+  return `<span class="badge" style="position:relative;width:62px;height:62px;border-radius:16px;background:${tintV(acc,10)};border:0.5px solid ${tintV(acc,28)}">
+    <svg width="62" height="62" viewBox="0 0 62 62" style="position:absolute;inset:0">
+      <circle cx="31" cy="31" r="${R}" fill="none" stroke="${tintV(acc,16)}" stroke-width="4"/>
+      <circle cx="31" cy="31" r="${R}" fill="none" stroke="${acc}" stroke-width="4" stroke-linecap="round"
+        stroke-dasharray="${C.toFixed(1)}" stroke-dashoffset="${off.toFixed(1)}" transform="rotate(-90 31 31)"
+        style="filter:drop-shadow(0 0 ${2+tier*2}px ${tintV(acc,40)})"/>
+    </svg>
+    <span style="color:${acc};display:flex">${fill(glyph,22)}</span>
+  </span>`;
+}
+function toastB(kind, count, goal){
+  const v=config(kind,count,goal), acc=v.acc, next=v.streak?nextMile(count):null;
+  const tier=v.streak?glowTier(count):1;
+  const prog=next?count/next:1;
+  return `<div class="toast pop-in" style="background:linear-gradient(135deg, ${tintV(acc,14)} 0%, ${tintV(acc,4)} 100%), var(--bg-card);border:0.5px solid ${tintV(acc,53)}">
+    <div class="rail" style="background:${acc}"></div>
+    <button class="x">${X}</button>
+    <div class="row">
+      ${v.streak?ring(acc,prog,tier,v.glyph):`<span class="badge" style="width:62px;height:62px;border-radius:16px;color:${acc};background:${tintV(acc,16)};border:0.5px solid ${tintV(acc,34)}">${ROSETTE}</span>`}
+      <div style="flex:1;min-width:0">
+        <div class="eyebrow" style="color:${acc};margin-bottom:1px">${v.eyebrow}</div>
+        ${v.streak?`
+          <div style="display:flex;align-items:baseline;gap:8px">
+            <span class="num-serif" style="color:${acc};font-size:40px">${count}</span>
+            <span class="unit">${v.unit}</span>
+            ${next?`<span style="font-size:12px;color:var(--text-muted);margin-left:auto;white-space:nowrap">${next-count} to next ${next}</span>`:''}
+          </div>
+          <div class="subline" style="margin-top:4px">${v.sub}</div>`
+        :`
+          <div style="font-size:17px;font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${v.title}</div>
+          <div class="subline" style="margin-top:3px">${v.sub}</div>`}
+      </div>
+      <button class="act" style="border:0.5px solid ${tintV(acc,53)};color:${acc}">${v.act} ${CHEV}</button>
+    </div>
+  </div>`;
+}
+
+// ---------- session banner ----------
+function bannerBefore(){
+  const acc='var(--gold)';
+  return `<div class="banner" style="background:linear-gradient(135deg, ${tintV(acc,18)} 0%, ${tintV(acc,4)} 100%), var(--bg-card);border:0.5px solid ${tintV(acc,45)}">
+    <div class="rail"></div>
+    <button class="x" style="position:absolute;top:10px;right:10px;width:24px;height:24px;border-radius:99px;border:0.5px solid var(--color-border-tertiary);background:transparent;color:var(--text-muted);cursor:pointer">✕</button>
+    <div style="display:flex;align-items:center;gap:14px">
+      <span class="badge" style="border-radius:12px;color:${acc};background:${tintV(acc,22)};border:0.5px solid ${tintV(acc,44)}">${fill('sparkle',22)}</span>
+      <div style="flex:1;min-width:0">
+        <div class="eyebrow" style="color:${acc};margin-bottom:3px">Session complete · Alhamdulillah</div>
+        <div style="font-size:17px;font-weight:600;color:var(--text-primary)">45 minutes for Allah</div>
+        <div style="font-size:13px;color:var(--text-secondary);margin-top:4px">Memorise Surah Al-Mulk <span style="color:var(--text-muted)">→</span> <span style="color:#4f95c9;font-weight:500">Qur'an goals · 40%</span></div>
+        <div style="font-size:12px;color:var(--text-muted);margin-top:6px;font-style:italic" class="arabic">"إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ" — actions are by intentions.</div>
+      </div>
+    </div>
+    <div style="margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <button class="btn-primary">${CHECK} Mark task done</button>
+      <span class="hint">or start another session</span>
+    </div>
+    <div style="margin-top:14px;padding-top:14px;border-top:0.5px dashed ${tintV(acc,30)}">
+      <div style="font-size:11px;color:${acc};font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">What moved forward?</div>
+      <div style="display:flex;gap:8px"><input class="field" placeholder="e.g. drafted intro · fixed bug · distracted, slow"><span class="hint" style="align-self:center">Optional</span></div>
+    </div>
+  </div>`;
+}
+function bannerAfter(){
+  const acc='var(--gold)';
+  return `<div class="banner" style="background:linear-gradient(135deg, ${tintV(acc,16)} 0%, ${tintV(acc,3)} 100%), var(--bg-card);border:0.5px solid ${tintV(acc,45)}">
+    <div class="rail"></div>
+    <button class="x" style="position:absolute;top:10px;right:10px;width:24px;height:24px;border-radius:99px;border:0.5px solid var(--color-border-tertiary);background:transparent;color:var(--text-muted);cursor:pointer">${X}</button>
+    <div style="display:flex;align-items:center;gap:14px">
+      <span class="badge" style="width:48px;height:48px;border-radius:13px;color:${acc};background:${tintV(acc,20)};border:0.5px solid ${tintV(acc,40)}">${fill('sparkle',22)}</span>
+      <div style="flex:1;min-width:0">
+        <div class="eyebrow" style="color:${acc};margin-bottom:2px">Session complete · Alhamdulillah</div>
+        <div style="display:flex;align-items:baseline;gap:7px">
+          <span class="num-serif" style="color:var(--text-primary);font-size:30px">45</span>
+          <span class="unit">minutes for Allah</span>
+        </div>
+        <div style="font-size:13px;color:var(--text-secondary);margin-top:4px">Memorise Surah Al-Mulk <span style="color:var(--text-muted)">→</span> <span style="color:#4f95c9;font-weight:500">Qur'an goals · 40%</span></div>
+      </div>
+    </div>
+    <div style="margin-top:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <button class="btn-primary">${CHECK} Mark task done</button>
+      <span class="hint">or start another session</span>
+    </div>
+    <div style="margin-top:14px;padding-top:13px;border-top:0.5px dashed ${tintV(acc,30)}">
+      <div style="font-size:11px;color:${acc};font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">What moved forward?</div>
+      <div style="display:flex;gap:8px"><input class="field" placeholder="e.g. drafted intro · fixed bug · distracted, slow"><span class="hint" style="align-self:center">Optional</span></div>
+    </div>
+    <div style="margin-top:12px;font-size:12px;color:var(--text-muted);font-style:italic;text-align:center" class="arabic">"إِنَّمَا الْأَعْمَالُ بِالنِّيَّاتِ" — actions are by intentions.</div>
+  </div>`;
+}
+
+const goal={title:"Memorise Surah Al-Mulk", color:"#4f95c9"};
+document.getElementById('b1').innerHTML=toastBefore('focus',14);
+document.getElementById('b2').innerHTML=toastBefore('goal',null,goal);
+document.getElementById('bBanner').innerHTML=bannerBefore();
+
+document.getElementById('a1').innerHTML=toastA('focus',14);
+document.getElementById('a2').innerHTML=toastA('muhasaba',30);
+document.getElementById('a3').innerHTML=toastA('istiqamah',100);
+document.getElementById('a4').innerHTML=toastA('goal',null,goal);
+
+document.getElementById('c1').innerHTML=toastB('focus',14);
+document.getElementById('c2').innerHTML=toastB('muhasaba',30);
+document.getElementById('c3').innerHTML=toastB('istiqamah',100);
+document.getElementById('c4').innerHTML=toastB('goal',null,goal);
+
+document.getElementById('rBanner').innerHTML=bannerAfter();
+</script>
+</body>
+</html>
