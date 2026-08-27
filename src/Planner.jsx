@@ -16,7 +16,7 @@ import { newId } from "./lib/ids";
 import { todayStr, localDateStr, daysLeft, addDaysToStr } from "./lib/dates";
 import { isGoalDone, pct } from "./lib/goals";
 import { emptyMuhasabaEntry, isMuhasabaFilled, muhasabaStreak } from "./lib/muhasaba";
-import { reconcileQaza, qazaOwed, payQaza, undoQaza, addQaza, qazaAfterRetroToggle, addExcusedRange, removeExcusedRange, settleWouldSkip, QAZA_PRAYERS } from "./lib/qaza";
+import { reconcileQaza, qazaOwed, payQaza, undoQaza, addQaza, qazaAfterRetroToggle, addExcusedRange, removeExcusedRange, settleWouldSkip, reconcileSuppressedSeed, QAZA_PRAYERS } from "./lib/qaza";
 import { nextPrayer as computeNextPrayer, prayerDayFor as computePrayerDayFor } from "./lib/prayer";
 import { dayPhase, prayersToday, focusToday, muhasabaState, yesterdayDua, firstOpenTask, istiqamahStreak, istiqamahActiveToday } from "./lib/daily";
 import { fmtTime, focusStreakDays, STREAK_MILESTONES } from "./lib/focus";
@@ -396,6 +396,15 @@ export default function Planner({ user }) {
     if (settleWouldSkip(qazaFromDb, prayerLog, todayStr())) {
       captureError(new Error("qaza settle skipped: empty prayerLog with history"), {
         scope: "qaza-settle-skip", uid: user.uid,
+      });
+    }
+    // Wipe tripwire: reconcile is about to REFUSE seeding a blank ledger because
+    // the account has prayer history but the ledger came back empty (stale /
+    // old-code load). The refusal prevents the wipe; capturing it makes the
+    // formerly-silent recurrence visible so we can see which build/session hits it.
+    if (reconcileSuppressedSeed(qazaFromDb, prayerLog)) {
+      captureError(new Error("qaza reconcile suppressed a blank-ledger seed (wipe averted)"), {
+        scope: "qaza-wipe-averted", uid: user.uid,
       });
     }
     updateQaza((cur) => reconcileQaza(cur, prayerLog, todayStr()));

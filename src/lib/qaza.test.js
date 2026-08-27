@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import {
   emptyQaza, qazaOwed, qazaOwedRaw, paidOnDay, isExcused,
-  settleQaza, reconcileQaza, settleWouldSkip, looksLikeV2,
+  settleQaza, reconcileQaza, reconcileSuppressedSeed, settleWouldSkip, looksLikeV2,
   payQaza, undoQaza, addQaza, qazaAfterRetroToggle, addExcusedRange, removeExcusedRange,
   missedDaysForPrayer, QAZA_PRAYERS, QAZA_VERSION,
 } from "./qaza";
@@ -159,11 +159,44 @@ describe("settleQaza", () => {
 });
 
 describe("reconcileQaza", () => {
-  it("seeds a fresh ledger from null / empty", () => {
+  it("seeds a fresh ledger from null / empty (genuinely new account, empty prayerLog)", () => {
     const out = reconcileQaza(null, {}, todayStr());
     expect(out.version).toBe(2);
     expect(out.startDate).toBe(todayStr());
     expect(out.owed).toEqual(ZERO);
+  });
+
+  it("REFUSES to seed a blank ledger when prayerLog has history (wipe guard)", () => {
+    // The wipe signature: a stale / old-code load hands reconcile no ledger,
+    // but the account clearly has prayer history. Fabricating emptyQaza here
+    // would merge-write a blank ledger over the real one. Reconcile must return
+    // the input unchanged so updateQaza's same-ref no-op skips the write.
+    const plog = { Fajr: ["2026-06-10", "2026-06-11"], Dhuhr: ["2026-06-12"] };
+    expect(reconcileQaza(null, plog, todayStr())).toBe(null);
+    const empty = {};
+    expect(reconcileQaza(empty, plog, todayStr())).toBe(empty); // same ref → no write
+    const noStartDate = { owed: { ...ZERO, Fajr: 5 } }; // shape without startDate
+    expect(reconcileQaza(noStartDate, plog, todayStr())).toBe(noStartDate);
+  });
+
+  it("still settles/heals a real ledger when prayerLog has history", () => {
+    // The guard only suppresses the blank SEED — an existing ledger settles as
+    // usual even with a populated prayerLog.
+    const q = mk({ startDate: addDaysToStr(todayStr(), -3), lastSettledDate: addDaysToStr(todayStr(), -3) });
+    const plog = { Fajr: [addDaysToStr(todayStr(), -2)] }; // one of 2 settle-days logged for Fajr
+    const out = reconcileQaza(q, plog, todayStr());
+    expect(out).not.toBe(q); // settled → new ref
+    expect(out.lastSettledDate).toBe(yesterday());
+    expect(out.owed.Fajr).toBe(1); // 2 days settled, 1 logged → 1 owed
+    expect(out.owed.Dhuhr).toBe(2); // neither day logged
+  });
+
+  it("reconcileSuppressedSeed flags the wipe signature, not the healthy cases", () => {
+    const plog = { Fajr: ["2026-06-10"] };
+    expect(reconcileSuppressedSeed(null, plog)).toBe(true);
+    expect(reconcileSuppressedSeed({}, plog)).toBe(true);
+    expect(reconcileSuppressedSeed(null, {})).toBe(false); // new account — seeding is fine
+    expect(reconcileSuppressedSeed(mk(), plog)).toBe(false); // real ledger present
   });
 
   it("migrates a v1 ledger, preserving derived owed and paidTotal", () => {

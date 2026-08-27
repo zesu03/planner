@@ -193,9 +193,31 @@ export function looksLikeV2(qaza) {
 // phantom qaza — the caller must gate on the load flag). Returns the same
 // reference when there's nothing to change, so the effect can skip the write.
 export function reconcileQaza(qaza, prayerLog = {}, today = todayStr()) {
-  if (!qaza || !qaza.startDate) return settleQaza(emptyQaza(), prayerLog, today);
+  if (!qaza || !qaza.startDate) {
+    // No ledger in hand. Seed a fresh one ONLY for a genuinely new account
+    // (empty prayer log). For an account that ALREADY has prayer history, an
+    // absent/blank ledger is the WIPE signature — a stale, offline, or
+    // old-code (stale service-worker bundle) load handed us nothing — so refuse
+    // to fabricate an empty ledger that a merge-write would then push over the
+    // real one on the server. Returning the input unchanged makes updateQaza's
+    // same-ref no-op skip the write entirely: no wipe. A truly qaza-less
+    // established user seeds lazily via addQaza the moment they record any qaza
+    // (backlog estimator / per-prayer adjust). This is the mirror of settleQaza's
+    // empty-prayerLog-with-history guard: that one catches "have ledger, lost
+    // prayerLog"; this one catches "lost ledger, still have prayerLog".
+    if (!prayerLogIsEmpty(prayerLog)) return qaza;
+    return settleQaza(emptyQaza(), prayerLog, today);
+  }
   const q = (qaza.version === QAZA_VERSION || looksLikeV2(qaza)) ? qaza : migrateV1(qaza, prayerLog, today);
   return normalizePaidTotal(settleQaza(q, prayerLog, today));
+}
+
+// True when reconcile is REFUSING to seed a fresh ledger because the account
+// has prayer history but no ledger in hand — i.e. it just averted a wipe. Lets
+// Planner emit a monitoring signal (without importing monitoring into this pure
+// module) so a recurrence becomes visible instead of silent.
+export function reconcileSuppressedSeed(qaza, prayerLog = {}) {
+  return (!qaza || !qaza.startDate) && !prayerLogIsEmpty(prayerLog);
 }
 
 // True when settleQaza WOULD refuse to settle because of the empty-prayerLog-
