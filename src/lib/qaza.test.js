@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import {
-  emptyQaza, qazaOwed, qazaOwedRaw, paidOnDay, isExcused,
+  emptyQaza, qazaOwed, qazaOwedRaw, qazaSettledLogged, paidOnDay, isExcused,
   settleQaza, reconcileQaza, reconcileSuppressedSeed, settleWouldSkip, looksLikeV2,
+  healOwedFromLog,
   payQaza, undoQaza, addQaza, qazaAfterRetroToggle, addExcusedRange, removeExcusedRange,
   missedDaysForPrayer, QAZA_PRAYERS, QAZA_VERSION,
 } from "./qaza";
-import { todayStr, addDaysToStr } from "./dates";
+import { todayStr, addDaysToStr, eachDayBetween } from "./dates";
 
 // Pin "now" so startDate / yesterday windows are deterministic.
 beforeAll(() => {
@@ -25,6 +26,7 @@ const mk = (over = {}) => ({
   owed: { ...ZERO },
   paidTotal: { ...ZERO },
   paidLog: {},
+  settledLogged: { ...ZERO },
   excused: [],
   ...over,
 });
@@ -38,6 +40,7 @@ describe("emptyQaza", () => {
     expect(q.owed).toEqual(ZERO);
     expect(q.paidTotal).toEqual(ZERO);
     expect(q.paidLog).toEqual({});
+    expect(q.settledLogged).toEqual(ZERO);
     expect(q.excused).toEqual([]);
   });
 });
@@ -90,6 +93,9 @@ describe("settleQaza", () => {
     const out = settleQaza(q, { Fajr: [d] }, todayStr());
     expect(out.owed.Fajr).toBe(0); // only day -1 in range, and it's logged
     expect(out.owed.Dhuhr).toBe(1);
+    // the logged day is recorded so a later mark for it can't be double-credited
+    expect(out.settledLogged.Fajr).toBe(1);
+    expect(out.settledLogged.Dhuhr).toBe(0);
   });
 
   it("skips excused days", () => {
@@ -158,6 +164,53 @@ describe("settleQaza", () => {
   });
 });
 
+describe("healOwedFromLog — monotonic late-mark self-heal", () => {
+  const start = () => addDaysToStr(todayStr(), -5);
+
+  it("credits a mark that arrived after its day settled, and is idempotent", () => {
+    // owed 3 Fajr, settle recorded 0 logged; a Fajr mark now exists for a
+    // settled day → one late arrival → owed 2.
+    const settledDay = addDaysToStr(todayStr(), -2);
+    const q = mk({ startDate: start(), owed: { ...ZERO, Fajr: 3 }, settledLogged: { ...ZERO } });
+    const out = healOwedFromLog(q, { Fajr: [settledDay] });
+    expect(out.owed.Fajr).toBe(2);
+    expect(out.settledLogged.Fajr).toBe(1);
+    expect(healOwedFromLog(out, { Fajr: [settledDay] })).toBe(out); // no further credit
+  });
+
+  it("NEVER raises owed on a negative divergence (shrunk log / stale) — no phantom debt", () => {
+    // Dhuhr present so the empty-log guard doesn't fire; Fajr logged 1 < recorded 3.
+    const d = addDaysToStr(todayStr(), -1);
+    const q = mk({ startDate: start(), owed: { ...ZERO, Fajr: 5, Dhuhr: 4 }, settledLogged: { ...ZERO, Fajr: 3 } });
+    const out = healOwedFromLog(q, { Dhuhr: [d], Fajr: [d] });
+    expect(out.owed.Fajr).toBe(5);          // Fajr delta -2 → ignored, not raised
+    expect(out.owed.Dhuhr).toBe(3);          // Dhuhr delta +1 → credited
+    expect(out.settledLogged.Fajr).toBe(3);  // unchanged (only positive deltas move it)
+  });
+
+  it("refuses to heal on the empty-log-with-history signature (stale load)", () => {
+    const q = mk({ owed: { ...ZERO, Fajr: 3 }, settledLogged: { ...ZERO, Fajr: 9 } });
+    expect(healOwedFromLog(q, {})).toBe(q); // same ref — did nothing
+  });
+
+  it("only spans [startDate, lastSettledDate] — pre-startDate backlog is out of scope", () => {
+    // A mark BEFORE startDate must not be credited against owed (that's backlog).
+    const beforeStart = addDaysToStr(start(), -3);
+    const q = mk({ startDate: start(), owed: { ...ZERO, Fajr: 3 }, settledLogged: { ...ZERO } });
+    expect(healOwedFromLog(q, { Fajr: [beforeStart] })).toBe(q);
+  });
+
+  it("does not double-credit a retro-marked day (toggle keeps settledLogged in sync)", () => {
+    const settledDay = addDaysToStr(todayStr(), -2);
+    let q = mk({ startDate: start(), owed: { ...ZERO, Fajr: 3 }, settledLogged: { ...ZERO } });
+    q = qazaAfterRetroToggle(q, "Fajr", settledDay, true); // owed 2, settledLogged 1
+    expect(q.owed.Fajr).toBe(2);
+    expect(q.settledLogged.Fajr).toBe(1);
+    const healed = healOwedFromLog(q, { Fajr: [settledDay] }); // heal sees delta 0
+    expect(healed).toBe(q); // no double-credit
+  });
+});
+
 describe("reconcileQaza", () => {
   it("seeds a fresh ledger from null / empty (genuinely new account, empty prayerLog)", () => {
     const out = reconcileQaza(null, {}, todayStr());
@@ -214,6 +267,37 @@ describe("reconcileQaza", () => {
   it("is a no-op (same ref) for an already-settled v2 ledger", () => {
     const q = mk({ owed: { ...ZERO, Fajr: 3 } });
     expect(reconcileQaza(q, {}, todayStr())).toBe(q);
+  });
+
+  it("seeds settledLogged baseline on first run — does NOT slash an owed carrying backlog", () => {
+    // The migration-safety invariant: a ledger predating the settledLogged field
+    // whose whole window is ALREADY logged for Fajr, but which owes 10 Fajr as a
+    // manual backlog. Without the baseline seed, the heal would read "every window
+    // day logged" and wrongly credit owed down to ~0. The seed makes run 1 neutral.
+    const start = addDaysToStr(todayStr(), -5);
+    const q = mk({ startDate: start, lastSettledDate: yesterday(), owed: { ...ZERO, Fajr: 10 } });
+    delete q.settledLogged; // pre-field ledger
+    const plog = { Fajr: eachDayBetween(start, todayStr()) }; // every settled day logged
+    const out = reconcileQaza(q, plog, todayStr());
+    expect(out.owed.Fajr).toBe(10); // backlog preserved — NOT slashed
+    expect(out.settledLogged.Fajr).toBe(5); // baseline = the 5 already-logged window days
+  });
+
+  it("credits a late mark that arrives AFTER the baseline reconcile (end-to-end heal)", () => {
+    // Run 1 is a trustworthy load that establishes the baseline (Fajr not yet
+    // marked for the settled day). Run 2 sees the Fajr mark appear late → credited.
+    const start = addDaysToStr(todayStr(), -5);
+    const otherDay = addDaysToStr(todayStr(), -1);
+    const q0 = mk({ startDate: start, lastSettledDate: yesterday(), owed: { ...ZERO, Fajr: 5 } });
+    delete q0.settledLogged;
+    const q1 = reconcileQaza(q0, { Dhuhr: [otherDay] }, todayStr()); // baseline: Fajr 0 logged
+    expect(qazaSettledLogged(q1).Fajr).toBe(0);
+    expect(q1.owed.Fajr).toBe(5); // baseline run does not credit
+    // A Fajr mark for a settled day now shows up on a later load.
+    const settledDay = addDaysToStr(todayStr(), -2);
+    const q2 = reconcileQaza(q1, { Dhuhr: [otherDay], Fajr: [settledDay] }, todayStr());
+    expect(q2.owed.Fajr).toBe(4); // the late arrival is credited
+    expect(qazaSettledLogged(q2).Fajr).toBe(1);
   });
 
   it("heals paidTotal that dropped below the logged makeups", () => {

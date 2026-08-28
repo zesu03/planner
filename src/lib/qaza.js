@@ -42,6 +42,11 @@ export const emptyQaza = () => ({
   // Per-day makeups keyed by YYYY-MM-DD → { Fajr: n, ... }. Powers "N made up
   // today" and scopes the undo (−) button to today's makeups only.
   paidLog: {},
+  // Per-prayer count of settle-window days that were LOGGED at the moment they
+  // settled. healOwedFromLog compares this to the live prayerLog to credit marks
+  // that land AFTER their day settled (late sync / restore / cross-device /
+  // backfill — anything past the 7-day retro window). Internal; never shown.
+  settledLogged: zeroCounts(),
   // Inclusive excused ranges [{ from, to, reason }] — days excluded from
   // accrual (hayd/nifas, travel, illness, unconsciousness).
   excused: [],
@@ -65,6 +70,31 @@ export function qazaOwed(qaza) {
   const raw = qazaOwedRaw(qaza);
   const out = zeroCounts();
   for (const p of QAZA_PRAYERS) out[p] = Math.max(0, raw[p]);
+  return out;
+}
+
+// Per-prayer count of settle-window days that were logged when settled — the
+// baseline healOwedFromLog measures late-arriving marks against. Defaults to
+// zero for a ledger that predates the field (reconcileQaza seeds a real
+// baseline before the first heal so the missing field can't over-credit).
+export function qazaSettledLogged(qaza) {
+  return { ...zeroCounts(), ...(qaza?.settledLogged || {}) };
+}
+
+// Count of settle-window days ([startDate, lastSettledDate], excused excluded)
+// that ARE currently logged, per prayer. In the steady state this equals
+// settledLogged; a POSITIVE divergence means marks arrived after their day
+// settled, which healOwedFromLog credits back.
+function windowLoggedCounts(qaza, prayerLog = {}) {
+  const out = zeroCounts();
+  if (!qaza?.startDate || !qaza.lastSettledDate || qaza.lastSettledDate < qaza.startDate) return out;
+  const excused = qaza.excused || [];
+  for (const day of eachDayBetween(qaza.startDate, addDaysToStr(qaza.lastSettledDate, 1))) {
+    if (isExcused(day, excused)) continue;
+    for (const p of QAZA_PRAYERS) {
+      if ((prayerLog[p] || []).includes(day)) out[p]++;
+    }
+  }
   return out;
 }
 
@@ -120,15 +150,20 @@ export function settleQaza(qaza, prayerLog = {}, today = todayStr()) {
   // to under-count until data is trustworthy than to manufacture permanent debt.
   if (prayerLogIsEmpty(prayerLog) && qazaHasHistory(qaza)) return qaza;
   const owed = qazaOwedRaw(qaza);
+  const settledLogged = qazaSettledLogged(qaza);
   const excused = qaza.excused || [];
   // eachDayBetween is [start, end) — bump end past yesterday to include it.
   for (const day of eachDayBetween(from, addDaysToStr(yesterday, 1))) {
     if (isExcused(day, excused)) continue;
     for (const p of QAZA_PRAYERS) {
+      // A day already logged when it settles is recorded (not owed); one that
+      // isn't accrues owed. Recording the logged count is what lets a LATER mark
+      // for the same day be recognised as "arrived after settle" and credited.
       if (!(prayerLog[p] || []).includes(day)) owed[p]++;
+      else settledLogged[p]++;
     }
   }
-  return { ...qaza, owed, lastSettledDate: yesterday };
+  return { ...qaza, owed, settledLogged, lastSettledDate: yesterday };
 }
 
 // Old v1 derivation (past days only, minus paid) — used once to seed `owed`
@@ -188,6 +223,38 @@ export function looksLikeV2(qaza) {
   return !!qaza && (qaza.lastSettledDate != null || qaza.paidTotal != null) && qaza.owed != null;
 }
 
+// MONOTONIC self-heal for the ratchet's blind spot: a mark that lands in
+// prayerLog AFTER its day has already settled (a late sync, a cross-device
+// merge, a restore/backfill, or any retro-mark past the 7-day tracker window).
+// settle froze that day as a miss; this credits it back.
+//
+// It compares the settle-window's currently-logged day count to what settle
+// recorded (settledLogged) and, for each prayer with MORE logged now, decrements
+// owed by the surplus and advances settledLogged to match. It ONLY ever REDUCES
+// owed — a NEGATIVE divergence (fewer marks than recorded: a stale/empty load,
+// or a UI unmark already handled by qazaAfterRetroToggle) is ignored — so the
+// heal can never manufacture phantom debt (the exact bug class this module
+// guards against). Backlog is untouched: windowLoggedCounts only spans
+// [startDate, lastSettledDate], so pre-startDate debt is never in scope.
+// Same-ref when there's nothing to credit.
+export function healOwedFromLog(qaza, prayerLog = {}) {
+  if (!qaza?.startDate || !qaza.lastSettledDate) return qaza;
+  // Never heal against the stale/empty-load signature (same guard as settle):
+  // an empty log would read as "every logged day vanished" and — even though
+  // the monotonic rule ignores that direction — we also don't want a bad load
+  // to interfere with the baseline. Belt and suspenders with the caller's gate.
+  if (prayerLogIsEmpty(prayerLog) && qazaHasHistory(qaza)) return qaza;
+  const loggedNow = windowLoggedCounts(qaza, prayerLog);
+  const settledLogged = qazaSettledLogged(qaza);
+  const owed = qazaOwedRaw(qaza);
+  let changed = false;
+  for (const p of QAZA_PRAYERS) {
+    const delta = loggedNow[p] - settledLogged[p];
+    if (delta > 0) { owed[p] -= delta; settledLogged[p] += delta; changed = true; }
+  }
+  return changed ? { ...qaza, owed, settledLogged } : qaza;
+}
+
 // Seed-or-migrate-then-settle-then-heal in one idempotent pass. Run on load
 // once the user doc has resolved (an empty prayerLog pre-load would manufacture
 // phantom qaza — the caller must gate on the load flag). Returns the same
@@ -208,8 +275,17 @@ export function reconcileQaza(qaza, prayerLog = {}, today = todayStr()) {
     if (!prayerLogIsEmpty(prayerLog)) return qaza;
     return settleQaza(emptyQaza(), prayerLog, today);
   }
-  const q = (qaza.version === QAZA_VERSION || looksLikeV2(qaza)) ? qaza : migrateV1(qaza, prayerLog, today);
-  return normalizePaidTotal(settleQaza(q, prayerLog, today));
+  let q = (qaza.version === QAZA_VERSION || looksLikeV2(qaza)) ? qaza : migrateV1(qaza, prayerLog, today);
+  // Seed the settledLogged baseline for a ledger that predates the field.
+  // Baseline = the window's CURRENT logged counts, which makes the first heal a
+  // no-op: we must NOT retroactively "credit" already-accounted marks, or we'd
+  // slash an owed that legitimately carries a manual backlog. Skip on the
+  // stale/empty-load signature so a bad load can't seed a zero baseline that a
+  // later good load would then read as a mass over-count.
+  if (q.settledLogged == null && !(prayerLogIsEmpty(prayerLog) && qazaHasHistory(q))) {
+    q = { ...q, settledLogged: windowLoggedCounts(q, prayerLog) };
+  }
+  return healOwedFromLog(normalizePaidTotal(settleQaza(q, prayerLog, today)), prayerLog);
 }
 
 // True when reconcile is REFUSING to seed a fresh ledger because the account
@@ -292,9 +368,13 @@ export function qazaAfterRetroToggle(qaza, prayer, day, willBeMarked) {
   if (day < qaza.startDate || day > qaza.lastSettledDate) return qaza;
   if (isExcused(day, qaza.excused)) return qaza;
   const owed = qazaOwedRaw(qaza);
-  if (willBeMarked) owed[prayer] -= 1;
-  else owed[prayer] += 1;
-  return { ...qaza, owed };
+  const settledLogged = qazaSettledLogged(qaza);
+  // Move owed and settledLogged together so the subsequent heal sees no
+  // divergence for this day — otherwise the heal would credit the same mark a
+  // second time (owed already went down here).
+  if (willBeMarked) { owed[prayer] -= 1; settledLogged[prayer] += 1; }
+  else { owed[prayer] += 1; settledLogged[prayer] -= 1; }
+  return { ...qaza, owed, settledLogged };
 }
 
 // Mark a date range excused and un-count any already-settled, not-previously-
@@ -303,17 +383,21 @@ export function qazaAfterRetroToggle(qaza, prayer, day, willBeMarked) {
 export function addExcusedRange(qaza, from, to, reason = "", prayerLog = {}) {
   if (!qaza?.startDate || !from || !to || from > to) return qaza;
   const owed = qazaOwedRaw(qaza);
+  const settledLogged = qazaSettledLogged(qaza);
   const lo = from < qaza.startDate ? qaza.startDate : from;
   const hi = qaza.lastSettledDate && to > qaza.lastSettledDate ? qaza.lastSettledDate : to;
   if (lo <= hi) {
     for (const day of eachDayBetween(lo, addDaysToStr(hi, 1))) {
       if (isExcused(day, qaza.excused)) continue; // already excused before
       for (const p of QAZA_PRAYERS) {
+        // The day leaves the accrual set: un-count its miss (owed) OR its logged
+        // credit (settledLogged) so the heal stays neutral on it afterwards.
         if (!(prayerLog[p] || []).includes(day)) owed[p] -= 1;
+        else settledLogged[p] -= 1;
       }
     }
   }
-  return { ...qaza, owed, excused: [...(qaza.excused || []), { from, to, reason }] };
+  return { ...qaza, owed, settledLogged, excused: [...(qaza.excused || []), { from, to, reason }] };
 }
 
 // Remove the excused range at `index` and re-count any settled days it
@@ -325,6 +409,7 @@ export function removeExcusedRange(qaza, index, prayerLog = {}) {
   const removed = excused[index];
   const remaining = excused.filter((_, i) => i !== index);
   const owed = qazaOwedRaw(qaza);
+  const settledLogged = qazaSettledLogged(qaza);
   if (qaza.startDate && qaza.lastSettledDate) {
     const lo = removed.from < qaza.startDate ? qaza.startDate : removed.from;
     const hi = removed.to > qaza.lastSettledDate ? qaza.lastSettledDate : removed.to;
@@ -332,12 +417,15 @@ export function removeExcusedRange(qaza, index, prayerLog = {}) {
       for (const day of eachDayBetween(lo, addDaysToStr(hi, 1))) {
         if (isExcused(day, remaining)) continue; // still excused elsewhere
         for (const p of QAZA_PRAYERS) {
+          // The day re-enters accrual: re-count its miss (owed) OR restore its
+          // logged credit (settledLogged) so the heal stays neutral on it.
           if (!(prayerLog[p] || []).includes(day)) owed[p]++;
+          else settledLogged[p]++;
         }
       }
     }
   }
-  return { ...qaza, owed, excused: remaining };
+  return { ...qaza, owed, settledLogged, excused: remaining };
 }
 
 // Returns the list of specific missed days for a given prayer (past days,
