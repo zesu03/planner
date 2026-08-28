@@ -43,6 +43,11 @@ export function useFocusTimer({
   userSettings,
   updateSettings,
   onSessionStart,
+  // Called when the user starts a task whose logged time already meets/exceeds
+  // its ETA (the budget is spent) — lets the host nudge "mark complete" instead
+  // of opening another full block. Kept in a ref below so it doesn't churn
+  // startTaskTimer's identity every render.
+  onBudgetSpent,
 }) {
   const [pomDurations, setPomDurations] = useState(DEFAULT_DURATIONS);
   const [pomSeconds, setPomSeconds] = useState(() => getFocusSeconds(null, DEFAULT_DURATIONS));
@@ -59,6 +64,8 @@ export function useFocusTimer({
   const intervalRef = useRef(null);
   const startedAtRef = useRef(null);
   const accumulatedSecRef = useRef(0);
+  const onBudgetSpentRef = useRef(onBudgetSpent);
+  useEffect(() => { onBudgetSpentRef.current = onBudgetSpent; });
   const targetSecRef = useRef(getFocusSeconds(null, DEFAULT_DURATIONS));
   const settingsAppliedRef = useRef(false);
 
@@ -197,10 +204,20 @@ export function useFocusTimer({
   // Link a task and start. If the same task is already running, this acts
   // as a toggle (stop). Pre-warms the AudioContext under the click so the
   // end-of-session chime can fire even if the tab loses focus later.
-  const startTaskTimer = useCallback((goalId, taskId) => {
+  const startTaskTimer = useCallback((goalId, taskId, opts = {}) => {
     if (pomRunning && pomTaskId === taskId) { stopTimer(); return; }
     const task = goals.find((g) => g.id === goalId)?.tasks.find((t) => t.id === taskId);
-    const focusMins = task?.eta || pomDurations.defaultFocus;
+    // The ETA is a budget that drains across laps: start the dial at the
+    // remaining minutes (eta − time already logged), not the full estimate.
+    // Once the budget is spent, defer to the host's "mark complete" nudge
+    // instead of opening another full block (unless forced).
+    const eta = task?.eta;
+    const remaining = eta ? eta - (task?.totalTime || 0) : null;
+    if (eta && remaining <= 0 && !opts.force) {
+      if (onBudgetSpentRef.current) { onBudgetSpentRef.current(goalId, taskId); return; }
+      // no host handler → fall through as a default-length block
+    }
+    const focusMins = (remaining != null && remaining > 0) ? remaining : pomDurations.defaultFocus;
     getAudioCtx();
     stopTimer();
     setPomGoalId(goalId);
@@ -302,7 +319,14 @@ export function useFocusTimer({
     const task = pomGoalId && pomTaskId
       ? goals.find((g) => g.id === pomGoalId)?.tasks.find((t) => t.id === pomTaskId)
       : null;
-    const focusMins = task?.eta || pomDurations.defaultFocus;
+    // Reset the idle dial to the budget REMAINING after crediting this lap, so
+    // the next Start (and the resting display) reflect the drained ETA rather
+    // than snapping back to the full estimate. Falls back to the full eta /
+    // default when there's no remaining budget (the mark-complete nudge handles
+    // the fully-spent case on the next Start).
+    const loggedAfter = (task?.totalTime || 0) + mins;
+    const remainingAfter = task?.eta ? task.eta - loggedAfter : null;
+    const focusMins = (remainingAfter != null && remainingAfter > 0) ? remainingAfter : (task?.eta || pomDurations.defaultFocus);
     setPomFocusTargetMins(focusMins);
     const nextSecs = getFocusSeconds(focusMins, pomDurations);
     targetSecRef.current = nextSecs;

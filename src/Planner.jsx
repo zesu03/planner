@@ -370,6 +370,19 @@ export default function Planner({ user }) {
     userSettings,
     updateSettings,
     onSessionStart: () => setView("pomodoro"),
+    // Starting a task whose logged time already meets its ETA — nudge to
+    // complete instead of opening another full block. (toggleTask is defined
+    // below; this closure only runs on user interaction, so it's resolved.)
+    onBudgetSpent: (goalId, taskId) => {
+      const task = goals.find((g) => g.id === goalId)?.tasks.find((t) => t.id === taskId);
+      if (!task) return;
+      requestConfirm({
+        title: "Estimate reached",
+        message: `You've logged ${task.totalTime || task.eta} min on "${task.text}", meeting its ${task.eta}-min estimate. Mark it complete? (To keep timing it, raise its ETA in the goal.)`,
+        confirmLabel: "Mark complete",
+        onConfirm: () => toggleTask(goalId, taskId),
+      });
+    },
   });
 
   // Goal + task write callbacks (data-only). The wrapping functions below
