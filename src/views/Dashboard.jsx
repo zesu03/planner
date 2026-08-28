@@ -45,6 +45,10 @@ export default function Dashboard({
   focusTodaySummary,
   muhasabaStateValue,
   startTaskTimer,
+  togglePrayer,
+  pomRunning,
+  pomSeconds,
+  runningTaskText,
   streak,
   todayActive,
 }) {
@@ -95,6 +99,18 @@ export default function Dashboard({
     .filter((g) => !isGoalDone(g))
     .sort((a, b) => new Date(a.due) - new Date(b.due))
     .slice(0, 4);
+  // Collapse task-less goals into one quiet prompt instead of a stack of dead
+  // 0% cards, so the goals with momentum lead.
+  const needsTasks = upcomingGoals.filter((g) => (g.tasks || []).length === 0);
+  const activeGoals = upcomingGoals.filter((g) => (g.tasks || []).length > 0);
+  // The goal that owns the hero's suggested task — tagged "today's focus" so the
+  // duplicate-CTA overlap reads as a cross-reference, not two Start buttons.
+  const focusGoalId = firstTask?.goal?.id || null;
+  // Right rail only appears when it has something to carry (thread beats or the
+  // AI mirror teaser); otherwise goals take the full width.
+  const railHasContent = !!(
+    yDua || yMirrorTomorrow || qazaOwedTotal > 0 || (todayDua && todayDua.trim()) || aiPreview
+  );
 
   return (
     <div className="view-content">
@@ -112,25 +128,16 @@ export default function Dashboard({
         muhasabaStateValue={muhasabaStateValue}
         streak={streak}
         todayActive={todayActive}
+        pomRunning={pomRunning}
+        pomSeconds={pomSeconds}
+        runningTaskText={runningTaskText}
         onOpenPrayer={() => setView("prayer")}
         onOpenAddPrayer={() => setView("prayer")}
         onStartTask={(gId, tId) => startTaskTimer(gId, tId)}
+        onTogglePrayer={togglePrayer}
         onOpenFocus={() => setView("pomodoro")}
         onOpenMuhasaba={() => { setMuhasabaDay(todayStr()); setView("muhasaba"); }}
         onOpenGoals={() => setView("add")}
-      />
-
-      {/* Continuity thread — only the day-to-day spiritual beats the hero
-          doesn't already show. Renders nothing when there's nothing to carry. */}
-      <ContinuityStrip
-        yDua={yDua}
-        yMirrorTomorrow={yMirrorTomorrow}
-        qazaOwedTotal={qazaOwedTotal}
-        todayDua={todayDua}
-        onOpenYesterday={() => { setMuhasabaDay(yDua?.day || todayStr()); setView("muhasaba"); }}
-        onOpenMirrorDay={(day) => { setMuhasabaDay(day); setView("muhasaba"); }}
-        onOpenPrayer={() => setView("prayer")}
-        onOpenMuhasaba={() => { setMuhasabaDay(todayStr()); setView("muhasaba"); }}
       />
 
       {/* First-run onboarding — auto-dismisses when all three steps are done */}
@@ -206,65 +213,119 @@ export default function Dashboard({
         );
       })()}
 
-      {/* upcoming goals — overall % folded into the header instead of its
-          own card; the row of vanity stat tiles now lives in the Stats tab. */}
-      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12 }}>
-        <span className="serif" style={{ fontSize: 17, fontWeight: 600 }}>Upcoming goals</span>
-        {goals.length > 0 && (
-          <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{overallPct}% overall</span>
-        )}
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
-        {upcomingGoals.map((g) => (
-          <GoalCard key={g.id} g={g} lastActivityDay={lastActivityByGoal[g.id]} onSelect={() => onSelectGoal(g.id)} />
-        ))}
-        {goals.length === 0 && (
-          <EmptyState icon={<Icon name="sprout" size={30} />}
-            title="Plant your first niyyah"
-            hint="Start with a Deen goal — memorising a surah, daily Quran, regular dhikr. Small, consistent steps build the strongest habits." />
-        )}
-        {goals.length > 0 && upcomingGoals.length === 0 && (
-          <EmptyState icon="✓"
-            title="All goals complete — alhamdulillah"
-            hint="Nothing pending. Plant a new niyyah, or rest in what you've finished."
-            padY={20} />
-        )}
-      </div>
+      {/* Bento — goals (left) | continuity thread + mirror teaser (right rail).
+          On desktop it's a 2-col grid (.dash-bento); the rail only appears when
+          it has something to carry, otherwise goals take the full width. Mobile
+          collapses to a single column. */}
+      {(() => {
+        const goalsCol = (
+          <div>
+            <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", marginBottom: 12 }}>
+              <span className="serif" style={{ fontSize: 17, fontWeight: 600 }}>Upcoming goals</span>
+              {goals.length > 0 && (
+                <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{overallPct}% overall</span>
+              )}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {activeGoals.map((g) => (
+                <div key={g.id}>
+                  {g.id === focusGoalId && (
+                    <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 600, letterSpacing: "0.4px", textTransform: "uppercase", margin: "0 0 5px 2px" }}>
+                      Today's focus ↑
+                    </div>
+                  )}
+                  <GoalCard g={g} lastActivityDay={lastActivityByGoal[g.id]} onSelect={() => onSelectGoal(g.id)} />
+                </div>
+              ))}
+              {needsTasks.length > 0 && (
+                <div
+                  onClick={() => onSelectGoal(needsTasks[0].id)}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${needsTasks.length} goals need tasks — add tasks`}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelectGoal(needsTasks[0].id); } }}
+                  className="tap-card"
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "12px 14px", border: `1px dashed ${goldA(30)}`, borderRadius: "var(--border-radius-md)", cursor: "pointer" }}>
+                  <div style={{ fontSize: 13.5, color: "var(--text-secondary)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <b style={{ color: "var(--text-primary)" }}>{needsTasks.length} goal{needsTasks.length === 1 ? "" : "s"}</b> need tasks — {needsTasks.map((g) => g.title).join(", ")}
+                  </div>
+                  <span style={{ fontSize: 13, color: "var(--gold)", flexShrink: 0 }}>Add tasks ›</span>
+                </div>
+              )}
+              {goals.length === 0 && (
+                <EmptyState icon={<Icon name="sprout" size={30} />}
+                  title="Plant your first niyyah"
+                  hint="Start with a Deen goal — memorising a surah, daily Quran, regular dhikr. Small, consistent steps build the strongest habits." />
+              )}
+              {goals.length > 0 && upcomingGoals.length === 0 && (
+                <EmptyState icon="✓"
+                  title="All goals complete — alhamdulillah"
+                  hint="Nothing pending. Plant a new niyyah, or rest in what you've finished."
+                  padY={20} />
+              )}
+            </div>
+          </div>
+        );
 
-      {/* AI reflection teaser */}
-      {aiPreview && (
-        <div onClick={() => { setMuhasabaDay(today); setView("muhasaba"); }}
-          role="button"
-          tabIndex={0}
-          aria-label="Open today's reflection in Muhasaba"
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setMuhasabaDay(today); setView("muhasaba"); } }}
-          className="tap-card"
-          style={{
-            ...S.card, marginBottom: 18, cursor: "pointer",
-            borderColor: "var(--color-border-secondary)",
-            transition: "transform 0.12s, border-color 0.15s, box-shadow 0.18s",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "translateY(-1px)";
-            e.currentTarget.style.borderColor = "var(--gold)";
-            e.currentTarget.style.boxShadow = "var(--shadow-card)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.borderColor = "var(--color-border-secondary)";
-            e.currentTarget.style.boxShadow = "none";
-          }}>
-          <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
-            <Icon name="mirror" size={13} /> The mirror · today's reflection
+        const rail = (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {/* Continuity thread — day-to-day spiritual beats. Renders nothing
+                when there's nothing to carry. */}
+            <ContinuityStrip
+              yDua={yDua}
+              yMirrorTomorrow={yMirrorTomorrow}
+              qazaOwedTotal={qazaOwedTotal}
+              todayDua={todayDua}
+              onOpenYesterday={() => { setMuhasabaDay(yDua?.day || todayStr()); setView("muhasaba"); }}
+              onOpenMirrorDay={(day) => { setMuhasabaDay(day); setView("muhasaba"); }}
+              onOpenPrayer={() => setView("prayer")}
+              onOpenMuhasaba={() => { setMuhasabaDay(todayStr()); setView("muhasaba"); }}
+            />
+            {/* AI reflection teaser */}
+            {aiPreview && (
+              <div onClick={() => { setMuhasabaDay(today); setView("muhasaba"); }}
+                role="button"
+                tabIndex={0}
+                aria-label="Open today's reflection in Muhasaba"
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setMuhasabaDay(today); setView("muhasaba"); } }}
+                className="tap-card"
+                style={{
+                  ...S.card, marginBottom: 0, cursor: "pointer",
+                  borderColor: "var(--color-border-secondary)",
+                  transition: "transform 0.12s, border-color 0.15s, box-shadow 0.18s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = "translateY(-1px)";
+                  e.currentTarget.style.borderColor = "var(--gold)";
+                  e.currentTarget.style.boxShadow = "var(--shadow-card)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.borderColor = "var(--color-border-secondary)";
+                  e.currentTarget.style.boxShadow = "none";
+                }}>
+                <div style={{ fontSize: 11, color: "var(--gold)", fontWeight: 600, letterSpacing: "0.5px", textTransform: "uppercase", marginBottom: 6, display: "flex", alignItems: "center", gap: 6 }}>
+                  <Icon name="mirror" size={13} /> The mirror · today's reflection
+                </div>
+                <div style={{ fontSize: 14, color: "var(--text-secondary)", fontStyle: "italic", lineHeight: 1.55 }}>
+                  "{aiPreview}"
+                </div>
+                <div style={{ fontSize: 12, color: "var(--gold)", marginTop: 8 }}>
+                  Read the full note in Muhasaba ›
+                </div>
+              </div>
+            )}
           </div>
-          <div style={{ fontSize: 14, color: "var(--text-secondary)", fontStyle: "italic", lineHeight: 1.55 }}>
-            "{aiPreview}"
+        );
+
+        return (
+          <div style={{ marginBottom: 24 }}>
+            {railHasContent
+              ? <div className="dash-bento">{goalsCol}{rail}</div>
+              : goalsCol}
           </div>
-          <div style={{ fontSize: 12, color: "var(--gold)", marginTop: 8 }}>
-            Read the full note in Muhasaba ›
-          </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* verse — closing spiritual moment */}
       {verseOfDay && (() => {

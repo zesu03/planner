@@ -929,6 +929,11 @@ export default function Planner({ user }) {
   const yDuaInfo = yesterdayDua(muhasaba);
   const todayDuaText = muhasaba[todayStr()]?.duaTomorrow || null;
   const firstTaskInfo = firstOpenTask(goals);
+  // Text of the task a focus session is currently running against — lets the
+  // hero say "Resume: <task>" instead of a "Start" that would stop/abandon it.
+  const runningTaskText = (pomRunning && pomTaskId)
+    ? (goals.find((g) => g.id === pomGoalId)?.tasks?.find((t) => t.id === pomTaskId)?.text || null)
+    : null;
   const qazaOwedMap = qazaOwed(qaza);
   const qazaOwedTotal = QAZA_PRAYERS.reduce((s, p) => s + (qazaOwedMap[p] || 0), 0);
   const prayersTodaySummary = prayersToday(prayerLog);
@@ -1177,6 +1182,10 @@ export default function Planner({ user }) {
           focusTodaySummary={focusTodaySummary}
           muhasabaStateValue={muhasabaStateValue}
           startTaskTimer={startTaskTimer}
+          togglePrayer={togglePrayerLog}
+          pomRunning={pomRunning}
+          pomSeconds={pomSeconds}
+          runningTaskText={runningTaskText}
           streak={istiqamah}
           todayActive={istiqamahToday}
         />

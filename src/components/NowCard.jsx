@@ -15,6 +15,7 @@ import { PRAYER_COLORS } from "../lib/constants";
 import { PrayerIcon, Icon } from "./icons";
 import { localDateStr } from "../lib/dates";
 import { prayerDisplayName } from "../lib/prayer";
+import { fmtTime } from "../lib/focus";
 import { goldA } from "../lib/styles";
 
 const OBLIGATORY = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
@@ -52,9 +53,15 @@ export default function NowCard({
   muhasabaStateValue,
   streak = 0,
   todayActive = false,
+  // Live focus-session state — when a session is running the hero must not
+  // offer "Start" (which would stop/abandon it); it offers "Resume" instead.
+  pomRunning = false,
+  pomSeconds = 0,
+  runningTaskText = null,
   onOpenPrayer,
   onOpenAddPrayer,
   onStartTask,
+  onTogglePrayer,
   onOpenFocus,
   onOpenMuhasaba,
   onOpenGoals,
@@ -90,6 +97,17 @@ export default function NowCard({
 
   // ── One clear primary action, chosen by phase + state ──
   const cta = (() => {
+    // A running session takes priority over everything: the label must say
+    // "Resume" and route to Focus, NEVER re-invoke onStartTask (which stops the
+    // same task or abandons a different one — see useFocusTimer.startTaskTimer).
+    if (pomRunning) {
+      return {
+        label: runningTaskText
+          ? `Resume: ${runningTaskText} · ${fmtTime(pomSeconds)} left`
+          : `Resume focus · ${fmtTime(pomSeconds)} left`,
+        onClick: onOpenFocus,
+      };
+    }
     if (dayPhase === "evening" && muhasabaStateValue !== "filled") {
       return {
         label: muhasabaStateValue === "partial" ? "Continue tonight's muhasaba" : "Begin tonight's muhasaba",
@@ -157,11 +175,15 @@ export default function NowCard({
           )}
         </div>
 
-        {/* Focus ring — today's minutes vs the daily goal. */}
+        {/* Focus ring — today's minutes vs the daily goal. A live pulse marks an
+            in-progress session so the running state is glanceable here too. */}
         <button
           onClick={onOpenFocus}
-          aria-label={`Focus ${focusMins} of ${focusGoal} minutes today`}
+          aria-label={pomRunning ? `Focus session running — ${fmtTime(pomSeconds)} left` : `Focus ${focusMins} of ${focusGoal} minutes today`}
           style={{ background: "none", border: "none", boxShadow: "none", padding: 0, cursor: "pointer", flexShrink: 0, position: "relative", width: 78, height: 78 }}>
+          {pomRunning && (
+            <span aria-hidden className="nowcard-live-dot" style={{ position: "absolute", top: 1, left: "50%", marginLeft: -4, width: 8, height: 8, borderRadius: "50%", background: "var(--gold)", boxShadow: "0 0 6px var(--gold)" }} />
+          )}
           <svg width="78" height="78" style={{ transform: "rotate(-90deg)" }}>
             <circle cx="39" cy="39" r="32" fill="none" stroke="var(--color-background-secondary)" strokeWidth="7" />
             <circle cx="39" cy="39" r="32" fill="none" stroke="var(--noor)" strokeWidth="7" strokeLinecap="round"
@@ -175,22 +197,41 @@ export default function NowCard({
         </button>
       </div>
 
-      {/* Labelled five-prayer dot row */}
+      {/* Labelled five-prayer dot row — tap a prayer to log/unlog it for its
+          effective day (onTogglePrayer routes through the same window guard as
+          the Prayer tab, so tapping one whose time hasn't come is a safe no-op). */}
       {prayerTimesSet && (
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 20, marginBottom: 18, maxWidth: 380 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16, marginBottom: 14, maxWidth: 400 }}>
           {OBLIGATORY.map((p) => {
             const done = doneSet.has(p);
             const isNext = p === nextName;
+            const tappable = !!onTogglePrayer;
             return (
-              <div key={p} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, flex: 1 }}>
-                <span title={`${p}${done ? " · prayed" : ""}`} style={{
+              <button
+                key={p}
+                type="button"
+                onClick={tappable ? () => onTogglePrayer(p) : undefined}
+                disabled={!tappable}
+                aria-pressed={done}
+                aria-label={`${p}${done ? " — prayed, tap to unlog" : " — tap to log as prayed"}`}
+                title={`${p}${done ? " · prayed" : ""}`}
+                style={{
+                  display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+                  flex: 1, minWidth: 0, minHeight: 44, padding: "6px 2px",
+                  background: "none", border: "none", borderRadius: "var(--border-radius-md)",
+                  cursor: tappable ? "pointer" : "default",
+                  transition: "background 0.15s ease",
+                }}
+                onMouseEnter={(e) => { if (tappable) e.currentTarget.style.background = "var(--color-background-secondary)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}>
+                <span style={{
                   width: 12, height: 12, borderRadius: "50%",
                   background: done ? (PRAYER_COLORS[p] || "var(--gold)") : "transparent",
                   border: `2px solid ${done ? "transparent" : isNext ? goldA(70) : "var(--color-border-secondary)"}`,
                   boxShadow: isNext && !done ? `0 0 0 4px ${goldA(15)}` : "none",
                 }} />
                 <span style={{ fontSize: 10.5, color: done ? "var(--text-secondary)" : "var(--text-muted)", fontWeight: done ? 600 : 400, letterSpacing: "0.2px" }}>{p}</span>
-              </div>
+              </button>
             );
           })}
         </div>
