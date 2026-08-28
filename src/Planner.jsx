@@ -937,6 +937,16 @@ export default function Planner({ user }) {
   const qazaOwedMap = qazaOwed(qaza);
   const qazaOwedTotal = QAZA_PRAYERS.reduce((s, p) => s + (qazaOwedMap[p] || 0), 0);
   const prayersTodaySummary = prayersToday(prayerLog);
+  // 7-day fard prayer completion rate (logged instances / 35) — powers the
+  // Dashboard rail's "this week" ring so the rail balances the goals column.
+  const weekPrayerRate = (() => {
+    let done = 0;
+    for (let i = 0; i < 7; i++) {
+      const d = addDaysToStr(todayStr(), -i);
+      for (const p of QAZA_PRAYERS) if ((prayerLog[p] || []).includes(d)) done++;
+    }
+    return Math.round((done / 35) * 100);
+  })();
   const focusTodaySummary = focusToday(focusLog, dailyFocusGoalMins);
   const istiqamah = istiqamahStreak(prayerLog, focusLog, muhasaba);
   const istiqamahToday = istiqamahActiveToday(prayerLog, focusLog, muhasaba);
@@ -1178,6 +1188,7 @@ export default function Planner({ user }) {
           prayerCity={prayerCity}
           firstTask={firstTaskInfo}
           qazaOwedTotal={qazaOwedTotal}
+          weekPrayerRate={weekPrayerRate}
           prayersTodaySummary={prayersTodaySummary}
           focusTodaySummary={focusTodaySummary}
           muhasabaStateValue={muhasabaStateValue}

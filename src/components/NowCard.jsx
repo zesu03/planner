@@ -153,110 +153,120 @@ export default function NowCard({
       marginBottom: 18,
       boxShadow: "var(--shadow-card)",
     }}>
-      {/* Top: prayer headline (tap → Prayer) + focus ring (tap → Focus) */}
-      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
-        <div
-          onClick={openPrayer}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openPrayer?.(); } }}
-          style={{ cursor: "pointer", minWidth: 0, flex: 1 }}>
-          <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.7px", textTransform: "uppercase", color: urgent ? prayerColor : "var(--gold)", marginBottom: 6, display: "flex", alignItems: "center", gap: 7 }}>
-            {prayerIconName && <span style={{ display: "flex", color: prayerColor }}><PrayerIcon name={prayerIconName} size={15} /></span>}
-            {prayerEyebrow || phase.eyebrow}
+      {/* Split hero — prayer status (left) | focus ring + one action + streak
+          (right). Grid on desktop with a divider; stacks on mobile. */}
+      <div className="nowcard-hero">
+        {/* LEFT — prayer headline (tap → Prayer) + tap-to-log dot row */}
+        <div className="nowcard-hero-l">
+          <div
+            onClick={openPrayer}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openPrayer?.(); } }}
+            style={{ cursor: "pointer", minWidth: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.7px", textTransform: "uppercase", color: urgent ? prayerColor : "var(--gold)", marginBottom: 6, display: "flex", alignItems: "center", gap: 7 }}>
+              {prayerIconName && <span style={{ display: "flex", color: prayerColor }}><PrayerIcon name={prayerIconName} size={15} /></span>}
+              {prayerEyebrow || phase.eyebrow}
+            </div>
+            <div className="serif" style={{ fontSize: 27, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.12, letterSpacing: "-0.3px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              {prayerLabel || phase.title}
+            </div>
+            {prayerCity && prayerTimesSet && (
+              <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
+                <Icon name="location" size={14} /> {prayerCity}
+              </div>
+            )}
           </div>
-          <div className="serif" style={{ fontSize: 27, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.12, letterSpacing: "-0.3px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {prayerLabel || phase.title}
-          </div>
-          {prayerCity && prayerTimesSet && (
-            <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 6, display: "flex", alignItems: "center", gap: 6 }}>
-              <Icon name="location" size={14} /> {prayerCity}
+
+          {/* Labelled five-prayer dot row — tap a prayer to log/unlog it for its
+              effective day (onTogglePrayer routes through the same window guard as
+              the Prayer tab, so tapping one whose time hasn't come is a safe no-op). */}
+          {prayerTimesSet && (
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 18, maxWidth: 420 }}>
+              {OBLIGATORY.map((p) => {
+                const done = doneSet.has(p);
+                const isNext = p === nextName;
+                const tappable = !!onTogglePrayer;
+                return (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={tappable ? () => onTogglePrayer(p) : undefined}
+                    disabled={!tappable}
+                    aria-pressed={done}
+                    aria-label={`${p}${done ? " — prayed, tap to unlog" : " — tap to log as prayed"}`}
+                    title={`${p}${done ? " · prayed" : ""}`}
+                    style={{
+                      display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+                      flex: 1, minWidth: 0, minHeight: 44, padding: "6px 2px",
+                      background: "none", border: "none", borderRadius: "var(--border-radius-md)",
+                      cursor: tappable ? "pointer" : "default",
+                      transition: "background 0.15s ease",
+                    }}
+                    onMouseEnter={(e) => { if (tappable) e.currentTarget.style.background = "var(--color-background-secondary)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}>
+                    <span style={{
+                      width: 12, height: 12, borderRadius: "50%",
+                      background: done ? (PRAYER_COLORS[p] || "var(--gold)") : "transparent",
+                      border: `2px solid ${done ? "transparent" : isNext ? goldA(70) : "var(--color-border-secondary)"}`,
+                      boxShadow: isNext && !done ? `0 0 0 4px ${goldA(15)}` : "none",
+                    }} />
+                    <span style={{ fontSize: 10.5, color: done ? "var(--text-secondary)" : "var(--text-muted)", fontWeight: done ? 600 : 400, letterSpacing: "0.2px" }}>{p}</span>
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
 
-        {/* Focus ring — today's minutes vs the daily goal. A live pulse marks an
-            in-progress session so the running state is glanceable here too. */}
-        <button
-          onClick={onOpenFocus}
-          aria-label={pomRunning ? `Focus session running — ${fmtTime(pomSeconds)} left` : `Focus ${focusMins} of ${focusGoal} minutes today`}
-          style={{ background: "none", border: "none", boxShadow: "none", padding: 0, cursor: "pointer", flexShrink: 0, position: "relative", width: 78, height: 78 }}>
-          {pomRunning && (
-            <span aria-hidden className="nowcard-live-dot" style={{ position: "absolute", top: 1, left: "50%", marginLeft: -4, width: 8, height: 8, borderRadius: "50%", background: "var(--gold)", boxShadow: "0 0 6px var(--gold)" }} />
-          )}
-          <svg width="78" height="78" style={{ transform: "rotate(-90deg)" }}>
-            <circle cx="39" cy="39" r="32" fill="none" stroke="var(--color-background-secondary)" strokeWidth="7" />
-            <circle cx="39" cy="39" r="32" fill="none" stroke="var(--noor)" strokeWidth="7" strokeLinecap="round"
-              strokeDasharray={RC} strokeDashoffset={RC * (1 - focusPct / 100)}
-              style={{ transition: "stroke-dashoffset 0.5s ease" }} />
-          </svg>
-          <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>
-            <span className="serif" style={{ fontSize: 18, fontWeight: 600, color: focusPct >= 100 ? "var(--color-text-success)" : "var(--text-primary)" }}>{focusMins}</span>
-            <span style={{ fontSize: 9.5, color: "var(--text-muted)", marginTop: 3 }}>/ {focusGoal}m</span>
-          </div>
-        </button>
-      </div>
-
-      {/* Labelled five-prayer dot row — tap a prayer to log/unlog it for its
-          effective day (onTogglePrayer routes through the same window guard as
-          the Prayer tab, so tapping one whose time hasn't come is a safe no-op). */}
-      {prayerTimesSet && (
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 16, marginBottom: 14, maxWidth: 400 }}>
-          {OBLIGATORY.map((p) => {
-            const done = doneSet.has(p);
-            const isNext = p === nextName;
-            const tappable = !!onTogglePrayer;
-            return (
-              <button
-                key={p}
-                type="button"
-                onClick={tappable ? () => onTogglePrayer(p) : undefined}
-                disabled={!tappable}
-                aria-pressed={done}
-                aria-label={`${p}${done ? " — prayed, tap to unlog" : " — tap to log as prayed"}`}
-                title={`${p}${done ? " · prayed" : ""}`}
-                style={{
-                  display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
-                  flex: 1, minWidth: 0, minHeight: 44, padding: "6px 2px",
-                  background: "none", border: "none", borderRadius: "var(--border-radius-md)",
-                  cursor: tappable ? "pointer" : "default",
-                  transition: "background 0.15s ease",
-                }}
-                onMouseEnter={(e) => { if (tappable) e.currentTarget.style.background = "var(--color-background-secondary)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "none"; }}>
-                <span style={{
-                  width: 12, height: 12, borderRadius: "50%",
-                  background: done ? (PRAYER_COLORS[p] || "var(--gold)") : "transparent",
-                  border: `2px solid ${done ? "transparent" : isNext ? goldA(70) : "var(--color-border-secondary)"}`,
-                  boxShadow: isNext && !done ? `0 0 0 4px ${goldA(15)}` : "none",
-                }} />
-                <span style={{ fontSize: 10.5, color: done ? "var(--text-secondary)" : "var(--text-muted)", fontWeight: done ? 600 : 400, letterSpacing: "0.2px" }}>{p}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Primary action */}
-      <button className="btn-primary" onClick={cta.onClick} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cta.label}</span>
-      </button>
-
-      {/* Istiqāmah streak — the "don't break the chain" footer */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 7, marginTop: 14, fontSize: 13 }}>
-        {streak > 0 ? (
-          <>
-            <span style={{ display: "inline-flex", color: "var(--gold)" }}><Icon name="flame" size={15} /></span>
-            <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{streak}-day istiqāmah</span>
-            {!todayActive && (
-              <span style={{ color: "var(--color-text-warning)", fontWeight: 500 }}>· keep it alive today</span>
+        {/* RIGHT — focus ring, the one primary action, istiqāmah streak */}
+        <div className="nowcard-hero-r">
+          {/* Focus ring — today's minutes vs the daily goal. A live pulse marks
+              an in-progress session so the running state is glanceable here too. */}
+          <button
+            onClick={onOpenFocus}
+            className="nowcard-ring"
+            aria-label={pomRunning ? `Focus session running — ${fmtTime(pomSeconds)} left` : `Focus ${focusMins} of ${focusGoal} minutes today`}
+            style={{ background: "none", border: "none", boxShadow: "none", padding: 0, cursor: "pointer", position: "relative", width: 78, height: 78 }}>
+            {pomRunning && (
+              <span aria-hidden className="nowcard-live-dot" style={{ position: "absolute", top: 1, left: "50%", marginLeft: -4, width: 8, height: 8, borderRadius: "50%", background: "var(--gold)", boxShadow: "0 0 6px var(--gold)" }} />
             )}
-          </>
-        ) : (
-          <span style={{ color: "var(--text-muted)", fontStyle: "italic", display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <Icon name="sprout" size={14} /> Begin your istiqāmah — one act today starts the chain
-          </span>
-        )}
+            <svg width="78" height="78" style={{ transform: "rotate(-90deg)" }}>
+              <circle cx="39" cy="39" r="32" fill="none" stroke="var(--color-background-secondary)" strokeWidth="7" />
+              <circle cx="39" cy="39" r="32" fill="none" stroke="var(--noor)" strokeWidth="7" strokeLinecap="round"
+                strokeDasharray={RC} strokeDashoffset={RC * (1 - focusPct / 100)}
+                style={{ transition: "stroke-dashoffset 0.5s ease" }} />
+            </svg>
+            <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", lineHeight: 1 }}>
+              <span className="serif" style={{ fontSize: 18, fontWeight: 600, color: focusPct >= 100 ? "var(--color-text-success)" : "var(--text-primary)" }}>{focusMins}</span>
+              <span style={{ fontSize: 9.5, color: "var(--text-muted)", marginTop: 3 }}>/ {focusGoal}m</span>
+            </div>
+          </button>
+
+          <div style={{ width: "100%" }}>
+            {/* Primary action */}
+            <button className="btn-primary" onClick={cta.onClick} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cta.label}</span>
+            </button>
+
+            {/* Istiqāmah streak — the "don't break the chain" footer */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 7, marginTop: 14, fontSize: 13 }}>
+              {streak > 0 ? (
+                <>
+                  <span style={{ display: "inline-flex", color: "var(--gold)" }}><Icon name="flame" size={15} /></span>
+                  <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{streak}-day istiqāmah</span>
+                  {!todayActive && (
+                    <span style={{ color: "var(--color-text-warning)", fontWeight: 500 }}>· keep it alive today</span>
+                  )}
+                </>
+              ) : (
+                <span style={{ color: "var(--text-muted)", fontStyle: "italic", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <Icon name="sprout" size={14} /> Begin your istiqāmah — one act today starts the chain
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

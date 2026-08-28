@@ -41,6 +41,7 @@ export default function Dashboard({
   prayerCity,
   firstTask,
   qazaOwedTotal,
+  weekPrayerRate = 0,
   prayersTodaySummary,
   focusTodaySummary,
   muhasabaStateValue,
@@ -106,10 +107,12 @@ export default function Dashboard({
   // The goal that owns the hero's suggested task — tagged "today's focus" so the
   // duplicate-CTA overlap reads as a cross-reference, not two Start buttons.
   const focusGoalId = firstTask?.goal?.id || null;
-  // Right rail only appears when it has something to carry (thread beats or the
-  // AI mirror teaser); otherwise goals take the full width.
+  // Right rail carries the thread beats, the AI mirror teaser, and — whenever
+  // prayers are being tracked — a "this week" prayer-rate ring that balances the
+  // rail against the goals column. Only when ALL are absent do goals go full width.
+  const todayPrayedCount = prayersTodaySummary?.done?.length || 0;
   const railHasContent = !!(
-    yDua || yMirrorTomorrow || qazaOwedTotal > 0 || (todayDua && todayDua.trim()) || aiPreview
+    yDua || yMirrorTomorrow || qazaOwedTotal > 0 || (todayDua && todayDua.trim()) || aiPreview || prayerTimes
   );
 
   return (
@@ -235,6 +238,12 @@ export default function Dashboard({
                     </div>
                   )}
                   <GoalCard g={g} lastActivityDay={lastActivityByGoal[g.id]} onSelect={() => onSelectGoal(g.id)} />
+                  {g.id === focusGoalId && firstTask?.task && (
+                    <div style={{ fontSize: 12.5, color: "var(--text-secondary)", margin: "6px 2px 0", display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                      <span style={{ color: "var(--gold)", flexShrink: 0 }}>▸</span>
+                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>Next: {firstTask.task.text}</span>
+                    </div>
+                  )}
                 </div>
               ))}
               {needsTasks.length > 0 && (
@@ -281,6 +290,32 @@ export default function Dashboard({
               onOpenPrayer={() => setView("prayer")}
               onOpenMuhasaba={() => { setMuhasabaDay(todayStr()); setView("muhasaba"); }}
             />
+            {/* This-week prayer-rate ring — a glanceable spiritual signal that
+                also gives the rail weight so it balances the goals column. */}
+            {prayerTimes && (
+              <div
+                onClick={() => setView("stats")}
+                role="button"
+                tabIndex={0}
+                aria-label={`Prayers this week ${weekPrayerRate}% — open Mizan`}
+                onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setView("stats"); } }}
+                className="tap-card"
+                style={{ ...S.card, marginBottom: 0, cursor: "pointer", display: "flex", alignItems: "center", gap: 14 }}>
+                <svg width="52" height="52" viewBox="0 0 36 36" style={{ flexShrink: 0, transform: "rotate(-90deg)" }}>
+                  <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--color-background-secondary)" strokeWidth="3.5" />
+                  <circle cx="18" cy="18" r="15.5" fill="none" stroke="var(--noor)" strokeWidth="3.5" strokeLinecap="round"
+                    strokeDasharray="97.39" strokeDashoffset={97.39 * (1 - Math.min(100, weekPrayerRate) / 100)} />
+                </svg>
+                <div style={{ minWidth: 0 }}>
+                  <div className="serif" style={{ fontSize: 20, fontWeight: 600, lineHeight: 1 }}>
+                    {weekPrayerRate}%<span style={{ fontSize: 12, color: "var(--text-muted)", fontFamily: "inherit" }}> this week</span>
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+                    Prayers logged · {todayPrayedCount} of 5 today
+                  </div>
+                </div>
+              </div>
+            )}
             {/* AI reflection teaser */}
             {aiPreview && (
               <div onClick={() => { setMuhasabaDay(today); setView("muhasaba"); }}
