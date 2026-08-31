@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import {
   getSecondsFromMinutes, getFocusSeconds, getBreakSeconds,
   fmtTime, fmtMins, focusStreakDays, STREAK_MILESTONES,
+  minsForDay, parseDuration, durationInputValue,
 } from "./focus";
 import { todayStr, addDaysToStr } from "./dates";
 
@@ -95,5 +96,67 @@ describe("focusStreakDays", () => {
 describe("STREAK_MILESTONES", () => {
   it("is the expected ascending set", () => {
     expect(STREAK_MILESTONES).toEqual([7, 14, 30, 60, 100, 200, 365]);
+  });
+});
+
+describe("minsForDay", () => {
+  const log = [
+    { day: "2026-06-15", mins: 25 },
+    { day: "2026-06-15", mins: 40 },
+    { day: "2026-06-14", mins: 10 },
+    { day: "2026-06-13" }, // no mins
+  ];
+  it("sums the minutes logged on a given day", () => {
+    expect(minsForDay(log, "2026-06-15")).toBe(65);
+    expect(minsForDay(log, "2026-06-14")).toBe(10);
+  });
+  it("treats a missing mins field as 0", () => {
+    expect(minsForDay(log, "2026-06-13")).toBe(0);
+  });
+  it("is 0 for a day with no entries", () => {
+    expect(minsForDay(log, "2026-01-01")).toBe(0);
+    expect(minsForDay([], "2026-06-15")).toBe(0);
+  });
+});
+
+describe("parseDuration", () => {
+  it("parses plain minutes", () => {
+    expect(parseDuration("90")).toBe(90);
+    expect(parseDuration("90m")).toBe(90);
+  });
+  it("parses whole and fractional hours", () => {
+    expect(parseDuration("2h")).toBe(120);
+    expect(parseDuration("1.5h")).toBe(90);
+  });
+  it("parses hours+minutes in h and colon forms", () => {
+    expect(parseDuration("2h30")).toBe(150);
+    expect(parseDuration("2:30")).toBe(150);
+    expect(parseDuration("2h30m")).toBe(150);
+  });
+  it("is whitespace/case tolerant", () => {
+    expect(parseDuration("  2H 30 ")).toBe(150);
+  });
+  it("returns null for unparseable or empty input", () => {
+    expect(parseDuration("")).toBeNull();
+    expect(parseDuration("   ")).toBeNull();
+    expect(parseDuration(null)).toBeNull();
+    expect(parseDuration(undefined)).toBeNull();
+    expect(parseDuration("abc")).toBeNull();
+  });
+});
+
+describe("durationInputValue", () => {
+  it("keeps sub-hour minutes as a plain number", () => {
+    expect(durationInputValue(90)).toBe("1h30");
+    expect(durationInputValue(45)).toBe("45");
+  });
+  it("uses the compact hour form for whole hours", () => {
+    expect(durationInputValue(120)).toBe("2h");
+    expect(durationInputValue(60)).toBe("1h");
+  });
+  it("round-trips through parseDuration", () => {
+    for (const m of [30, 45, 60, 90, 120, 150]) {
+      expect(parseDuration(durationInputValue(m))).toBe(m);
+    }
   });
 });
