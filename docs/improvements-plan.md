@@ -10,8 +10,8 @@
 |---|---|---|---|---|---|
 | 1 | Configurable calculation method + Asr madhab | High | S | Low | **shipped** |
 | 2 | Prayer-aware focus timer (+ optional jamā'ah times) | High | M | Low-Med | **shipped** |
-| 3 | One-tap "Mark prayed" from the reminder notification | High | M | Med | planned |
-| 4 | Muhasaba "quick reckoning" (tiny minimum entry) | Med-High | S-M | Low | planned |
+| 3 | One-tap "Mark prayed" from the reminder notification | High | M | Med | **shipped** |
+| 4 | Muhasaba "quick reckoning" (tiny minimum entry) | Med-High | S-M | Low | **dropped** (user) |
 | 5 | Trust: "last synced" line + self-serve restore/import | Med-High | M | Med | planned |
 | 6 | Tone: surface wins as warmly as gaps (rajā' balance) | Med | S | Low | planned |
 
