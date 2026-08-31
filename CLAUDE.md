@@ -99,6 +99,10 @@ src/
                        fmtPct/fmtPctDelta/fmtMinsDelta/fmtRange. Date-window fns
                        take an optional `now = new Date()` for deterministic tests;
                        digestRows returns `iconName` strings (view maps → <Icon>).
+    goalStats.js       pure per-goal derivations (extracted from views/GoalDetail.jsx):
+                       focusRhythm (7/30-day windows + 14-day sparkline series),
+                       goalChecksWindow (7-night muhasaba verdict strip),
+                       lastActivityLabel. Each takes an optional `today` for tests.
     focus.js           getFocusSeconds, getBreakSeconds, fmtTime, fmtMins,
                        focusStreakDays, STREAK_MILESTONES
     audio.js           getAudioCtx, playTimerSound (Web Audio chime)

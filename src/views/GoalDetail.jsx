@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { CAT_COLORS, PRIORITIES } from "../lib/constants";
-import { daysLeft, fmt, todayStr, localDateStr, addDays } from "../lib/dates";
+import { daysLeft, fmt, todayStr, addDays } from "../lib/dates";
 import { isGoalDone, pct, isRecurring, isScheduledOn, isDoneOn, recurringStreak, scheduleLabel, DOW_LABELS, DOW_LONG } from "../lib/goals";
 import { fmtMins, fmtTime } from "../lib/focus";
+import * as goalStats from "../lib/goalStats";
 import { goldA, goldLight, S } from "../lib/styles";
 import EmptyState from "../components/EmptyState";
 import { Icon } from "../components/icons";
@@ -213,67 +214,14 @@ export default function GoalDetail({ selected, goBack }) {
     reorderTasks(selected.id, fromIdx, toIdx);
   };
 
-  // Focus rhythm — windowed aggregates from focusLog. focusLog is capped at
-  // 100 entries; for older sessions task.totalTime (used in the "Logged"
-  // metric tile above) remains the authoritative total. The 7d/30d numbers
-  // here are recent-windows only, which is what "rhythm" means anyway.
-  const focusRhythm = (() => {
-    const log = (focusLog || []).filter((l) => l.goalId === selected.id);
-    if (log.length === 0) {
-      return { last7Mins: 0, last30Mins: 0, lastActivityDay: null, series: [] };
-    }
-    const today = todayStr();
-    const cutoff7 = (() => {
-      const d = new Date(`${today}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - 6);
-      return localDateStr(d);
-    })();
-    const cutoff30 = (() => {
-      const d = new Date(`${today}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - 29);
-      return localDateStr(d);
-    })();
-    let last7 = 0, last30 = 0, lastDay = null;
-    for (const l of log) {
-      const mins = l.mins || 0;
-      if (l.day >= cutoff30) last30 += mins;
-      if (l.day >= cutoff7) last7 += mins;
-      if (!lastDay || l.day > lastDay) lastDay = l.day;
-    }
-    // 14-day series, oldest → newest.
-    const DAYS = 14;
-    const series = [];
-    for (let i = DAYS - 1; i >= 0; i--) {
-      const d = new Date(`${today}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - i);
-      const k = localDateStr(d);
-      const mins = log.filter((l) => l.day === k).reduce((s, l) => s + (l.mins || 0), 0);
-      series.push({ day: k, mins });
-    }
-    return { last7Mins: last7, last30Mins: last30, lastActivityDay: lastDay, series };
-  })();
+  // Focus rhythm — windowed aggregates from focusLog (last 7/30 days + a
+  // 14-day sparkline series). Pure; see lib/goalStats.
+  const focusRhythm = goalStats.focusRhythm(focusLog, selected.id);
 
-  // 7-day Muhasaba verdict strip for this goal. During nightly muhasaba the
-  // user answers "did you make progress on this goal today?" — yes / partial
-  // / no. Those answers are stored on the day's entry; surfacing them here
-  // closes the loop so the nightly verdict feeds back into the goal it's
-  // about. The strip walks back 7 days from today; empty cells mean no
-  // muhasaba on that day (not a "no").
-  const goalChecksWindow = (() => {
-    if (!muhasaba) return null;
-    const today = todayStr();
-    const days = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(`${today}T12:00:00Z`);
-      d.setUTCDate(d.getUTCDate() - i);
-      const k = localDateStr(d);
-      const verdict = muhasaba?.[k]?.goalChecks?.[selected.id] || null;
-      days.push({ day: k, verdict });
-    }
-    const counts = days.reduce((acc, d) => {
-      if (d.verdict) acc[d.verdict] = (acc[d.verdict] || 0) + 1;
-      return acc;
-    }, {});
-    const total = (counts.yes || 0) + (counts.partial || 0) + (counts.no || 0);
-    return { days, counts, total };
-  })();
+  // 7-day Muhasaba verdict strip for this goal — the nightly "did you make
+  // progress on this goal today?" answers, closing the reflection loop back
+  // to the goal. Pure; see lib/goalStats.
+  const goalChecksWindow = goalStats.goalChecksWindow(muhasaba, selected.id);
 
   // Add-task panel sits at the TOP of the task list (was previously at the
   // bottom, requiring scroll past every task on long lists). Default to
@@ -291,15 +239,7 @@ export default function GoalDetail({ selected, goBack }) {
   // cluster instead of Delete floating alone at the bottom of the page.
   const [goalMenuOpen, setGoalMenuOpen] = useState(false);
 
-  const lastActivityLabel = (() => {
-    if (!focusRhythm.lastActivityDay) return null;
-    if (focusRhythm.lastActivityDay === todayStr()) return "today";
-    const today = new Date(`${todayStr()}T12:00:00Z`);
-    const last = new Date(`${focusRhythm.lastActivityDay}T12:00:00Z`);
-    const days = Math.round((today - last) / 86400000);
-    if (days === 1) return "yesterday";
-    return `${days}d ago`;
-  })();
+  const lastActivityLabel = goalStats.lastActivityLabel(focusRhythm.lastActivityDay);
 
   return (
     <div className="view-content">
