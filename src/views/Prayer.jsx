@@ -67,6 +67,7 @@ export default function Prayer({
   // chime + haptic + a brief burst on the row. `burstKey` drives the
   // animation; it auto-clears so the row settles back.
   const [burstKey, setBurstKey] = useState(null);
+  const [jamaahOpen, setJamaahOpen] = useState(false);
   function markPrayer(p) {
     const wasDone = prayerDoneToday ? prayerDoneToday(p) : false;
     togglePrayerLog(p);
@@ -206,6 +207,53 @@ export default function Prayer({
               );
             })}
           </div>
+
+          {/* Jamāʿah (congregation) times — optional. When set, they override
+              the Aladhan start time as what the focus timer counts down to
+              (the mosque's jamāʿah is later than the window start). Collapsed by
+              default so the page stays calm. */}
+          {setJamaahTime && (
+            <div style={{ ...S.card, marginBottom: 14 }}>
+              <button type="button" onClick={() => setJamaahOpen((o) => !o)} aria-expanded={jamaahOpen}
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, width: "100%", background: "transparent", border: "none", cursor: "pointer", padding: 0, textAlign: "left", color: "var(--text-primary)" }}>
+                <span style={{ display: "flex", alignItems: "baseline", gap: 8, minWidth: 0 }}>
+                  <span className="serif" style={{ fontSize: 16, fontWeight: 600 }}>Jamāʿah times</span>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>· optional</span>
+                </span>
+                <span aria-hidden style={{ fontSize: 18, color: "var(--text-muted)", lineHeight: 1, transition: "transform 0.15s ease", transform: jamaahOpen ? "rotate(45deg)" : "none" }}>+</span>
+              </button>
+              {jamaahOpen && (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 12, lineHeight: 1.5 }}>
+                    Your mosque&apos;s congregation times. When a focus session is running, the timer nudges you as jamāʿah approaches — using these instead of the prayer&apos;s start time.
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"].map((p) => {
+                      const start = typeof prayerTimes?.[p] === "string" ? prayerTimes[p].replace(/\s*\(.+?\)\s*$/, "").trim() : null;
+                      return (
+                        <div key={p} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                          <span style={{ display: "inline-flex", color: PRAYER_COLORS[p] }}><PrayerIcon name={p} size={16} /></span>
+                          <span style={{ flex: "1 1 auto", fontSize: 15 }}>
+                            {p}
+                            {start && <span style={{ color: "var(--text-muted)", fontSize: 12, marginLeft: 8 }}>starts {start}</span>}
+                          </span>
+                          <input type="time" value={jamaahTimes?.[p] || ""}
+                            onChange={(e) => setJamaahTime(p, e.target.value)}
+                            aria-label={`${p} jamāʿah time`}
+                            style={{ fontSize: 15, padding: "5px 8px" }} />
+                          {jamaahTimes?.[p] && (
+                            <button type="button" onClick={() => setJamaahTime(p, "")}
+                              aria-label={`Clear ${p} jamāʿah time`}
+                              style={{ fontSize: 12, padding: "4px 8px", color: "var(--text-muted)" }}>Clear</button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Voluntary night prayer (Tahajjud). Nafl — never enters qaza and
               never counts towards Prayer Health. Shows the start of the last

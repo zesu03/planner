@@ -21,6 +21,7 @@ import { isGoalDone, pct } from "./lib/goals";
 import { isMuhasabaFilled, muhasabaStreak } from "./lib/muhasaba";
 import { qazaOwed, QAZA_PRAYERS } from "./lib/qaza";
 import { nextPrayer as computeNextPrayer } from "./lib/prayer";
+import { normalizeJamaahTime } from "./lib/jamaah";
 import { dayPhase, prayersToday, focusToday, muhasabaState, yesterdayDua, firstOpenTask, istiqamahStreak, istiqamahActiveToday } from "./lib/daily";
 import { fmtTime, focusStreakDays, STREAK_MILESTONES } from "./lib/focus";
 import { rewardMilestone } from "./lib/feedback";
@@ -203,6 +204,19 @@ export default function Planner({ user }) {
   function updateDailyFocusGoal(mins) {
     const v = Math.max(1, Math.min(720, Number(mins) || 60));
     updateSettings((prev) => ({ ...prev, dailyFocusGoalMins: v }));
+  }
+
+  // Optional mosque jamā'ah (congregation) times per prayer. Where set, they
+  // override the Aladhan start time as the moment the focus timer counts down
+  // to (jamā'ah is later than the window start). Empty/invalid clears the entry.
+  const jamaahTimes = userSettings.jamaahTimes || {};
+  function setJamaahTime(prayer, time) {
+    const v = normalizeJamaahTime(time);
+    updateSettings((prev) => {
+      const next = { ...(prev.jamaahTimes || {}) };
+      if (v) next[prayer] = v; else delete next[prayer];
+      return { ...prev, jamaahTimes: next };
+    });
   }
 
   // Celebration toast — single slot, latest wins. Three sources:
@@ -1062,6 +1076,8 @@ export default function Planner({ user }) {
           prayerMethod={prayerMethod}
           prayerSchool={prayerSchool}
           setPrayerCalc={setPrayerCalc}
+          jamaahTimes={jamaahTimes}
+          setJamaahTime={setJamaahTime}
           togglePrayerLog={togglePrayerLog}
           togglePrayerLogOnDay={togglePrayerLogOnDay}
           prayerDoneToday={prayerDoneToday}
@@ -1096,6 +1112,9 @@ export default function Planner({ user }) {
           lastSession={lastSession}
           dismissLastSession={dismissLastSession}
           updateLastSessionNote={updateLastSessionNote}
+          prayerTimes={prayerTimes}
+          jamaahTimes={jamaahTimes}
+          prayerDoneToday={prayerDoneToday}
         />
       )}
 

@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { CAT_COLORS } from "../lib/constants";
-import { Icon } from "../components/icons";
+import { Icon, PrayerIcon } from "../components/icons";
 import Chip from "../components/Chip";
 import { todayStr } from "../lib/dates";
 import { fmtTime, fmtMins, getFocusSeconds, focusStreakDays, minsForDay, parseDuration } from "../lib/focus";
+import { nextPrayerNudge, NUDGE_THRESHOLD_MINS } from "../lib/jamaah";
 import { isGoalDone, pct, isRecurring, isScheduledOn, isDoneOn } from "../lib/goals";
 import { getAudioCtx } from "../lib/audio";
 import { goldA, S } from "../lib/styles";
@@ -39,8 +40,24 @@ export default function Pomodoro({
   lastSession,
   dismissLastSession,
   updateLastSessionNote,
+  prayerTimes,
+  jamaahTimes,
+  prayerDoneToday,
 }) {
   const [editingFocus, setEditingFocus] = useState(false);
+  // Prayer-aware nudge: while a focus session runs, count down to the next
+  // prayer's EFFECTIVE time (jamā'ah if the user set one, else the Aladhan
+  // start) and gently suggest wrapping up as it approaches. Recomputes each
+  // tick (pomSeconds drives the re-render). Never auto-stops — the user
+  // decides. Dismissible per prayer so it doesn't nag once acknowledged.
+  const [nudgeDismissed, setNudgeDismissed] = useState(null);
+  const prayerNudge = pomRunning
+    ? nextPrayerNudge({ prayerTimes, jamaahTimes, now: new Date(), isDone: prayerDoneToday })
+    : null;
+  const showNudge = !!prayerNudge
+    && prayerNudge.minsUntil >= 0
+    && prayerNudge.minsUntil <= NUDGE_THRESHOLD_MINS
+    && nudgeDismissed !== prayerNudge.name;
   const [focusDraft, setFocusDraft] = useState(String(pomDurations.defaultFocus));
   // Document Picture-in-Picture pop-out. Chromium-only; on Firefox/Safari
   // `pip.supported` is false and the button shows a disabled tooltip.
@@ -172,6 +189,45 @@ export default function Pomodoro({
         dismissLastSession={dismissLastSession}
         updateLastSessionNote={updateLastSessionNote}
       />
+
+      {/* Prayer-aware nudge — appears only while a session is running and the
+          next prayer's effective time (jamāʿah if set) is within the threshold.
+          A gentle suggestion, never an interruption: it doesn't pause anything. */}
+      {showNudge && (
+        <div className="pop-in" role="status" style={{
+          display: "flex", alignItems: "center", gap: 12,
+          padding: "12px 14px", marginBottom: 16,
+          borderRadius: "var(--border-radius-lg)",
+          background: `linear-gradient(135deg, ${goldA(20)} 0%, ${goldA(6)} 100%), var(--bg-card)`,
+          border: `0.5px solid ${goldA(45)}`,
+        }}>
+          <span style={{
+            width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+            background: goldA(22), color: "var(--gold)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <PrayerIcon name={prayerNudge.name} size={20} />
+          </span>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
+              {prayerNudge.name}{prayerNudge.isJamaah ? " jamāʿah" : ""}{" "}
+              {prayerNudge.minsUntil === 0 ? "is now" : `in ~${prayerNudge.minsUntil} min`}
+            </div>
+            <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>
+              A good place to pause and pray — {prayerNudge.time}.
+            </div>
+          </div>
+          <button onClick={() => setNudgeDismissed(prayerNudge.name)} aria-label="Dismiss reminder"
+            style={{
+              flexShrink: 0, fontSize: 13, padding: "5px 12px",
+              background: "transparent", border: `0.5px solid ${goldA(40)}`,
+              borderRadius: 99, color: "var(--text-secondary)", cursor: "pointer",
+            }}>
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Quiet niyyah lead-in — the "Bismillah — Start" button below carries
           the intention too, so this stays a one-line whisper, not a card. */}
       <div style={{ textAlign: "center", fontSize: 13, fontStyle: "italic", color: "var(--text-muted)", marginTop: 2, marginBottom: 18 }}>
