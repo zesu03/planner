@@ -92,6 +92,13 @@ src/
                        addExcusedRange, paidOnDay, isExcused,
                        missedDaysForPrayer, QAZA_PRAYERS (v2 explicit ledger)
     daily.js           dayPhase, prayersToday, focusToday, muhasabaState, yesterdayDua, firstOpenTask
+    stats.js           pure Mizan derivations (extracted from views/Stats.jsx's
+                       inline IIFEs so the read path is unit-tested): prayerHealth,
+                       voluntary, weekDigest, habitHealth, topFocusTasks, heatmap,
+                       niyyahTrend, mirrorPatterns, sparklines, digestRows +
+                       fmtPct/fmtPctDelta/fmtMinsDelta/fmtRange. Date-window fns
+                       take an optional `now = new Date()` for deterministic tests;
+                       digestRows returns `iconName` strings (view maps → <Icon>).
     focus.js           getFocusSeconds, getBreakSeconds, fmtTime, fmtMins,
                        focusStreakDays, STREAK_MILESTONES
     audio.js           getAudioCtx, playTimerSound (Web Audio chime)
