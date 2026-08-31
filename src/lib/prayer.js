@@ -175,6 +175,13 @@ export function nextPrayer(prayerTimes, prayerLog, today, now = new Date(), prev
   return { name: "Fajr", time: prayerTimes.Fajr, tomorrow: true };
 }
 
+// Are all five fard prayers logged for `day`? Drives the "all five today"
+// celebration — the daily prayer win worth surfacing as warmly as any gap.
+export function allFardDone(prayerLog, day) {
+  const FIVE = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
+  return FIVE.every((p) => (prayerLog?.[p] || []).includes(day));
+}
+
 // Read a "mark this prayer" instruction from a URL query string. The push
 // notification's "Mark prayed" action opens the app at /?markPrayer=<Prayer>;
 // Planner consumes this once on boot. Returns the prayer name only if present

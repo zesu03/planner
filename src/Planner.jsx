@@ -20,7 +20,7 @@ import { todayStr, daysLeft, addDaysToStr } from "./lib/dates";
 import { isGoalDone, pct } from "./lib/goals";
 import { isMuhasabaFilled, muhasabaStreak } from "./lib/muhasaba";
 import { qazaOwed, QAZA_PRAYERS } from "./lib/qaza";
-import { nextPrayer as computeNextPrayer, parsePrayerMarkParam } from "./lib/prayer";
+import { nextPrayer as computeNextPrayer, parsePrayerMarkParam, allFardDone } from "./lib/prayer";
 import { normalizeJamaahTime, FARD } from "./lib/jamaah";
 import { dayPhase, prayersToday, focusToday, muhasabaState, yesterdayDua, firstOpenTask, istiqamahStreak, istiqamahActiveToday } from "./lib/daily";
 import { fmtTime, focusStreakDays, STREAK_MILESTONES } from "./lib/focus";
@@ -294,6 +294,35 @@ export default function Planner({ user }) {
       setCelebration({ kind: "istiqamahStreak", count: newStreak });
     }
   }, [prayerLog, focusLog, muhasaba]);
+
+  // All-five-fard-today — the core daily prayer win, surfaced as warmly as the
+  // app names a missed prayer. Fires on the transition to 5/5 (marking the last
+  // one already played its own chime, so no rewardMilestone here — avoids a
+  // double sound, same reasoning as the istiqāmah effect).
+  const prevAllFardRef = useRef(null);
+  useEffect(() => {
+    const done = allFardDone(prayerLog, todayStr());
+    const prev = prevAllFardRef.current;
+    prevAllFardRef.current = done;
+    if (prev === null) return;
+    if (done && !prev) setCelebration({ kind: "allPrayers" });
+  }, [prayerLog]);
+
+  // Qaza fully cleared — a momentous, rare milestone (owed → 0 from > 0). The
+  // makeup tap doesn't chime, so a milestone chime is warranted here. Never
+  // fires for a user who never had qaza (0 → 0 is not a transition).
+  const prevQazaOwedTotalRef = useRef(null);
+  useEffect(() => {
+    const owed = qazaOwed(qaza);
+    const total = QAZA_PRAYERS.reduce((s, p) => s + (owed[p] || 0), 0);
+    const prev = prevQazaOwedTotalRef.current;
+    prevQazaOwedTotalRef.current = total;
+    if (prev === null) return;
+    if (total === 0 && prev > 0) {
+      setCelebration({ kind: "qazaCleared" });
+      rewardMilestone();
+    }
+  }, [qaza]);
 
   // Auto-dismiss after 12s. The timer resets if a new celebration replaces
   // the current one (because the dep changes).
@@ -806,6 +835,10 @@ export default function Planner({ user }) {
       setView("muhasaba");
     } else if (celebration.kind === "istiqamahStreak") {
       setView("prayer");
+    } else if (celebration.kind === "allPrayers") {
+      setView("prayer");
+    } else if (celebration.kind === "qazaCleared") {
+      setView("stats"); // Mizan owns the qaza ledger
     }
     setCelebration(null);
   };

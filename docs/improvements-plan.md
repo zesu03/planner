@@ -13,7 +13,7 @@
 | 3 | One-tap "Mark prayed" from the reminder notification | High | M | Med | **shipped** |
 | 4 | Muhasaba "quick reckoning" (tiny minimum entry) | Med-High | S-M | Low | **dropped** (user) |
 | 5 | Trust: "last synced" line + self-serve restore/import | Med-High | M | Med | planned |
-| 6 | Tone: surface wins as warmly as gaps (rajā' balance) | Med | S | Low | planned |
+| 6 | Tone: surface wins as warmly as gaps (rajā' balance) | Med | S | Low | **shipped** |
 
 ---
 
@@ -97,12 +97,15 @@ broken. (b) A self-serve **import** that restores from the user's own JSON
 export (the export already exists) with a merge/replace confirm. Careful, gated
 work — do after the durability core is stable.
 
-## 6. Tone: balance accountability with mercy
+## 6. Tone: balance accountability with mercy — **shipped (first pass)**
 
 **Why.** The framing leans on deficit (debt, sins, "held to account"). The dīn
 balances khawf and rajā'; a daily deficit diet wears down.
 
-**Approach.** Surface wins with the same weight as gaps — lean on the existing
-`CelebrationToast` for made-up qaza, prayer streaks, rising niyyah; add a warm
-line (a hadith of hope / mercy) where the mirror currently only pushes back.
-Small, mostly copy + a few celebration triggers.
+**Shipped.** Two new `CelebrationToast` variants for wins the app previously
+left unmarked: **all five fard prayed today** (`allPrayers`) and **qaza fully
+cleared** (`qazaCleared`, owed → 0). Both fire on the transition only (no
+double-chime, never on hydrate, never a false positive for a user with no
+qaza). Pure `allFardDone` helper + tests; a render test covers the new toast
+variants. Future refinement: a rotating rajā'/mercy line where the mirror only
+pushes back.
