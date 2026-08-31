@@ -12,7 +12,7 @@
 | 2 | Prayer-aware focus timer (+ optional jamā'ah times) | High | M | Low-Med | **shipped** |
 | 3 | One-tap "Mark prayed" from the reminder notification | High | M | Med | **shipped** |
 | 4 | Muhasaba "quick reckoning" (tiny minimum entry) | Med-High | S-M | Low | **dropped** (user) |
-| 5 | Trust: "last synced" line + self-serve restore/import | Med-High | M | Med | planned |
+| 5 | Trust: "last synced" line + self-serve restore/import | Med-High | M | Med | **partial** (line shipped; restore deferred) |
 | 6 | Tone: surface wins as warmly as gaps (rajā' balance) | Med | S | Low | **shipped** |
 
 ---
@@ -91,11 +91,16 @@ a hard day. Pure — no schema change.
 `gpg`). Users can't fix their own data, and nothing reassures them when sync is
 healthy.
 
-**Approach.** (a) A quiet "Saved to server · 2m ago" line derived from the
-existing `connBadge`/sync state — reassurance when fine, not just alarm when
-broken. (b) A self-serve **import** that restores from the user's own JSON
-export (the export already exists) with a merge/replace confirm. Careful, gated
-work — do after the durability core is stable.
+**Approach.** (a) **shipped** — a quiet "✓ Saved · <when>" line in the header,
+shown only in the healthy steady state (`connBadge` null) once a server sync is
+confirmed; the pure `relativeSyncLabel` (lib/sync, tested) formats the relative
+time and a 30s ticker keeps it fresh. Reassurance when fine, not just alarm when
+broken — and it touches only the pure sync layer + the header render, never the
+write machinery. (b) **deferred** — a self-serve **import/restore** from the
+user's own JSON export. This writes across every field and is squarely in the
+durability core that's been fragile; it needs its own careful pass (validation,
+merge-vs-replace confirm, gating) rather than being rushed in alongside the
+line.
 
 ## 6. Tone: balance accountability with mercy — **shipped (first pass)**
 

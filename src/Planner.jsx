@@ -22,6 +22,7 @@ import { isMuhasabaFilled, muhasabaStreak } from "./lib/muhasaba";
 import { qazaOwed, QAZA_PRAYERS } from "./lib/qaza";
 import { nextPrayer as computeNextPrayer, parsePrayerMarkParam, allFardDone } from "./lib/prayer";
 import { normalizeJamaahTime, FARD } from "./lib/jamaah";
+import { relativeSyncLabel } from "./lib/sync";
 import { dayPhase, prayersToday, focusToday, muhasabaState, yesterdayDua, firstOpenTask, istiqamahStreak, istiqamahActiveToday } from "./lib/daily";
 import { fmtTime, focusStreakDays, STREAK_MILESTONES } from "./lib/focus";
 import { rewardMilestone } from "./lib/feedback";
@@ -331,6 +332,20 @@ export default function Planner({ user }) {
     const t = setTimeout(() => setCelebration(null), 12000);
     return () => clearTimeout(t);
   }, [celebration]);
+
+  // "Saved · <when>" reassurance — the positive counterpart to connBadge, which
+  // only appears when something is WRONG. Record the instant we're confirmed in
+  // sync (badge null = healthy AND the doc has loaded from a server snapshot);
+  // a 30s ticker keeps the relative label fresh while it sits idle.
+  const [lastSyncAt, setLastSyncAt] = useState(null);
+  useEffect(() => {
+    if (loaded && !connBadge) setLastSyncAt(Date.now());
+  }, [loaded, connBadge]);
+  const [, setSyncTick] = useState(0);
+  useEffect(() => {
+    const id = setInterval(() => setSyncTick((n) => n + 1), 30000);
+    return () => clearInterval(id);
+  }, []);
 
   // Foreground FCM handler. When the app is open, FCM delivers via onMessage
   // and the browser does NOT show a system notification automatically; this
@@ -974,6 +989,22 @@ export default function Planner({ user }) {
                 color: connBadge.tone === "danger" ? "#c75a3a" : connBadge.tone === "warning" ? "var(--gold)" : "var(--text-secondary)",
               }}>
               {connBadge.kind === "error" ? "⚠ " : ""}{connBadge.text}
+            </span>
+          )}
+          {/* Positive reassurance — shown only in the healthy steady state
+              (badge null) once we've confirmed a server sync. Quiet + muted so
+              it reassures without nagging; refreshes every 30s. */}
+          {!connBadge && lastSyncAt && (
+            <span
+              title="Your changes are saved to the server and synced across your devices."
+              style={{
+                fontSize: 12, padding: "3px 10px", borderRadius: 99, fontWeight: 400,
+                background: "var(--bg-card)", border: "0.5px solid var(--border)",
+                color: "var(--text-muted)", display: "inline-flex", alignItems: "center", gap: 5,
+                whiteSpace: "nowrap",
+              }}>
+              <span style={{ color: "var(--color-text-success)" }}>✓</span>
+              Saved · {relativeSyncLabel(lastSyncAt)}
             </span>
           )}
           {pomRunning && <span style={{fontSize:14,padding:"3px 10px",borderRadius:99,background:goldA(15),color:"var(--gold)",fontWeight:500}}>● Focus {fmtTime(pomSeconds)}</span>}
