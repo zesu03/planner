@@ -3,8 +3,9 @@
 // string that comes back from Aladhan. Persists the chosen city to user
 // settings so a returning session auto-fetches without a prompt.
 //
-// All Aladhan calls pass method=2 (ISNA) + school=1 (Hanafi Asr — later
-// shadow). Three entry points:
+// Aladhan calls pass the user's chosen calculation method + Asr madhab
+// (settings.prayerMethod / settings.prayerSchool, defaulting to ISNA + Hanafi
+// Asr — see lib/prayerConfig). Three entry points:
 //   - fetchPrayersFromSettings: silent restore on first load
 //   - fetchPrayers(city, country): user-initiated by city input
 //   - fetchByGeo: user-initiated, uses navigator.geolocation
@@ -15,9 +16,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { localDateStr } from "../lib/dates";
 import { prayerTimesMirrorFresh } from "../lib/prayer";
+import { methodSchoolParam, normalizeMethod, normalizeSchool, DEFAULT_METHOD, DEFAULT_SCHOOL } from "../lib/prayerConfig";
 
 const ALADHAN_BASE = "https://api.aladhan.com/v1";
-const METHOD_SCHOOL = "method=2&school=1";
 
 // OpenStreetMap Nominatim reverse-geocoding endpoint. Free, no API key,
 // rate-limited to ~1 req/sec per their usage policy — fine for our scale
@@ -70,18 +71,34 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings, notifi
   // result. Each fetch path bumps it and ignores its own response if stale.
   const fetchSeqRef = useRef(0);
 
+  // Calculation method + Asr madhab, read from settings. Kept in a ref so the
+  // fetch callbacks read the freshest values at call time WITHOUT rebuilding
+  // (and re-triggering the restore effect) on every settings re-emit, and so
+  // setPrayerCalc's re-fetch uses the new value synchronously — no wait for the
+  // debounced settings write to round-trip.
+  const prayerMethod = normalizeMethod(userSettings?.prayerMethod ?? DEFAULT_METHOD);
+  const prayerSchool = normalizeSchool(userSettings?.prayerSchool ?? DEFAULT_SCHOOL);
+  const calcRef = useRef({ method: prayerMethod, school: prayerSchool });
+  useEffect(() => { calcRef.current = { method: prayerMethod, school: prayerSchool }; }, [prayerMethod, prayerSchool]);
+  const calcParam = () => methodSchoolParam(calcRef.current.method, calcRef.current.school);
+
+  // Last successfully-fetched location, so changing the method/madhab can
+  // re-fetch the SAME place (city vs coords) rather than guessing.
+  const lastLocRef = useRef(null);
+
   // Silent restore. Used by the settings-restore effect; doesn't surface
   // network errors because the user didn't ask for this fetch.
   const fetchPrayersFromSettings = useCallback(async (city, country) => {
     const mySeq = ++fetchSeqRef.current;
     try {
       const ts = Math.floor(Date.now() / 1000);
-      const res = await fetch(`${ALADHAN_BASE}/timingsByCity/${ts}?city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}&${METHOD_SCHOOL}`);
+      const res = await fetch(`${ALADHAN_BASE}/timingsByCity/${ts}?city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}&${calcParam()}`);
       const data = await res.json();
       if (mySeq !== fetchSeqRef.current) return;   // superseded by a newer fetch
       if (data.code === 200) {
         setPrayerTimes(data.data.timings);
         setPrayerCity(`${city}, ${country}`);
+        lastLocRef.current = { kind: "city", city, country };
         const h = data.data?.date?.hijri;
         if (h) setHijriDate(`${h.day} ${h.month.en} ${h.year} AH`);
       }
@@ -99,12 +116,13 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings, notifi
     setPrayerLoading(true); setPrayerError("");
     try {
       const ts = Math.floor(Date.now() / 1000);
-      const res = await fetch(`${ALADHAN_BASE}/timingsByCity/${ts}?city=${encodeURIComponent(safeCity)}&country=${encodeURIComponent(safeCountry)}&${METHOD_SCHOOL}`);
+      const res = await fetch(`${ALADHAN_BASE}/timingsByCity/${ts}?city=${encodeURIComponent(safeCity)}&country=${encodeURIComponent(safeCountry)}&${calcParam()}`);
       const data = await res.json();
       if (mySeq !== fetchSeqRef.current) return;   // superseded by a newer fetch
       if (data.code === 200) {
         setPrayerTimes(data.data.timings);
         setPrayerCity(`${safeCity}, ${safeCountry}`);
+        lastLocRef.current = { kind: "city", city: safeCity, country: safeCountry };
         const h = data.data?.date?.hijri;
         if (h) setHijriDate(`${h.day} ${h.month.en} ${h.year} AH`);
         updateSettings((prev) => ({
@@ -145,13 +163,14 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings, notifi
     try {
       const ts = Math.floor(Date.now() / 1000);
       const [prayerRes, geo] = await Promise.all([
-        fetch(`${ALADHAN_BASE}/timings/${ts}?latitude=${lat}&longitude=${lng}&${METHOD_SCHOOL}`),
+        fetch(`${ALADHAN_BASE}/timings/${ts}?latitude=${lat}&longitude=${lng}&${calcParam()}`),
         reverseGeocode(lat, lng),
       ]);
       const data = await prayerRes.json();
       if (mySeq !== fetchSeqRef.current) return;   // superseded by a newer fetch
       if (data.code === 200) {
         setPrayerTimes(data.data.timings);
+        lastLocRef.current = { kind: "coords", lat, lng };
         let label;
         if (geo?.city) {
           label = geo.country ? `${geo.city}, ${geo.country}` : geo.city;
@@ -215,6 +234,21 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings, notifi
       );
     });
   }, [fetchByCoords]);
+
+  // Change the calculation method / Asr madhab. Persist it, sync calcRef
+  // synchronously (so the immediate re-fetch uses the NEW value, not the stale
+  // debounced setting round-trip), and re-fetch the SAME location so the arc
+  // updates in place. No-op re-fetch if no location has resolved yet — the
+  // first city/geo fetch will pick up the new setting from the ref.
+  const setPrayerCalc = useCallback((method, school) => {
+    const m = normalizeMethod(method);
+    const s = normalizeSchool(school);
+    calcRef.current = { method: m, school: s };
+    updateSettings((prev) => ({ ...prev, prayerMethod: m, prayerSchool: s }));
+    const loc = lastLocRef.current;
+    if (loc?.kind === "city") fetchPrayers(loc.city, loc.country);
+    else if (loc?.kind === "coords") fetchByCoords(loc.lat, loc.lng, { persist: false });
+  }, [updateSettings, fetchPrayers, fetchByCoords]);
 
   // One-shot restore from persisted settings. `settingsFromDb` is the raw
   // object from useUserData (may be null on first render). Three guards:
@@ -289,10 +323,13 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings, notifi
     prayerLoading,
     prayerError,
     hijriDate,
+    prayerMethod,
+    prayerSchool,
     setPrayerTimes,
     setCityInput,
     setCountryInput,
     fetchPrayers,
     fetchByGeo,
+    setPrayerCalc,
   };
 }

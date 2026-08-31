@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { toAladhanDate, bareTime, resolveLocation, aladhanUrl, extractTimes, isFridayYMD, prayerDisplayName } from "./_prayer.js";
+import { toAladhanDate, bareTime, resolveLocation, aladhanUrl, extractTimes, isFridayYMD, prayerDisplayName, methodSchoolParam, DEFAULT_METHOD_SCHOOL } from "./_prayer.js";
 
 describe("toAladhanDate", () => {
   it("reformats YYYY-MM-DD to DD-MM-YYYY", () => {
@@ -58,9 +58,34 @@ describe("aladhanUrl", () => {
     expect(u).toContain("city=New%20York");
     expect(u).toContain("country=USA");
   });
+  it("defaults to ISNA/Hanafi when no method/school is passed", () => {
+    const u = aladhanUrl({ kind: "coords", lat: 1, lng: 2 }, "01-08-2026");
+    expect(u).toContain(DEFAULT_METHOD_SCHOOL);
+    expect(u).toContain("method=2&school=1");
+  });
+  it("honours a passed method/school fragment", () => {
+    const u = aladhanUrl({ kind: "city", city: "Cairo", country: "Egypt" }, "01-08-2026", "method=5&school=0");
+    expect(u).toContain("method=5&school=0");
+    expect(u).not.toContain("method=2&school=1");
+  });
   it("null for none / missing date", () => {
     expect(aladhanUrl({ kind: "none" }, "01-08-2026")).toBeNull();
     expect(aladhanUrl({ kind: "coords", lat: 1, lng: 2 }, null)).toBeNull();
+  });
+});
+
+describe("methodSchoolParam (server — must mirror src/lib/prayerConfig)", () => {
+  it("builds the fragment for valid input", () => {
+    expect(methodSchoolParam(3, 0)).toBe("method=3&school=0");
+    expect(methodSchoolParam(2, 1)).toBe("method=2&school=1");
+  });
+  it("falls back to ISNA/Hanafi for missing or unknown values", () => {
+    expect(methodSchoolParam(undefined, undefined)).toBe("method=2&school=1");
+    expect(methodSchoolParam(999, 7)).toBe("method=2&school=1");
+    expect(methodSchoolParam(null, null)).toBe("method=2&school=1"); // Number(null)===0 guard
+  });
+  it("DEFAULT_METHOD_SCHOOL is the ISNA/Hanafi fragment", () => {
+    expect(DEFAULT_METHOD_SCHOOL).toBe("method=2&school=1");
   });
 });
 
