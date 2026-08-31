@@ -4,6 +4,10 @@ import { useVerse } from "./hooks/useVerse";
 import { usePrayer } from "./hooks/usePrayer";
 import { useFocusTimer } from "./hooks/useFocusTimer";
 import { useGoals } from "./hooks/useGoals";
+import { useSavedVerses } from "./hooks/useSavedVerses";
+import { useReport } from "./hooks/useReport";
+import { usePrayerLog } from "./hooks/usePrayerLog";
+import { useQaza } from "./hooks/useQaza";
 import { auth } from "./firebase";
 import { signOut } from "firebase/auth";
 
@@ -12,19 +16,17 @@ import {
   PRAYERS,
   QUOTES, INTENTIONS,
 } from "./lib/constants";
-import { newId } from "./lib/ids";
-import { todayStr, localDateStr, daysLeft, addDaysToStr } from "./lib/dates";
+import { todayStr, daysLeft, addDaysToStr } from "./lib/dates";
 import { isGoalDone, pct } from "./lib/goals";
-import { emptyMuhasabaEntry, isMuhasabaFilled, muhasabaStreak } from "./lib/muhasaba";
-import { reconcileQaza, qazaOwed, payQaza, undoQaza, addQaza, qazaAfterRetroToggle, addExcusedRange, removeExcusedRange, settleWouldSkip, reconcileSuppressedSeed, QAZA_PRAYERS } from "./lib/qaza";
-import { nextPrayer as computeNextPrayer, prayerDayFor as computePrayerDayFor } from "./lib/prayer";
+import { isMuhasabaFilled, muhasabaStreak } from "./lib/muhasaba";
+import { qazaOwed, QAZA_PRAYERS } from "./lib/qaza";
+import { nextPrayer as computeNextPrayer } from "./lib/prayer";
 import { dayPhase, prayersToday, focusToday, muhasabaState, yesterdayDua, firstOpenTask, istiqamahStreak, istiqamahActiveToday } from "./lib/daily";
 import { fmtTime, focusStreakDays, STREAK_MILESTONES } from "./lib/focus";
 import { rewardMilestone } from "./lib/feedback";
 import { goldA, S } from "./lib/styles";
 import { attachForegroundHandler, silentTokenRefresh } from "./lib/notifications";
-import { setUser as setMonitoringUser, captureError } from "./lib/monitoring";
-import { buildReportPayload as buildReportPayloadLib } from "./lib/reportPayload";
+import { setUser as setMonitoringUser } from "./lib/monitoring";
 import CelebrationToast from "./components/CelebrationToast";
 import ConfirmDialog from "./components/ConfirmDialog";
 import Onboarding from "./components/Onboarding";
@@ -128,8 +130,6 @@ export default function Planner({ user }) {
 
   // muhasaba
   const [muhasabaDay,setMuhasabaDay] = useState(todayStr());
-  const [aiLoadingDay,setAiLoadingDay] = useState(null); // day being generated, or null
-  const [aiError,setAiError] = useState("");
 
   // theme: apply data-theme to <html> based on settings (default dark).
   // Also update <meta name="theme-color"> dynamically so the mobile
@@ -288,16 +288,6 @@ export default function Planner({ user }) {
     return () => clearTimeout(t);
   }, [celebration]);
 
-  // Auto-clear AI-generation errors so a stale message from a navigation
-  // ago doesn't linger forever. 10s is enough for the user to read the
-  // message; if they're still on the cooldown timer when it clears, the
-  // next click will surface a fresh remaining-seconds message anyway.
-  useEffect(() => {
-    if (!aiError) return;
-    const t = setTimeout(() => setAiError(""), 10000);
-    return () => clearTimeout(t);
-  }, [aiError]);
-
   // Foreground FCM handler. When the app is open, FCM delivers via onMessage
   // and the browser does NOT show a system notification automatically; this
   // effect bridges to the SW's showNotification so the user sees push reminders
@@ -392,107 +382,23 @@ export default function Planner({ user }) {
   const applyMuhasabaUpdate = updateMuhasaba;
   const applyQazaUpdate = updateQaza;
 
-  // Seed / migrate / settle / heal the qaza ledger. Runs once the user doc has
-  // resolved (`loaded`) — settling against a pre-load empty prayerLog would
-  // manufacture phantom qaza. Uses the FUNCTIONAL updater form so reconcile
-  // reads the freshest ledger (latestQazaRef), never a stale React snapshot —
-  // otherwise this whole-object write could clobber a concurrent makeup's
-  // paidTotal. reconcileQaza returns the same reference when there's nothing to
-  // do, and updateQaza no-ops on an unchanged reference, so this is write-free
-  // in the steady state.
-  useEffect(() => {
-    if (!loaded) return;
-    // Surface a stuck ledger: if settle refuses because prayerLog looks stale/
-    // empty while the ledger has history, the makeup count silently freezes —
-    // flag it rather than let it hide (the guard prevents phantom debt, but a
-    // persistent skip means data isn't loading correctly).
-    if (settleWouldSkip(qazaFromDb, prayerLog, todayStr())) {
-      captureError(new Error("qaza settle skipped: empty prayerLog with history"), {
-        scope: "qaza-settle-skip", uid: user.uid,
-      });
-    }
-    // Wipe tripwire: reconcile is about to REFUSE seeding a blank ledger because
-    // the account has prayer history but the ledger came back empty (stale /
-    // old-code load). The refusal prevents the wipe; capturing it makes the
-    // formerly-silent recurrence visible so we can see which build/session hits it.
-    if (reconcileSuppressedSeed(qazaFromDb, prayerLog)) {
-      captureError(new Error("qaza reconcile suppressed a blank-ledger seed (wipe averted)"), {
-        scope: "qaza-wipe-averted", uid: user.uid,
-      });
-    }
-    updateQaza((cur) => reconcileQaza(cur, prayerLog, todayStr()));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded, prayerLogFromDb, updateQaza]);
+  // Qaza ledger — the once-per-load reconcile/settle/heal effect (with the
+  // wipe-guard monitoring tripwires) plus the make-up / backlog / excused-days
+  // callbacks, all in useQaza. `applyQazaUpdate` stays above because
+  // usePrayerLog needs it too (retro-mark → ledger sync).
+  const {
+    payOneQaza, undoOneQaza, adjustQaza, addQazaAll,
+    setQazaTarget, addExcused, removeExcused,
+  } = useQaza({
+    qazaFromDb, prayerLog, prayerLogFromDb, loaded,
+    uid: user.uid, updateQaza, updateSettings,
+  });
 
-  // Log one made-up qaza. payQaza is a no-op when nothing is owed (no phantom
-  // credit); undoQaza only reverses a makeup logged TODAY — the two are exact
-  // inverses so a mistaken −then+ can't drift the counters.
-  const payOneQaza = useCallback((prayer) => {
-    applyQazaUpdate((q) => payQaza(q, prayer, todayStr()));
-  }, [applyQazaUpdate]);
-
-  const undoOneQaza = useCallback((prayer) => {
-    applyQazaUpdate((q) => undoQaza(q, prayer, todayStr()));
-  }, [applyQazaUpdate]);
-
-  // Add/subtract a specific count to one prayer's outstanding (per-prayer bulk
-  // correction). n may be negative — addQaza clamps at 0.
-  const adjustQaza = useCallback((prayer, n) => {
-    if (!n) return;
-    applyQazaUpdate((q) => addQaza(q, prayer, n));
-  }, [applyQazaUpdate]);
-
-  // Seed a historical backlog: add the same estimated count to all five
-  // prayers at once (the backlog estimator's "≈ N per prayer").
-  const addQazaAll = useCallback((n) => {
-    if (!n || n <= 0) return;
-    applyQazaUpdate((q) => QAZA_PRAYERS.reduce((acc, p) => addQaza(acc, p, n), q));
-  }, [applyQazaUpdate]);
-
-  // Daily makeup target drives the completion projection. Lives in settings so
-  // it persists and rides the same field-scoped write path.
-  const setQazaTarget = useCallback((n) => {
-    const target = Math.max(1, Math.floor(Number(n) || 1));
-    updateSettings((prev) => ({ ...prev, qazaDailyTarget: target }));
-  }, [updateSettings]);
-
-  // Excused days (hayd/nifas, travel, illness): obligatory prayers missed then
-  // aren't made up, so those days are excluded from accrual. addExcusedRange
-  // also un-counts any already-settled days the range covers; removeExcusedRange
-  // re-counts them. Both need prayerLog to know which days were unlogged.
-  const addExcused = useCallback((from, to, reason) => {
-    if (!from || !to) return;
-    applyQazaUpdate((q) => addExcusedRange(q, from, to, reason, prayerLog));
-  }, [applyQazaUpdate, prayerLog]);
-
-  const removeExcused = useCallback((index) => {
-    applyQazaUpdate((q) => removeExcusedRange(q, index, prayerLog));
-  }, [applyQazaUpdate, prayerLog]);
-
-  // Saved verses — personal collection of bookmarked ayat from the
-  // verse-of-day card. De-duped by verseKey so re-saving the same verse is
-  // a no-op rather than producing duplicate rows. Newest-first ordering.
+  // Saved verses — bookmarked ayat from the verse-of-day card. Data-only
+  // callbacks live in useSavedVerses; the styled-confirm remove wrapper stays
+  // here (UI concern).
   const applySavedVersesUpdate = updateSavedVerses;
-
-  const saveVerse = useCallback((verse) => {
-    if (!verse?.verseKey) return;
-    applySavedVersesUpdate((arr) => {
-      if (arr.some((v) => v.verseKey === verse.verseKey)) return arr;
-      const entry = {
-        id: newId(),
-        verseKey: verse.verseKey,
-        arabic: verse.arabic || "",
-        translation: verse.translation || "",
-        url: verse.url || `https://quran.com/${verse.verseKey}`,
-        savedAt: new Date().toISOString(),
-      };
-      return [entry, ...arr];
-    });
-  }, [applySavedVersesUpdate]);
-
-  const removeSavedVerse = useCallback((id) => {
-    applySavedVersesUpdate((arr) => arr.filter((v) => v.id !== id));
-  }, [applySavedVersesUpdate]);
+  const { saveVerse, removeSavedVerse, isVerseSaved } = useSavedVerses({ savedVerses, applySavedVersesUpdate });
 
   // Styled-confirm wrapper for the saved-verse remove action (passed to
   // Dashboard so it doesn't reach for window.confirm).
@@ -507,72 +413,13 @@ export default function Planner({ user }) {
     });
   };
 
-  const isVerseSaved = useCallback(
-    (verseKey) => savedVerses.some((v) => v.verseKey === verseKey),
-    [savedVerses]
-  );
-
-  // Build a rich JSON payload for Gemini. The full transform lives in
-  // lib/reportPayload.js — pure function, no hooks, no closures over
-  // state. Planner just supplies the current data via a context object.
-  // Wrapped in useCallback to keep generateReport's deps stable.
-  const buildReportPayload = useCallback((day) =>
-    buildReportPayloadLib(day, { goals, prayerLog, focusLog, muhasaba, qaza, prayerTimes, hijriDate }),
-  [goals, prayerLog, focusLog, muhasaba, qaza, prayerTimes, hijriDate]);
-
-
-  const generateReport = useCallback(async (day, { force=false } = {}) => {
-    if (!day) return;
-    const existing = muhasaba[day]?.aiReport;
-    if (existing && !force) return;
-    if (aiLoadingDay) return; // already generating something
-    // 30s cooldown between manual regenerates of the same day. Stops
-    // accidental double-clicks and reflex re-tries from burning Gemini quota.
-    if (force && existing?.generatedAt) {
-      const ageMs = Date.now() - new Date(existing.generatedAt).getTime();
-      const cooldownMs = 30_000;
-      if (ageMs < cooldownMs) {
-        const secs = Math.ceil((cooldownMs - ageMs) / 1000);
-        setAiError(`Just generated — wait ${secs}s before regenerating.`);
-        return;
-      }
-    }
-    setAiError("");
-    setAiLoadingDay(day);
-    try {
-      const token = await auth.currentUser?.getIdToken();
-      if (!token) throw new Error("Not signed in");
-      const payload = buildReportPayload(day);
-      const res = await fetch("/api/gemini-report", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ day, payload }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || `Request failed (${res.status})`);
-      // Prefer the structured `data` object; fall back to legacy `text`
-      // (for the rare case Gemini's JSON parse fails server-side and we
-      // return raw text instead).
-      const aiReport = {
-        ...(json.data ? { data: json.data } : {}),
-        ...(json.text ? { text: json.text } : {}),
-        generatedAt: json.generatedAt || new Date().toISOString(),
-        model: json.model || null,
-      };
-      applyMuhasabaUpdate(m => ({
-        ...m,
-        [day]: { ...emptyMuhasabaEntry(), ...m[day], aiReport },
-      }));
-    } catch (e) {
-      setAiError(e?.message || "Failed to generate report");
-    } finally {
-      setAiLoadingDay(null);
-    }
-  }, [muhasaba, aiLoadingDay, buildReportPayload, applyMuhasabaUpdate]);
-
-  // AI Mirror is invoked manually only — the user clicks Generate / Regenerate
-  // in the Mirror card. No automatic generation on filled muhasaba; saves API
-  // quota and lets the user decide when they're ready to be reflected on.
+  // AI Mirror report — payload build + token-gated Gemini call + cooldown,
+  // plus the aiLoadingDay/aiError UI state, all in useReport. Invoked manually
+  // only (Generate / Regenerate in the Mirror card); no auto-generation, to
+  // save API quota and let the user decide when to be reflected on.
+  const { aiLoadingDay, aiError, generateReport } = useReport({
+    goals, prayerLog, focusLog, muhasaba, qaza, prayerTimes, hijriDate, applyMuhasabaUpdate,
+  });
 
   const selected   = goals.find(g => g.id===selectedId);
   // `activeTask` is returned by useFocusTimer.
@@ -585,89 +432,13 @@ export default function Planner({ user }) {
   const firstName = rawName.split(/[\s._-]+/)[0] || "Dost";
   const greetingName = firstName;
 
-  // True if `prayer`'s start time for `day` has already arrived. Prior days
-  // are always true (the window opened long ago); future days are false.
-  // For today we compare the clock against the prayer's start time. Tahajjud
-  // has no formal start in Aladhan timings — gate it on Isha (its actual
-  // earliest valid moment is after Isha). If timings haven't loaded, we
-  // can't determine the gate, so we don't block.
-  function prayerStartHasPassed(prayer, day) {
-    if (!day) return false;
-    const t = todayStr();
-    if (day < t) return true;
-    if (day > t) return false;
-    const startKey = prayer === "Tahajjud" ? "Isha" : prayer;
-    const startStr = prayerTimes?.[startKey];
-    if (!startStr) return true;
-    const [h, m] = startStr.split(":").map(Number);
-    if (!Number.isFinite(h) || !Number.isFinite(m)) return true;
-    const startMins = h * 60 + m;
-    const now = new Date();
-    const nowMins = now.getHours() * 60 + now.getMinutes();
-    return nowMins >= startMins;
-  }
-
-  function togglePrayerLogOnDay(prayer, day) {
-    if (!prayer || !day) return;
-    // Guard against the future — you can't retro-mark a prayer you haven't
-    // had the chance to pray yet.
-    if (day > todayStr()) return;
-    const already = (prayerLog[prayer] || []).includes(day);
-    // Block marking (but not unmarking) a prayer whose window hasn't opened
-    // yet — e.g. tapping Asr at Dhuhr time.
-    if (!already && !prayerStartHasPassed(prayer, day)) return;
-    const willBeMarked = !already;
-    applyPrayerLogUpdate((log) => {
-      const prev = log[prayer] || [];
-      const alreadyIn = prev.includes(day);
-      const next = alreadyIn
-        ? prev.filter((d) => d !== day)
-        : [day, ...prev];
-      return { ...log, [prayer]: next };
-    });
-    // Keep the qaza ledger in sync when retro-marking a fard prayer on an
-    // already-settled day: marking it prayed clears that day's qaza, unmarking
-    // restores it. Same-day (unsettled) toggles are a no-op here — today stays
-    // pending until it rolls over and settles.
-    applyQazaUpdate((q) => qazaAfterRetroToggle(q, prayer, day, willBeMarked));
-  }
-
-  // Which day a "Mark prayed" tap is attributed to. Delegates to the lib
-  // helper (single source of truth — see lib/prayer.js for the rule).
-  function prayerDayFor(prayer) {
-    return computePrayerDayFor(prayer, prayerTimes, todayStr, addDaysToStr);
-  }
-
-  function togglePrayerLog(prayer) {
-    togglePrayerLogOnDay(prayer, prayerDayFor(prayer));
-  }
-
-  function prayerDoneToday(prayer) {
-    return (prayerLog[prayer]||[]).includes(prayerDayFor(prayer));
-  }
-
-  // Can the user mark this prayer right now? Resolves to the effective
-  // prayer day (yesterday for night prayers between midnight and Fajr) and
-  // checks whether that day's window start has arrived. Used by the Prayer
-  // view to disable "Mark done" for prayers whose time hasn't come.
-  function canMarkPrayer(prayer) {
-    return prayerStartHasPassed(prayer, prayerDayFor(prayer));
-  }
-
-  function prayerStreak(prayer) {
-    const log = prayerLog[prayer]||[];
-    const startStr = prayerDayFor(prayer);
-    const [yy, mm, dd] = startStr.split("-").map(Number);
-    const d = new Date(yy, mm - 1, dd); // local midnight of the active prayer day
-    let streak=0;
-    for (let i=0;i<30;i++) {
-      const s = localDateStr(d);
-      if (log.includes(s)) streak++;
-      else break;
-      d.setDate(d.getDate()-1);
-    }
-    return streak;
-  }
+  // Prayer-marking rules — day attribution, window gating, the mark/unmark
+  // toggle (kept in sync with the qaza ledger on retro-marks), and the
+  // per-prayer streak. All in usePrayerLog.
+  const {
+    togglePrayerLogOnDay, prayerDayFor, togglePrayerLog,
+    prayerDoneToday, canMarkPrayer, prayerStreak,
+  } = usePrayerLog({ prayerLog, prayerTimes, applyPrayerLogUpdate, applyQazaUpdate });
 
   // Onboarding hooks — MUST live above the loading-guard early return
   // below; React requires the same number of hooks on every render, so
