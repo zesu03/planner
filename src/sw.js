@@ -48,12 +48,19 @@ const messaging = getMessaging(app)
 onBackgroundMessage(messaging, (payload) => {
   const title = payload.notification?.title || payload.data?.title || 'Reminder'
   const body = payload.notification?.body || payload.data?.body || ''
+  const prayer = payload.data?.prayer
   self.registration.showNotification(title, {
     body,
     icon: '/icon.svg',
     badge: '/icon.svg',
     tag: payload.data?.tag || 'prayer-reminder',
     renotify: true,
+    // One-tap "Mark prayed" for the five daily prayers. The SW can't write
+    // Firestore with the user's auth, so the action opens the app at a deep
+    // link the SPA consumes (see Planner). Action buttons aren't supported on
+    // every platform — where unsupported the notification still shows, just
+    // without the button, and tapping the body opens the app as before.
+    actions: prayer ? [{ action: 'mark-prayed', title: '✓ Mark prayed' }] : [],
     data: payload.data || {},
   })
 })
@@ -72,7 +79,13 @@ function safeRelativePath(raw) {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const target = safeRelativePath(event.notification.data?.url)
+  const data = event.notification.data || {}
+  // "Mark prayed" action → open the app at a deep link that logs the prayer.
+  // Built from the trusted payload's prayer name (encodeURIComponent-guarded,
+  // always app-relative). Any other click uses the payload's own url.
+  const target = event.action === 'mark-prayed' && data.prayer
+    ? `/?markPrayer=${encodeURIComponent(data.prayer)}`
+    : safeRelativePath(data.url)
   event.waitUntil((async () => {
     const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true })
     for (const c of all) {

@@ -275,6 +275,7 @@ If you simplify it to `/(.*)`, `vercel dev` will swallow `/src/main.jsx` request
 - **`registerType: 'autoUpdate'`** — a new deploy's SW takes over on the next load with no prompt. No in-app update toast yet.
 - **Old-SW cleanup**: [src/App.jsx](src/App.jsx) runs a one-shot `unregister('/firebase-messaging-sw.js')` on mount so existing users don't keep the dead FCM-only worker. Safe to remove once all installs have cycled.
 - **Notification chrome lives in one place**: background pushes call `showNotification` in `src/sw.js`; foreground pushes are forwarded there by `attachForegroundHandler` in `lib/notifications.js` so both look identical. `notificationclick` only opens **relative** paths (`safeRelativePath`) to block phishing via a crafted FCM payload.
+- **One-tap "Mark prayed" action**: prayer reminders carry `data.prayer`, so both display paths add a `mark-prayed` notification action. The SW can't write Firestore with the user's auth, so `notificationclick` for that action opens/focuses the app at `/?markPrayer=<Prayer>` (encodeURIComponent-guarded, always app-relative); Planner consumes the param once on boot via `parsePrayerMarkParam` ([lib/prayer.js](src/lib/prayer.js), validated against the five fard — never Sunrise), logs it idempotently (skips if already prayed), jumps to the Prayer view, and strips the param. Action buttons degrade gracefully — where a platform doesn't support them, the notification still shows and a body tap opens the app as before.
 
 ### Firestore security rules
 

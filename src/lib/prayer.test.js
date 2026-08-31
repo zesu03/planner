@@ -1,5 +1,22 @@
 import { describe, it, expect } from "vitest";
-import { isFriday, prayerDisplayName, nextPrayer, prayerTimesMirrorFresh } from "./prayer";
+import { isFriday, prayerDisplayName, nextPrayer, prayerTimesMirrorFresh, parsePrayerMarkParam } from "./prayer";
+
+const FARD = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
+
+describe("parsePrayerMarkParam", () => {
+  it("returns the prayer when present and valid", () => {
+    expect(parsePrayerMarkParam("?markPrayer=Maghrib", FARD)).toBe("Maghrib");
+    expect(parsePrayerMarkParam("markPrayer=Fajr", FARD)).toBe("Fajr");
+    expect(parsePrayerMarkParam("?foo=1&markPrayer=Isha&bar=2", FARD)).toBe("Isha");
+  });
+  it("returns null when absent, invalid, or Sunrise", () => {
+    expect(parsePrayerMarkParam("", FARD)).toBeNull();
+    expect(parsePrayerMarkParam("?other=1", FARD)).toBeNull();
+    expect(parsePrayerMarkParam("?markPrayer=Sunrise", FARD)).toBeNull();
+    expect(parsePrayerMarkParam("?markPrayer=Nope", FARD)).toBeNull();
+    expect(parsePrayerMarkParam(undefined, FARD)).toBeNull();
+  });
+});
 
 // 2026-08-07 is a Friday; 08-06 Thu, 08-08 Sat. (TZ pinned to UTC in config.)
 describe("isFriday", () => {

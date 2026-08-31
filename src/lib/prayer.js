@@ -174,3 +174,16 @@ export function nextPrayer(prayerTimes, prayerLog, today, now = new Date(), prev
   }
   return { name: "Fajr", time: prayerTimes.Fajr, tomorrow: true };
 }
+
+// Read a "mark this prayer" instruction from a URL query string. The push
+// notification's "Mark prayed" action opens the app at /?markPrayer=<Prayer>;
+// Planner consumes this once on boot. Returns the prayer name only if present
+// AND in `valid` (the five fard — never Sunrise), else null.
+export function parsePrayerMarkParam(search, valid = []) {
+  try {
+    const p = new URLSearchParams(search || "").get("markPrayer");
+    return p && valid.includes(p) ? p : null;
+  } catch {
+    return null;
+  }
+}

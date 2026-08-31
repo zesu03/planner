@@ -20,8 +20,8 @@ import { todayStr, daysLeft, addDaysToStr } from "./lib/dates";
 import { isGoalDone, pct } from "./lib/goals";
 import { isMuhasabaFilled, muhasabaStreak } from "./lib/muhasaba";
 import { qazaOwed, QAZA_PRAYERS } from "./lib/qaza";
-import { nextPrayer as computeNextPrayer } from "./lib/prayer";
-import { normalizeJamaahTime } from "./lib/jamaah";
+import { nextPrayer as computeNextPrayer, parsePrayerMarkParam } from "./lib/prayer";
+import { normalizeJamaahTime, FARD } from "./lib/jamaah";
 import { dayPhase, prayersToday, focusToday, muhasabaState, yesterdayDua, firstOpenTask, istiqamahStreak, istiqamahActiveToday } from "./lib/daily";
 import { fmtTime, focusStreakDays, STREAK_MILESTONES } from "./lib/focus";
 import { rewardMilestone } from "./lib/feedback";
@@ -454,6 +454,26 @@ export default function Planner({ user }) {
     togglePrayerLogOnDay, prayerDayFor, togglePrayerLog,
     prayerDoneToday, canMarkPrayer, prayerStreak,
   } = usePrayerLog({ prayerLog, prayerTimes, applyPrayerLogUpdate, applyQazaUpdate });
+
+  // Consume the "Mark prayed" push-notification action. The SW opens the app at
+  // /?markPrayer=<Prayer>; here we log it once (idempotent — skip if already
+  // done), jump to the Prayer view, and strip the param so a refresh can't
+  // re-fire. Runs once, after the doc has loaded (so prayerDoneToday is real).
+  const markConsumedRef = useRef(false);
+  useEffect(() => {
+    if (markConsumedRef.current || !loaded) return;
+    markConsumedRef.current = true;
+    const prayer = parsePrayerMarkParam(window.location.search, FARD);
+    if (prayer) {
+      if (!prayerDoneToday(prayer)) togglePrayerLog(prayer);
+      setView("prayer");
+      const params = new URLSearchParams(window.location.search);
+      params.delete("markPrayer");
+      const qs = params.toString();
+      window.history.replaceState({}, "", window.location.pathname + (qs ? `?${qs}` : ""));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]);
 
   // Onboarding hooks — MUST live above the loading-guard early return
   // below; React requires the same number of hooks on every render, so

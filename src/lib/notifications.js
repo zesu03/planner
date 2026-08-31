@@ -154,12 +154,18 @@ export async function attachForegroundHandler() {
       if (!reg) return;
       const title = payload.notification?.title || "Reminder";
       const body = payload.notification?.body || "";
+      const prayer = payload.data?.prayer;
       await reg.showNotification(title, {
         body,
         icon: "/icon.svg",
         badge: "/icon.svg",
         tag: payload.data?.tag || "prayer-reminder",
         renotify: true,
+        // Keep the "Mark prayed" action + data on foreground notifications too,
+        // so a click routes through the SW's notificationclick handler
+        // identically to a background push (see src/sw.js).
+        actions: prayer ? [{ action: "mark-prayed", title: "✓ Mark prayed" }] : [],
+        data: payload.data || {},
       });
     } catch { /* silent — best-effort foreground display */ }
   });
