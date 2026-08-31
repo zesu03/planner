@@ -22,6 +22,13 @@ jsdom via a `// @vitest-environment jsdom` docblock. A real Firestore-emulator s
 is deferred (needs Java + firebase-tools). When you change a `lib/` helper, a sync
 invariant, or the hook's write/subscribe behaviour, update its test.
 
+**Component render tests** are supported: `vitest.config.js` sets `esbuild: { jsx:
+'automatic' }` so the test transform matches the app's Vite build — source
+components (which never `import React`) mount under `@testing-library/react`
+without a React import. Presentational components extracted from a view get a
+`// @vitest-environment jsdom` render test that asserts they render and that
+each interaction routes through the passed callback (see `components/muhasaba/*.test.jsx`).
+
 There is still no linter or type-checker configured. Don't add one without asking.
 
 The **service worker is build-only**: vite-plugin-pwa compiles `src/sw.js` → `dist/sw.js` during `npm run build` (with the Workbox precache manifest injected). `npm run dev` does **not** serve it, so offline boot and background FCM pushes can't be tested against the dev server — use `npm run build && npm run preview` (or a deploy) for anything touching the SW.
@@ -130,6 +137,14 @@ src/
     focus/             SessionBanner (session-complete celebration + note),
                        TodayStrip (daily-goal readout + 7-day bars). Both
                        presentational, moved out of views/Pomodoro.jsx.
+    muhasaba/          the Muhasaba view's sections, extracted from
+                       views/Muhasaba.jsx (Phase 5): MirrorContent (AI report
+                       renderer + reportPreviewText), Section + Collapsible
+                       (layout wrappers), DuaVerdict, GoalChecks, and the five
+                       pillars FaraidSection / ManhiyatSection / GhaflahSection /
+                       NiyyahSection / ShukrSection. Each takes `entry` + the
+                       specific updater callbacks as props; the view owns the
+                       state. Render-tested (see Testing).
 
   views/               one file per tab
     Dashboard, GoalsList, GoalAdd, GoalDetail, Prayer, Pomodoro, Muhasaba, Stats
