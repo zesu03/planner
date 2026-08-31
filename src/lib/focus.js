@@ -44,3 +44,33 @@ export const focusStreakDays = (focusLog, goalMins) => {
 
 // Round-number streak milestones used by celebration toasts.
 export const STREAK_MILESTONES = [7, 14, 30, 60, 100, 200, 365];
+
+// Sum focusLog minutes for a YYYY-MM-DD key. (Moved from views/Pomodoro.jsx.)
+export function minsForDay(focusLog, dayKey) {
+  return focusLog.reduce((s, l) => (l.day === dayKey ? s + (l.mins || 0) : s), 0);
+}
+
+// Parse a duration the user typed into minutes. Accepts plain minutes ("90"),
+// hours ("2h", "1.5h"), and hours+minutes ("2h30", "2:30"). Returns null when
+// it can't parse, so callers can fall back to the previous value.
+export function parseDuration(str) {
+  if (str == null) return null;
+  const s = String(str).trim().toLowerCase().replace(/\s+/g, "");
+  if (!s) return null;
+  let m;
+  // "2h30", "2:30", "2h30m"
+  if ((m = s.match(/^(\d+)(?:h|:)(\d+)m?$/))) return (+m[1]) * 60 + (+m[2]);
+  // "2h", "1.5h"
+  if ((m = s.match(/^(\d*\.?\d+)h$/))) return Math.round(parseFloat(m[1]) * 60);
+  // "90m", "90"
+  if ((m = s.match(/^(\d+)m?$/))) return +m[1];
+  return null;
+}
+
+// Format minutes as a compact duration for an input value: "90" stays "90",
+// but 120 -> "2h", 150 -> "2h30". Keeps the edit field friendly.
+export function durationInputValue(mins) {
+  if (mins % 60 === 0 && mins >= 60) return `${mins / 60}h`;
+  if (mins > 60) return `${Math.floor(mins / 60)}h${mins % 60}`;
+  return String(mins);
+}
