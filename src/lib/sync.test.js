@@ -22,6 +22,7 @@ import {
   settingsDelta,
   pickClientOwnedNotifications,
   deriveConnBadge,
+  relativeSyncLabel,
 } from "./sync";
 
 // These lock the write-safety invariants that prevent data loss. Each block
@@ -168,6 +169,27 @@ describe("deriveConnBadge — surfaces the un-synced state (no silent loss)", ()
   });
   it("offline outranks a stuck in-flight write", () => {
     expect(deriveConnBadge({ ...base, online: false, syncState: "saving" }).kind).toBe("offline");
+  });
+});
+
+describe("relativeSyncLabel — the 'Saved · <when>' reassurance", () => {
+  const t0 = 1_000_000_000_000;
+  it("is empty without a timestamp", () => {
+    expect(relativeSyncLabel(null)).toBe("");
+    expect(relativeSyncLabel(0)).toBe("");
+    expect(relativeSyncLabel(undefined)).toBe("");
+  });
+  it("reads 'just now' within 10s and seconds up to a minute", () => {
+    expect(relativeSyncLabel(t0, t0 + 3_000)).toBe("just now");
+    expect(relativeSyncLabel(t0, t0 + 42_000)).toBe("42s ago");
+  });
+  it("rolls up to minutes, hours, days", () => {
+    expect(relativeSyncLabel(t0, t0 + 5 * 60_000)).toBe("5m ago");
+    expect(relativeSyncLabel(t0, t0 + 3 * 3_600_000)).toBe("3h ago");
+    expect(relativeSyncLabel(t0, t0 + 2 * 86_400_000)).toBe("2d ago");
+  });
+  it("clamps a future/again-now timestamp to 'just now'", () => {
+    expect(relativeSyncLabel(t0, t0 - 5_000)).toBe("just now");
   });
 });
 
