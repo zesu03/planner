@@ -48,14 +48,14 @@
 
 import admin from "firebase-admin";
 import { initServerMonitoring, captureServerException, flushMonitoring } from "./_monitoring.js";
-import { toAladhanDate, resolveLocation, aladhanUrl, extractTimes, prayerDisplayName } from "./_prayer.js";
+import { toAladhanDate, resolveLocation, aladhanUrl, extractTimes, prayerDisplayName, methodSchoolParam } from "./_prayer.js";
 
 initServerMonitoring();
 
 // Fetch today's five fard times for a resolved location from Aladhan. Returns
 // a bare-HH:MM map or null on any failure (network, bad response, no location).
-async function fetchAladhanTimes(location, ymdDate) {
-  const url = aladhanUrl(location, toAladhanDate(ymdDate));
+async function fetchAladhanTimes(location, ymdDate, methodSchool) {
+  const url = aladhanUrl(location, toAladhanDate(ymdDate), methodSchool);
   if (!url) return null;
   try {
     const res = await fetch(url);
@@ -81,8 +81,11 @@ async function getTimesForUser(data, local, cache, ref) {
   const loc = resolveLocation(data.settings);
   if (loc.kind === "none") return null;
 
-  const memoKey = `${loc.key}|${local.date}`;
-  if (!cache.has(memoKey)) cache.set(memoKey, fetchAladhanTimes(loc, local.date));
+  // Include the calc method/madhab in the memo key — two users at the same
+  // location but different settings must NOT share a cached fetch.
+  const methodSchool = methodSchoolParam(data.settings?.prayerMethod, data.settings?.prayerSchool);
+  const memoKey = `${loc.key}|${methodSchool}|${local.date}`;
+  if (!cache.has(memoKey)) cache.set(memoKey, fetchAladhanTimes(loc, local.date, methodSchool));
   const times = await cache.get(memoKey);
   if (!times) return null;
 

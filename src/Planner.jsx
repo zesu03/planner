@@ -118,8 +118,9 @@ export default function Planner({ user }) {
   const {
     prayerTimes, prayerCity, cityInput, countryInput,
     prayerLoading, prayerError, hijriDate,
+    prayerMethod, prayerSchool,
     setCityInput, setCountryInput,
-    fetchPrayers, fetchByGeo,
+    fetchPrayers, fetchByGeo, setPrayerCalc,
   } = usePrayer({ settingsFromDb, userSettings, updateSettings, notifications, updateNotifications });
 
   // "Change city" mode — lifted out of the Prayer view so the page header's
@@ -1058,6 +1059,9 @@ export default function Planner({ user }) {
           setCountryInput={setCountryInput}
           fetchPrayers={fetchPrayers}
           fetchByGeo={fetchByGeo}
+          prayerMethod={prayerMethod}
+          prayerSchool={prayerSchool}
+          setPrayerCalc={setPrayerCalc}
           togglePrayerLog={togglePrayerLog}
           togglePrayerLogOnDay={togglePrayerLogOnDay}
           prayerDoneToday={prayerDoneToday}

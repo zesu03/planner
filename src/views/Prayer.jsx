@@ -3,6 +3,7 @@ import { PRAYERS, PRAYER_COLORS, VOLUNTARY_PRAYERS } from "../lib/constants";
 import { PrayerIcon, Icon } from "../components/icons";
 import { localDateStr } from "../lib/dates";
 import { currentPrayerWindow, prayerDisplayName } from "../lib/prayer";
+import { CALC_METHODS, ASR_SCHOOLS } from "../lib/prayerConfig";
 import { rewardPrayerMark } from "../lib/feedback";
 import {
   currentPermission,
@@ -41,6 +42,9 @@ export default function Prayer({
   setCountryInput,
   fetchPrayers,
   fetchByGeo,
+  prayerMethod,
+  prayerSchool,
+  setPrayerCalc,
   togglePrayerLog,
   togglePrayerLogOnDay,
   prayerDoneToday,
@@ -96,6 +100,29 @@ export default function Prayer({
                 style={{ width: "100%", boxSizing: "border-box", fontSize: 15 }} />
             </div>
           </div>
+          {/* Calculation method + Asr madhab. Method sets the Fajr/Isha angle
+              convention; Asr school picks the shadow-length rule (Ḥanafī = later
+              Asr). Changing either re-fetches the current location in place. */}
+          {setPrayerCalc && (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Calculation method</label>
+                <select value={prayerMethod}
+                  onChange={(e) => setPrayerCalc(Number(e.target.value), prayerSchool)}
+                  style={{ width: "100%", boxSizing: "border-box", fontSize: 15 }}>
+                  {CALC_METHODS.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Asr (madhab)</label>
+                <select value={prayerSchool}
+                  onChange={(e) => setPrayerCalc(prayerMethod, Number(e.target.value))}
+                  style={{ width: "100%", boxSizing: "border-box", fontSize: 15 }}>
+                  {ASR_SCHOOLS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button onClick={() => fetchPrayers(cityInput, countryInput)}
               disabled={prayerLoading || !cityInput.trim() || !countryInput.trim()}

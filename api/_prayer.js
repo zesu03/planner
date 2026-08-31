@@ -4,9 +4,28 @@
 // testable bits.
 
 export const ALADHAN_BASE = "https://api.aladhan.com/v1";
-// ISNA method + Hanafi Asr — must match the client (usePrayer) so server-fetched
-// times line up with what the user sees in-app.
-const METHOD_SCHOOL = "method=2&school=1";
+
+// Calculation method + Asr madhab. Kept in lockstep with the client
+// (src/lib/prayerConfig — the method-id set + defaults must match) so
+// server-fetched times line up with what the user sees in-app. api/ stays
+// self-contained (no cross-import from src/), as it did for the old const.
+const DEFAULT_METHOD = 2; // ISNA
+const DEFAULT_SCHOOL = 1; // Hanafi Asr
+const METHOD_IDS = new Set([3, 2, 5, 4, 1, 8, 9, 10, 11, 17, 20, 13, 12, 15, 0]);
+
+// Build `method=<m>&school=<s>` from a (possibly missing/corrupt) user setting,
+// falling back to the defaults so we never send a broken query.
+export function methodSchoolParam(method, school) {
+  // Guard null/"" before coercion: Number(null) === 0, and 0 is a valid method
+  // id / Asr school, so a bare coercion would turn "unset" into a real value.
+  const mOk = method != null && method !== "" && METHOD_IDS.has(Number(method));
+  const m = mOk ? Number(method) : DEFAULT_METHOD;
+  const sOk = school != null && school !== "" && (Number(school) === 0 || Number(school) === 1);
+  const s = sOk ? Number(school) : DEFAULT_SCHOOL;
+  return `method=${m}&school=${s}`;
+}
+
+export const DEFAULT_METHOD_SCHOOL = methodSchoolParam(DEFAULT_METHOD, DEFAULT_SCHOOL); // "method=2&school=1"
 
 // "YYYY-MM-DD" -> "DD-MM-YYYY" (Aladhan's path date format). null if malformed.
 export function toAladhanDate(ymd) {
@@ -33,15 +52,16 @@ export function resolveLocation(settings) {
   return { kind: "none", key: null };
 }
 
-// Aladhan request URL for a resolved location + Aladhan-format date. null if
-// the location isn't fetchable.
-export function aladhanUrl(location, aladhanDate) {
+// Aladhan request URL for a resolved location + Aladhan-format date. `methodSchool`
+// is the `method=…&school=…` fragment (from the user's settings via
+// methodSchoolParam); defaults to ISNA/Hanafi. null if the location isn't fetchable.
+export function aladhanUrl(location, aladhanDate, methodSchool = DEFAULT_METHOD_SCHOOL) {
   if (!location || !aladhanDate) return null;
   if (location.kind === "coords") {
-    return `${ALADHAN_BASE}/timings/${aladhanDate}?latitude=${encodeURIComponent(location.lat)}&longitude=${encodeURIComponent(location.lng)}&${METHOD_SCHOOL}`;
+    return `${ALADHAN_BASE}/timings/${aladhanDate}?latitude=${encodeURIComponent(location.lat)}&longitude=${encodeURIComponent(location.lng)}&${methodSchool}`;
   }
   if (location.kind === "city") {
-    return `${ALADHAN_BASE}/timingsByCity/${aladhanDate}?city=${encodeURIComponent(location.city)}&country=${encodeURIComponent(location.country)}&${METHOD_SCHOOL}`;
+    return `${ALADHAN_BASE}/timingsByCity/${aladhanDate}?city=${encodeURIComponent(location.city)}&country=${encodeURIComponent(location.country)}&${methodSchool}`;
   }
   return null;
 }
