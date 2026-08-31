@@ -5,6 +5,8 @@
 //   { kind: "focusStreak", count }    — N consecutive days meeting the focus goal
 //   { kind: "muhasabaStreak", count } — N consecutive nights of muhasaba
 //   { kind: "istiqamahStreak", count }— N consecutive days of showing up
+//   { kind: "allPrayers" }            — all five fard prayed today
+//   { kind: "qazaCleared" }           — every missed prayer made up (owed → 0)
 //
 // Streak kinds get a "number-hero" layout: the count is a large gold numeral,
 // a crafted glyph sits in a badge whose glow intensifies with the milestone
@@ -74,6 +76,25 @@ function variantFor(celebration) {
   if (celebration.kind === "istiqamahStreak") {
     return { ...streakBase, accent: "var(--noor)", glyph: "flame", unit: "days",
       eyebrow: "Istiqāmah", sub: "The most beloved deeds to Allah are the constant ones.", actionLabel: "Open" };
+  }
+  // Non-streak "win" toasts — surface a good day as warmly as the app names gaps.
+  if (celebration.kind === "allPrayers") {
+    return {
+      streak: false, accent: "var(--gold)", glyph: "sparkle",
+      eyebrow: "Alhamdulillah · all five today",
+      title: "Every fard prayed",
+      sub: "May Allah accept them — the day kept whole.",
+      actionLabel: "Open",
+    };
+  }
+  if (celebration.kind === "qazaCleared") {
+    return {
+      streak: false, accent: "var(--noor)", glyph: "moon",
+      eyebrow: "Qaza cleared",
+      title: "Every missed prayer made up",
+      sub: "The slate is clean — alhamdulillah. May Allah accept the return.",
+      actionLabel: "Open",
+    };
   }
   return null;
 }

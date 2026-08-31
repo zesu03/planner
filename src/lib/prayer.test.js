@@ -1,7 +1,24 @@
 import { describe, it, expect } from "vitest";
-import { isFriday, prayerDisplayName, nextPrayer, prayerTimesMirrorFresh, parsePrayerMarkParam } from "./prayer";
+import { isFriday, prayerDisplayName, nextPrayer, prayerTimesMirrorFresh, parsePrayerMarkParam, allFardDone } from "./prayer";
 
 const FARD = ["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"];
+
+describe("allFardDone", () => {
+  const full = (day) => ({ Fajr: [day], Dhuhr: [day], Asr: [day], Maghrib: [day], Isha: [day] });
+  it("true only when all five fard are logged for the day", () => {
+    expect(allFardDone(full("2026-08-31"), "2026-08-31")).toBe(true);
+  });
+  it("false when any is missing", () => {
+    const log = full("2026-08-31");
+    delete log.Asr;
+    expect(allFardDone(log, "2026-08-31")).toBe(false);
+  });
+  it("false for a different day, and tolerates an empty/absent log", () => {
+    expect(allFardDone(full("2026-08-31"), "2026-08-30")).toBe(false);
+    expect(allFardDone({}, "2026-08-31")).toBe(false);
+    expect(allFardDone(undefined, "2026-08-31")).toBe(false);
+  });
+});
 
 describe("parsePrayerMarkParam", () => {
   it("returns the prayer when present and valid", () => {
