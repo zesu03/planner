@@ -8,8 +8,8 @@
 
 | # | Improvement | Value | Effort | Risk | Status |
 |---|---|---|---|---|---|
-| 1 | Configurable calculation method + Asr madhab | High | S | Low | **in progress** |
-| 2 | Prayer-aware focus timer (nudge near a prayer window) | High | M | Low-Med | planned |
+| 1 | Configurable calculation method + Asr madhab | High | S | Low | **shipped** |
+| 2 | Prayer-aware focus timer (+ optional jamā'ah times) | High | M | Low-Med | **shipped** |
 | 3 | One-tap "Mark prayed" from the reminder notification | High | M | Med | planned |
 | 4 | Muhasaba "quick reckoning" (tiny minimum entry) | Med-High | S-M | Low | planned |
 | 5 | Trust: "last synced" line + self-serve restore/import | Med-High | M | Med | planned |
@@ -44,20 +44,21 @@ feature. There is no `calcMethod`/`madhab` in `settings`.
 **DoD:** picker changes the fetched times; server cron honours the same setting;
 default path is byte-identical to today; suite green.
 
-## 2. Prayer-aware focus timer
+## 2. Prayer-aware focus timer (+ optional jamā'ah times) — **shipped**
 
-**Why.** The app's whole promise is fusing worship + work, yet `useFocusTimer`
-has zero awareness of prayer times — a 50-min block can blow past Maghrib and
-the app says nothing. This is the signature moment neither a productivity app
-nor a prayer app offers.
+**Why.** The app's whole promise is fusing worship + work, yet the focus timer
+had zero awareness of prayer times — a 50-min block can blow past Maghrib and
+the app says nothing. And prayer *start* times (Aladhan) differ from a mosque's
+actual *jamā'ah* times, so counting down to the start would mis-fire for anyone
+praying in congregation.
 
-**Approach.** Pass `prayerTimes` + the next-prayer computation into
-`useFocusTimer` (or compute a "minutes to next prayer window" selector in
-Planner and hand it down). When a running focus session is within ~N minutes of
-the next fard start, show a gentle, dismissible in-dial nudge ("Maghrib in ~6
-min — good place to pause?"). No auto-stop; the user decides. Pure "minutes
-until" helper in `lib/` gets unit tests; the nudge is a small presentational
-addition. Respect `prefers-reduced-motion` / no sound spam.
+**Shipped.** `lib/jamaah.js` (pure, tested): optional `settings.jamaahTimes`
+per prayer; `effectivePrayerTime` = jamā'ah if set else Aladhan start;
+`nextPrayerNudge` finds the next upcoming fard by effective time, skipping
+prayers already prayed / past today. The Pomodoro view shows a gentle,
+dismissible "prayer soon" banner while a session runs (within
+`NUDGE_THRESHOLD_MINS`); it never auto-stops. The Prayer view gained an optional
+collapsed "Jamā'ah times" editor (five `type=time` inputs). +14 tests.
 
 ## 3. One-tap "Mark prayed" from the reminder push
 
