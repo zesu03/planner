@@ -76,6 +76,16 @@ src/
                        reset/end-early semantics, pom-duration persistence
     useGoals.js        data-only goal/task write callbacks (no UI, no confirm,
                        no navigation — those live in the consumer)
+    useSavedVerses.js  save/remove/isSaved for bookmarked ayat (dedupe by
+                       verseKey; the confirm wrapper stays in Planner)
+    useReport.js       AI Mirror: aiLoadingDay/aiError state + auto-clear,
+                       buildReportPayload, token-gated generateReport + cooldown
+    usePrayerLog.js    prayer-marking rules: day attribution, window gating,
+                       mark/unmark toggle (syncs the qaza ledger on retro-marks),
+                       per-prayer streak
+    useQaza.js         qaza ledger: the reconcile/settle/heal effect (with the
+                       wipe-guard monitoring tripwires — EXACT deps preserved)
+                       + pay/undo/adjust/addAll/target/excused callbacks
 
   contexts/            React contexts for components with large prop bags
     GoalDetailContext  exports <GoalDetailProvider> + useGoalDetail(). Planner
@@ -179,6 +189,10 @@ into `src/sw.js`. See the PWA / service worker section below.)
 - **usePrayer** — Aladhan timings, city persistence, geolocation
 - **useFocusTimer** — dial state, tick interval, session bookkeeping
 - **useGoals** — pure goal/task write callbacks (no UI side-effects)
+- **useSavedVerses** — bookmarked-ayah save/remove/isSaved (dedupe by verseKey)
+- **useReport** — AI Mirror state + payload build + token-gated generateReport
+- **usePrayerLog** — prayer marking rules (attribution, gating, toggle, streak)
+- **useQaza** — qaza reconcile/settle/heal effect + make-up/backlog/excused callbacks
 
 **Views are pure presentation.** They receive data + callbacks as props and never reach into Firestore directly. Each view is **`React.lazy`-loaded** (a single `<Suspense>` wraps the view dispatch in `Planner`), so a new view is code-split automatically — keep them default-exported. `firebase/messaging` is likewise dynamically imported (loads only for push users). When adding a new write path, prefer extending the relevant hook over growing Planner. The Planner-level functions for goals (`addGoal`, `addTask`, `removeTask`, `deleteGoal`, `saveNotes`, etc.) are thin wrappers that wire `useGoals` callbacks to local form state + confirms + navigation — keep that pattern.
 
