@@ -104,7 +104,9 @@ src/
                        goalChecksWindow (7-night muhasaba verdict strip),
                        lastActivityLabel. Each takes an optional `today` for tests.
     focus.js           getFocusSeconds, getBreakSeconds, fmtTime, fmtMins,
-                       focusStreakDays, STREAK_MILESTONES
+                       focusStreakDays, STREAK_MILESTONES, minsForDay,
+                       parseDuration, durationInputValue (last three moved
+                       out of views/Pomodoro.jsx)
     audio.js           getAudioCtx, playTimerSound (Web Audio chime)
     notifications.js   FCM client: isNotificationsSupported, isIosNeedsInstall,
                        currentPermission, requestPermissionAndToken (full
@@ -125,6 +127,9 @@ src/
                        projection, backlog estimator + excused-days modals).
                        Rendered by the Prayer view; all writes via props.
     goal-form/         TypeToggle, CategoryTiles, DueChips, NiyyahChips
+    focus/             SessionBanner (session-complete celebration + note),
+                       TodayStrip (daily-goal readout + 7-day bars). Both
+                       presentational, moved out of views/Pomodoro.jsx.
 
   views/               one file per tab
     Dashboard, GoalsList, GoalAdd, GoalDetail, Prayer, Pomodoro, Muhasaba, Stats
