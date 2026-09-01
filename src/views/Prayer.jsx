@@ -45,6 +45,8 @@ export default function Prayer({
   prayerMethod,
   prayerSchool,
   setPrayerCalc,
+  jamaahTimes,
+  setJamaahTime,
   togglePrayerLog,
   togglePrayerLogOnDay,
   prayerDoneToday,
