@@ -91,12 +91,15 @@ a hard day. Pure — no schema change.
 `gpg`). Users can't fix their own data, and nothing reassures them when sync is
 healthy.
 
-**Approach.** (a) **shipped** — a quiet "✓ Saved · <when>" line in the header,
-shown only in the healthy steady state (`connBadge` null) once a server sync is
-confirmed; the pure `relativeSyncLabel` (lib/sync, tested) formats the relative
-time and a 30s ticker keeps it fresh. Reassurance when fine, not just alarm when
-broken — and it touches only the pure sync layer + the header render, never the
-write machinery. (b) **deferred** — a self-serve **import/restore** from the
+**Approach.** (a) **shipped** — a brief "✓ Saved" flash in the header, shown for
+~2.5s on a real save completion (Planner watches `syncState` for the
+`"saving" → "synced"` transition), gated by `!connBadge` so it never overlaps
+the alarm/"Saving…" states, then clears itself. Reassurance the moment a change
+lands, without cluttering every page. (The first cut anchored a relative
+"✓ Saved · <when>" label to *load time* with a 30s ticker — it counted upward
+forever ("32m ago"), reading as staleness, so it was replaced with the
+save-anchored flash.) Touches only the header render, never the write machinery.
+(b) **deferred** — a self-serve **import/restore** from the
 user's own JSON export. This writes across every field and is squarely in the
 durability core that's been fragile; it needs its own careful pass (validation,
 merge-vs-replace confirm, gating) rather than being rushed in alongside the

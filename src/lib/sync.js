@@ -206,22 +206,6 @@ export function deriveConnBadge({ loading, loaded, online, serverTimedOut, syncS
   return null;
 }
 
-// Compact relative-time label for the "Saved · <when>" reassurance line — the
-// counterpart to deriveConnBadge's alarm states (which only show when something
-// is WRONG). Shown when the badge is null (healthy) and we have a last-synced
-// timestamp, so the header reassures when fine, not just warns when broken.
-export function relativeSyncLabel(ms, now = Date.now()) {
-  if (!ms) return "";
-  const sec = Math.max(0, Math.floor((now - ms) / 1000));
-  if (sec < 10) return "just now";
-  if (sec < 60) return `${sec}s ago`;
-  const min = Math.floor(sec / 60);
-  if (min < 60) return `${min}m ago`;
-  const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr}h ago`;
-  return `${Math.floor(hr / 24)}d ago`;
-}
-
 // ── muhasaba (day-keyed map) ─────────────────────────────────────────────────
 
 // Which day-keys changed between two muhasaba maps: added/modified (reference
