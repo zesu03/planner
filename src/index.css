@@ -512,9 +512,15 @@ select:focus-visible {
 .muhasaba-mirror .teaser { font-size: var(--font-size-base); color: var(--text-secondary); font-style: italic; margin-top: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ── Dashboard bento — goals (left) | continuity/mirror rail (right).
-   Single column by default (mobile); 2-col on desktop. Mirrors .stats-grid. */
-.dash-bento { display: grid; grid-template-columns: 1fr; gap: 16px; align-items: start; }
-@media (min-width: 901px) { .dash-bento { grid-template-columns: 1.55fr 1fr; } }
+   Single column by default (mobile); 2-col on desktop. Mirrors .stats-grid.
+   Tracks are minmax(0, …) (NOT a bare 1fr) — a bare `1fr` carries an implicit
+   `auto` minimum, so one wide non-wrapping child (a long goal title, a qaza
+   line) forces the shared track wider than the viewport and every card in the
+   bento overflows uniformly. minmax(0, …) caps the track at the container
+   width; `min-width: 0` lets the grid items themselves shrink. */
+.dash-bento { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; }
+.dash-bento > * { min-width: 0; }
+@media (min-width: 901px) { .dash-bento { grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); } }
 
 /* ── NowCard split hero — prayer (left) | focus ring + action + streak (right).
    Stacks on mobile; 2-col with a divider on desktop. ── */
