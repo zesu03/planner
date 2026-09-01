@@ -22,7 +22,6 @@ import { isMuhasabaFilled, muhasabaStreak } from "./lib/muhasaba";
 import { qazaOwed, QAZA_PRAYERS } from "./lib/qaza";
 import { nextPrayer as computeNextPrayer, parsePrayerMarkParam, allFardDone } from "./lib/prayer";
 import { normalizeJamaahTime, FARD } from "./lib/jamaah";
-import { relativeSyncLabel } from "./lib/sync";
 import { dayPhase, prayersToday, focusToday, muhasabaState, yesterdayDua, firstOpenTask, istiqamahStreak, istiqamahActiveToday } from "./lib/daily";
 import { fmtTime, focusStreakDays, STREAK_MILESTONES } from "./lib/focus";
 import { rewardMilestone } from "./lib/feedback";
@@ -87,7 +86,7 @@ const VIEW_TITLES = {
 
 // ── main component ─────────────────────────────────────────────────────────
 export default function Planner({ user }) {
-  const { goals: goalsFromDb, prayerLog: prayerLogFromDb, focusLog: focusLogFromDb, settings: settingsFromDb, muhasaba: muhasabaFromDb, qaza: qazaFromDb, savedVerses: savedVersesFromDb, notifications: notificationsFromDb, loading, loaded, connBadge, updateGoals, updatePrayerLog, updateFocusLog, updateSettings, updateMuhasaba, updateQaza, updateSavedVerses, updateNotifications } = useUserData(user.uid);
+  const { goals: goalsFromDb, prayerLog: prayerLogFromDb, focusLog: focusLogFromDb, settings: settingsFromDb, muhasaba: muhasabaFromDb, qaza: qazaFromDb, savedVerses: savedVersesFromDb, notifications: notificationsFromDb, loading, loaded, connBadge, syncState, updateGoals, updatePrayerLog, updateFocusLog, updateSettings, updateMuhasaba, updateQaza, updateSavedVerses, updateNotifications } = useUserData(user.uid);
   const goals = goalsFromDb ?? [];
   const prayerLog = prayerLogFromDb ?? {};
   const focusLog = focusLogFromDb ?? [];
@@ -302,18 +301,25 @@ export default function Planner({ user }) {
   // double sound, same reasoning as the istiqāmah effect).
   const prevAllFardRef = useRef(null);
   useEffect(() => {
+    // Gate on `loaded` so the baseline is the first SERVER snapshot, not the
+    // empty pre-load state — otherwise opening the app after already praying
+    // all five reads as a false→true transition and re-celebrates every load.
+    if (!loaded) return;
     const done = allFardDone(prayerLog, todayStr());
     const prev = prevAllFardRef.current;
     prevAllFardRef.current = done;
     if (prev === null) return;
     if (done && !prev) setCelebration({ kind: "allPrayers" });
-  }, [prayerLog]);
+  }, [prayerLog, loaded]);
 
   // Qaza fully cleared — a momentous, rare milestone (owed → 0 from > 0). The
   // makeup tap doesn't chime, so a milestone chime is warranted here. Never
   // fires for a user who never had qaza (0 → 0 is not a transition).
   const prevQazaOwedTotalRef = useRef(null);
   useEffect(() => {
+    // Same load gate as the all-fard effect: baseline from the first server
+    // snapshot so a hydration/reconcile settle can't read as a clear event.
+    if (!loaded) return;
     const owed = qazaOwed(qaza);
     const total = QAZA_PRAYERS.reduce((s, p) => s + (owed[p] || 0), 0);
     const prev = prevQazaOwedTotalRef.current;
@@ -323,7 +329,7 @@ export default function Planner({ user }) {
       setCelebration({ kind: "qazaCleared" });
       rewardMilestone();
     }
-  }, [qaza]);
+  }, [qaza, loaded]);
 
   // Auto-dismiss after 12s. The timer resets if a new celebration replaces
   // the current one (because the dep changes).
@@ -333,19 +339,25 @@ export default function Planner({ user }) {
     return () => clearTimeout(t);
   }, [celebration]);
 
-  // "Saved · <when>" reassurance — the positive counterpart to connBadge, which
-  // only appears when something is WRONG. Record the instant we're confirmed in
-  // sync (badge null = healthy AND the doc has loaded from a server snapshot);
-  // a 30s ticker keeps the relative label fresh while it sits idle.
-  const [lastSyncAt, setLastSyncAt] = useState(null);
+  // "✓ Saved" flash — a brief, transient confirmation shown right AFTER a real
+  // save settles (syncState "saving" → "synced"), NOT a persistent badge. It's
+  // the positive counterpart to connBadge (which persists while something is
+  // wrong): this appears for a couple of seconds when a change actually lands,
+  // then clears — so the calm header isn't cluttered with a stale indicator on
+  // every page. Anchored to genuine write completions, never to load time.
+  const [justSaved, setJustSaved] = useState(false);
+  const prevSyncStateRef = useRef(syncState);
+  const savedTimerRef = useRef(null);
   useEffect(() => {
-    if (loaded && !connBadge) setLastSyncAt(Date.now());
-  }, [loaded, connBadge]);
-  const [, setSyncTick] = useState(0);
-  useEffect(() => {
-    const id = setInterval(() => setSyncTick((n) => n + 1), 30000);
-    return () => clearInterval(id);
-  }, []);
+    const prev = prevSyncStateRef.current;
+    prevSyncStateRef.current = syncState;
+    if (prev === "saving" && syncState === "synced") {
+      setJustSaved(true);
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current);
+      savedTimerRef.current = setTimeout(() => setJustSaved(false), 2500);
+    }
+  }, [syncState]);
+  useEffect(() => () => { if (savedTimerRef.current) clearTimeout(savedTimerRef.current); }, []);
 
   // Foreground FCM handler. When the app is open, FCM delivers via onMessage
   // and the browser does NOT show a system notification automatically; this
@@ -991,10 +1003,11 @@ export default function Planner({ user }) {
               {connBadge.kind === "error" ? "⚠ " : ""}{connBadge.text}
             </span>
           )}
-          {/* Positive reassurance — shown only in the healthy steady state
-              (badge null) once we've confirmed a server sync. Quiet + muted so
-              it reassures without nagging; refreshes every 30s. */}
-          {!connBadge && lastSyncAt && (
+          {/* Positive reassurance — a brief flash the moment a change actually
+              saves, not a persistent badge. Only in the healthy state (badge
+              null); clears itself after a couple of seconds so it never sits on
+              every page. */}
+          {!connBadge && justSaved && (
             <span
               title="Your changes are saved to the server and synced across your devices."
               style={{
@@ -1004,7 +1017,7 @@ export default function Planner({ user }) {
                 whiteSpace: "nowrap",
               }}>
               <span style={{ color: "var(--color-text-success)" }}>✓</span>
-              Saved · {relativeSyncLabel(lastSyncAt)}
+              Saved
             </span>
           )}
           {pomRunning && <span style={{fontSize:14,padding:"3px 10px",borderRadius:99,background:goldA(15),color:"var(--gold)",fontWeight:500}}>● Focus {fmtTime(pomSeconds)}</span>}
