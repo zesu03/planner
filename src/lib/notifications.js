@@ -53,6 +53,55 @@ export function currentPermission() {
   return Notification.permission;
 }
 
+// Resolve a service-worker registration that actually has an ACTIVE worker.
+//
+// This app ships registerType:'autoUpdate' (the SW calls skipWaiting +
+// clientsClaim), so right after a deploy or a hard reload the worker can be
+// mid-swap: `navigator.serviceWorker.ready` resolves, but `.active` is briefly
+// null while the new worker is still activating. Passing such a registration to
+// getToken makes pushManager.subscribe throw
+//   "Subscription failed - no active Service Worker".
+// So we poll the registration until an active worker exists, with a timeout so
+// we never hang. Returns the registration (guaranteed `.active`) or null.
+async function activeSWRegistration(timeoutMs = 12000) {
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return null;
+  const deadline = Date.now() + timeoutMs;
+  let reg = (await navigator.serviceWorker.getRegistration()) || null;
+  // Nothing registered yet (first load) — `ready` resolves once one is active
+  // (or installs vite-plugin-pwa's). Race a timeout so a failed registration
+  // can't hang the opt-in forever.
+  if (!reg) {
+    try {
+      reg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((_, rej) => setTimeout(() => rej(new Error("sw-timeout")), timeoutMs)),
+      ]);
+    } catch {
+      return null;
+    }
+  }
+  // Poll until the worker has finished activating.
+  while (reg && !reg.active && Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, 200));
+    reg = (await navigator.serviceWorker.getRegistration()) || reg;
+  }
+  return reg && reg.active ? reg : null;
+}
+
+// getToken, but resilient to the transient "no active Service Worker" swap
+// window: if the first attempt throws, wait briefly for the worker to settle
+// and try once more. Throws only if the retry also fails.
+async function getTokenResilient(messaging, vapidKey, swReg) {
+  const { getToken } = await import("firebase/messaging");
+  try {
+    return await getToken(messaging, { vapidKey, serviceWorkerRegistration: swReg });
+  } catch (e) {
+    await new Promise((r) => setTimeout(r, 700));
+    const swReg2 = (await activeSWRegistration(5000)) || swReg;
+    return await getToken(messaging, { vapidKey, serviceWorkerRegistration: swReg2 });
+  }
+}
+
 // Full opt-in flow. Returns { token, timezone } on success, or throws with
 // a user-displayable message. UI catches and shows the message.
 export async function requestPermissionAndToken() {
@@ -73,23 +122,17 @@ export async function requestPermissionAndToken() {
     throw new Error("Permission denied. You can re-enable in your browser's site settings.");
   }
 
-  // vite-plugin-pwa auto-registers /sw.js on page load. ready resolves once
-  // an active SW controls the page (or installs one if needed). But ready
-  // NEVER resolves if registration failed (or in `npm run dev`, where no SW
-  // is generated), which would hang the opt-in flow forever — so race it
-  // against a timeout and surface a retryable error instead.
-  const swReg = await Promise.race([
-    navigator.serviceWorker.ready,
-    new Promise((_, reject) =>
-      setTimeout(() => reject(new Error("Notifications service didn't start. Reload the page and try again.")), 10000)
-    ),
-  ]);
+  // Wait for a registration with an ACTIVE worker (not just `ready` — see
+  // activeSWRegistration: right after a deploy/hard-reload the autoUpdate SW is
+  // mid-swap and `.active` is briefly null, which is what makes subscribe throw
+  // "no active Service Worker"). Times out rather than hanging (`npm run dev`
+  // serves no SW, and a failed registration never activates).
+  const swReg = await activeSWRegistration(10000);
+  if (!swReg) {
+    throw new Error("Notifications service isn't ready yet. Reload the app and try again in a moment.");
+  }
   const messaging = await getMessagingIfSupported();
-  const { getToken } = await import("firebase/messaging");
-  const token = await getToken(messaging, {
-    vapidKey,
-    serviceWorkerRegistration: swReg,
-  });
+  const token = await getTokenResilient(messaging, vapidKey, swReg);
   if (!token) throw new Error("Couldn't obtain a notification token. Try again.");
 
   const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
@@ -113,14 +156,11 @@ export async function silentTokenRefresh() {
     if (!(await isNotificationsSupported())) return null;
     const vapidKey = import.meta.env.VITE_FIREBASE_VAPID_KEY;
     if (!vapidKey) return null;
-    const swReg = await Promise.race([
-      navigator.serviceWorker.ready,
-      new Promise((_, reject) => setTimeout(() => reject(new Error("sw-timeout")), 10000)),
-    ]);
+    const swReg = await activeSWRegistration(10000);
+    if (!swReg) return null;
     const messaging = await getMessagingIfSupported();
     if (!messaging) return null;
-    const { getToken } = await import("firebase/messaging");
-    const token = await getToken(messaging, { vapidKey, serviceWorkerRegistration: swReg });
+    const token = await getTokenResilient(messaging, vapidKey, swReg);
     if (!token) return null;
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
     return { token, timezone };
