@@ -78,6 +78,22 @@ describe("Prayer view", () => {
     expect(setJamaahTime).toHaveBeenCalledWith("Fajr", "05:30");
   });
 
+  it("shows the reminders diagnostic (device count + test button) only when enabled", () => {
+    render(<Prayer {...makeProps({ notifications: { prayer: { enabled: true }, fcmTokens: ["tok1"] } })} />);
+    expect(screen.getByText("Send a test")).toBeTruthy();
+    // The device-count line renders as split text nodes ("✓" span + count),
+    // so match the whole line via its element textContent.
+    expect(
+      screen.getByText((_content, el) => el?.textContent === "✓ 1 device registered")
+    ).toBeTruthy();
+    expect(screen.getByText(/checks permission \+ display/)).toBeTruthy();
+  });
+
+  it("hides the reminders diagnostic when reminders are off", () => {
+    render(<Prayer {...makeProps({ notifications: {} })} />);
+    expect(screen.queryByText("Send a test")).toBeNull();
+  });
+
   it("renders the location form with the calc-method picker and routes changes through setPrayerCalc", () => {
     const setPrayerCalc = vi.fn();
     render(<Prayer {...makeProps({ editingCity: true, setPrayerCalc })} />);
