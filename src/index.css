@@ -763,6 +763,16 @@ select:focus-visible {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* Opacity-only entrance for the top-level app wrapper. It must NOT use a
+   transform: an animated transform on an ancestor of the fixed bottom nav
+   turns it into that ancestor's containing block, so the "fixed" tab bar
+   would sit at the bottom of the (tall) content instead of the viewport —
+   i.e. only visible after scrolling down. Opacity is safe. */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 @keyframes popIn {
   0% { opacity: 0; transform: scale(0.7); }
   60% { opacity: 1; transform: scale(1.06); }
@@ -827,7 +837,7 @@ select:focus-visible {
 .loading-dots > span:nth-child(3) { animation-delay: 0.32s; }
 
 #root > * {
-  animation: fadeUp 0.35s ease-out;
+  animation: fadeIn 0.35s ease-out;
 }
 
 /* Animates the visible content of each tab view when switched. */
@@ -970,7 +980,13 @@ select:focus-visible {
   .app-header-date { margin-top: 2px; font-size: 12px; }
   /* (No padding-right reservation here — the theme toggle lives in the
       auth bar now, not floating in this header's corner.) */
+}
 
+/* Bottom-mounted navigation spans the whole sub-desktop range (below the
+   1024px sidebar breakpoint) so tablets and large / landscape phones get the
+   same thumb-reachable fixed bar as phones — not a cramped top strip that
+   scrolls the tabs off-screen. */
+@media (max-width: 1023px) {
   /* ── Mobile bottom-mounted navigation ─────────────────────────────────
      Top-of-page horizontal scroll on phones is wrong shape: thumb sits at
      the bottom, the active tab can scroll off-screen, and a long Goals
@@ -1044,12 +1060,18 @@ select:focus-visible {
 
 /* ── Desktop app shell (≥1024px) ─────────────────────────────────────────
    A sticky left sidebar (brand + vertical nav) beside the main content
-   column. Below 1024px the sidebar is hidden and the .tabbar takes over
-   (top on tablet 641–1023px, fixed-bottom on phones ≤640px), so the
-   mobile/tablet layouts are completely unchanged — the shell is additive.
-   iPad landscape (≥1024) gets the sidebar; iPad portrait (768–834) keeps
-   the top-tab layout. */
+   column. Below 1024px the sidebar is hidden and the .tabbar takes over as a
+   fixed thumb-reachable BOTTOM bar across the whole range (phones AND tablets
+   641–1023px) — no top strip. iPad landscape (≥1024) gets the sidebar; iPad
+   portrait (768–834) gets the bottom bar. */
 .planner-root { padding: var(--page-padding); max-width: 1280px; margin: 0 auto; }
+/* Horizontal-overflow safety net: clip (not hidden — clip creates no scroll
+   container, so it never breaks the fixed nav's viewport positioning or the
+   sticky sidebar, which lives in .app-shell, not here) so a single stray wide
+   child can never make the whole page scroll sideways on mobile. Views that
+   need horizontal scroll (wide tables, the focus heatmap) wrap themselves in
+   their own overflow-x:auto boxes, so those are unaffected. */
+.app-main { overflow-x: clip; }
 /* Focus dial base size (mobile/tablet); the desktop shell scales it up. */
 .focus-dial { width: 280px; height: 280px; }
 /* Focus console: stacked (main, then rail) on mobile; two columns on desktop
