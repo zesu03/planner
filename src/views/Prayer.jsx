@@ -547,6 +547,11 @@ function DayArc({ prayerTimes, prayerDoneToday }) {
 // change if we surface finer controls later.
 function RemindersPanel({ notifications, updateNotifications }) {
   const enabled = notifications?.prayer?.enabled === true;
+  // Diagnostics so a silently-broken setup is legible: how many devices have a
+  // live FCM token, and when the server last actually sent a push (max of the
+  // per-prayer lastSentAt ISO stamps — ISO sorts chronologically).
+  const tokenCount = Array.isArray(notifications?.fcmTokens) ? notifications.fcmTokens.length : 0;
+  const lastSentIso = Object.values(notifications?.lastSentAt || {}).filter(Boolean).sort().pop() || null;
   const [supported, setSupported] = useState(null);
   const [permission, setPermission] = useState("default");
   const [busy, setBusy] = useState(false);
@@ -601,6 +606,27 @@ function RemindersPanel({ notifications, updateNotifications }) {
       setError(e?.message || "Couldn't enable reminders.");
     }
     setBusy(false);
+  }
+
+  // Local display test — asks the active SW to show a notification right now.
+  // Verifies THIS device's permission + service-worker display path (the piece
+  // that was failing with "no active Service Worker"); it does NOT exercise the
+  // server/FCM round-trip, so it's honestly labelled below.
+  async function sendTest() {
+    setError("");
+    try {
+      const reg = await navigator.serviceWorker?.ready;
+      if (!reg) throw new Error("No active service worker on this device yet — reload and retry.");
+      await reg.showNotification("Test reminder ✓", {
+        body: "If you can see this, notifications display correctly on this device.",
+        icon: "/icon.svg",
+        badge: "/icon.svg",
+        tag: "prayer-test",
+        renotify: true,
+      });
+    } catch (e) {
+      setError(e?.message || "Couldn't show a test notification.");
+    }
   }
 
   // Switch visuals: a 44×24 track with a 20×20 knob that slides on toggle.
@@ -663,6 +689,37 @@ function RemindersPanel({ notifications, updateNotifications }) {
       )}
       {error && (
         <div role="alert" aria-live="polite" style={{ fontSize: 13, color: "var(--color-text-danger)", marginTop: 10 }}>{error}</div>
+      )}
+
+      {/* Diagnostics — visible once reminders are on, so a silent failure
+          (token never registered / server never sent) is legible without
+          waiting for a real prayer to (not) fire. */}
+      {enabled && (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: "0.5px solid var(--color-border-tertiary)" }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", lineHeight: 1.7 }}>
+              <div>
+                {tokenCount > 0 ? (
+                  <><span style={{ color: "var(--color-text-success)" }}>✓</span> {tokenCount} device{tokenCount === 1 ? "" : "s"} registered</>
+                ) : (
+                  <><span style={{ color: "var(--color-text-warning)" }}>⚠</span> No device registered — toggle off, then on</>
+                )}
+              </div>
+              <div>
+                {lastSentIso
+                  ? `Last reminder sent ${new Date(lastSentIso).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}`
+                  : "No reminder sent yet"}
+              </div>
+            </div>
+            <button type="button" onClick={sendTest}
+              style={{ fontSize: 12, padding: "6px 12px", whiteSpace: "nowrap" }}>
+              Send a test
+            </button>
+          </div>
+          <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 8, fontStyle: "italic", lineHeight: 1.5 }}>
+            “Send a test” shows a notification on this device only — it checks permission + display, not the server delivery.
+          </div>
+        </div>
       )}
     </div>
   );
