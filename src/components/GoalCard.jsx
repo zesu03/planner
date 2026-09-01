@@ -74,6 +74,8 @@ export default function GoalCard({ g, lastActivityDay, onSelect }) {
           className="serif"
           style={{
             flex: 1,
+            minWidth: 0,
+            overflowWrap: "anywhere",
             fontWeight: 600,
             fontSize: 16,
             lineHeight: 1.3,
