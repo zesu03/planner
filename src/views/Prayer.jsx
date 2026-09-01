@@ -5,6 +5,7 @@ import { localDateStr } from "../lib/dates";
 import { currentPrayerWindow, prayerDisplayName } from "../lib/prayer";
 import { CALC_METHODS, ASR_SCHOOLS } from "../lib/prayerConfig";
 import { rewardPrayerMark } from "../lib/feedback";
+import { toMinutes } from "../lib/jamaah";
 import {
   currentPermission,
   isIosNeedsInstall,
@@ -231,23 +232,61 @@ export default function Prayer({
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"].map((p) => {
+                      const color = PRAYER_COLORS[p];
                       const start = typeof prayerTimes?.[p] === "string" ? prayerTimes[p].replace(/\s*\(.+?\)\s*$/, "").trim() : null;
+                      const val = jamaahTimes?.[p] || "";
+                      const isSet = !!val;
+                      const jm = isSet ? toMinutes(val) : null;
+                      const sm = start ? toMinutes(start) : null;
+                      const offset = jm != null && sm != null ? jm - sm : null;
                       return (
-                        <div key={p} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                          <span style={{ display: "inline-flex", color: PRAYER_COLORS[p] }}><PrayerIcon name={p} size={16} /></span>
-                          <span style={{ flex: "1 1 auto", fontSize: 15 }}>
-                            {p}
-                            {start && <span style={{ color: "var(--text-muted)", fontSize: 12, marginLeft: 8 }}>starts {start}</span>}
-                          </span>
-                          <input type="time" value={jamaahTimes?.[p] || ""}
+                        <div key={p} style={{
+                          display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap",
+                          padding: "10px 12px",
+                          borderRadius: "var(--border-radius-md)",
+                          background: isSet ? `color-mix(in srgb, ${color} 9%, var(--bg-card))` : "var(--color-background-secondary)",
+                          border: `0.5px solid ${isSet ? `color-mix(in srgb, ${color} 45%, transparent)` : "var(--color-border-tertiary)"}`,
+                          transition: "background 0.2s, border-color 0.2s",
+                        }}>
+                          <span style={{
+                            width: 32, height: 32, borderRadius: 9, flexShrink: 0,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            background: `color-mix(in srgb, ${color} 16%, transparent)`, color,
+                          }}><PrayerIcon name={p} size={16} /></span>
+                          <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+                            <div style={{ fontSize: 15, fontWeight: 500, color: "var(--text-primary)" }}>{p}</div>
+                            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 1 }}>
+                              {start ? `Starts ${start}` : "Start time —"}
+                              {offset != null && offset > 0 && (
+                                <span style={{ color }}> · jamāʿah +{offset} min</span>
+                              )}
+                            </div>
+                          </div>
+                          <input type="time" value={val}
                             onChange={(e) => setJamaahTime(p, e.target.value)}
                             aria-label={`${p} jamāʿah time`}
-                            style={{ fontSize: 15, padding: "5px 8px" }} />
-                          {jamaahTimes?.[p] && (
-                            <button type="button" onClick={() => setJamaahTime(p, "")}
-                              aria-label={`Clear ${p} jamāʿah time`}
-                              style={{ fontSize: 12, padding: "4px 8px", color: "var(--text-muted)" }}>Clear</button>
-                          )}
+                            style={{
+                              width: 132, flexShrink: 0, fontSize: 15,
+                              padding: "7px 10px", textAlign: "center",
+                              color: isSet ? "var(--text-primary)" : "var(--text-muted)",
+                              borderColor: isSet ? `color-mix(in srgb, ${color} 50%, transparent)` : undefined,
+                              background: isSet ? `color-mix(in srgb, ${color} 6%, var(--input-bg))` : undefined,
+                            }} />
+                          <div style={{ width: 30, flexShrink: 0, display: "flex", justifyContent: "center" }}>
+                            {isSet && (
+                              <button type="button" onClick={() => setJamaahTime(p, "")}
+                                aria-label={`Clear ${p} jamāʿah time`} title="Clear"
+                                style={{
+                                  width: 30, height: 30, padding: 0,
+                                  display: "flex", alignItems: "center", justifyContent: "center",
+                                  borderRadius: 8, background: "transparent",
+                                  border: "0.5px solid var(--color-border-tertiary)",
+                                  color: "var(--text-muted)", cursor: "pointer",
+                                }}>
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12" /></svg>
+                              </button>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
