@@ -123,16 +123,16 @@ export default function TodayStrip({ focusLog, todayMins, streak, goalMins, onEd
         <span style={{ fontSize: 12, color: "var(--text-secondary)", fontVariantNumeric: "tabular-nums" }}>{fmtMins(weekTotal)} total</span>
       </div>
 
-      {/* 7-day bars over a shared baseline, with a dashed goal reference line.
+      {/* 7-day bars over a shared baseline, with an unlabelled dashed goal
+          reference line (the header above already names the target, so a tag
+          on the line was redundant chart-junk).
           Bars grow from the baseline (rounded top, square foot); a met day is
           solid jade rising past the line, a partial day is a jade wash — so
           height carries effort and the line carries "did I hit it". Today is
           marked by a spotlight column + bold label, never a stroke on the bar. */}
       <div style={{ position: "relative", height: 56 }}>
         {goalLinePct > 0 && (
-          <div style={{ position: "absolute", left: 0, right: 0, bottom: `${goalLinePct}%`, borderTop: `1px dashed ${noorA(55)}`, pointerEvents: "none" }}>
-            <span style={{ position: "absolute", right: 0, top: -7, fontSize: 9, fontWeight: 600, letterSpacing: "0.3px", textTransform: "uppercase", color: "var(--noor)", background: "var(--bg-card)", padding: "0 3px", lineHeight: 1 }}>goal</span>
-          </div>
+          <div style={{ position: "absolute", left: 0, right: 0, bottom: `${goalLinePct}%`, borderTop: `1px dashed ${noorA(55)}`, pointerEvents: "none" }} />
         )}
         {/* baseline the bars stand on */}
         <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: 1, background: "var(--color-border-tertiary)" }} />
