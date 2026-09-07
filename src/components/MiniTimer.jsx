@@ -75,7 +75,8 @@ export default function MiniTimer({ pomSeconds, pomRunning, total, ringColor = "
             opacity={paused ? 0.45 : 1}
             style={{ transition: "stroke-dashoffset 0.5s, opacity 0.3s" }} />
           <text x={VB / 2} y={VB / 2 - 4} textAnchor="middle"
-            style={{ fontSize: 42, fontWeight: 500, fill: paused ? "var(--gold)" : "var(--text-primary)", fontFamily: "monospace" }}>
+            className="serif"
+            style={{ fontSize: 42, fontWeight: 600, fill: paused ? "var(--gold)" : "var(--text-primary)", fontVariantNumeric: "tabular-nums", letterSpacing: "-1px" }}>
             {fmtTime(dialSecs)}
           </text>
           {!compact && (
