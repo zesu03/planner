@@ -1,4 +1,7 @@
 {
+  "redirects": [
+    { "source": "/guide", "destination": "/guide/" }
+  ],
   "rewrites": [
     { "source": "/((?!api/|@|src/|assets/|node_modules/)[^.]*)", "destination": "/" }
   ]
