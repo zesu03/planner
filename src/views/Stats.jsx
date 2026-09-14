@@ -103,7 +103,7 @@ function heatFill(a) {
 const StatChip = ({ icon, label, value, deltaLabel, direction }) => {
   const good = direction === "up_good" || direction === "down_good";
   const bad = direction === "down_bad" || direction === "up_bad";
-  const color = good ? "var(--color-text-success)" : bad ? "#c79338" : "var(--text-muted)";
+  const color = good ? "var(--color-text-success)" : bad ? "var(--color-text-warning)" : "var(--text-muted)";
   // Arrow only for signed numeric deltas (+12%, −15m, +1). Word labels
   // ("new this week", "rising", "×3", "3/7 days") already read as a
   // direction on their own — an arrow in front of them reads oddly.
@@ -165,7 +165,7 @@ export default function Stats({ goals, focusLog, muhasaba = {}, prayerLog = {}, 
             <div className="stats-hero-top">
               <div className="stats-hero-ring">
                 <svg width="74" height="74" viewBox="0 0 74 74" aria-hidden="true">
-                  <circle cx="37" cy="37" r="29" fill="none" stroke="var(--bg-secondary)" strokeWidth="8" />
+                  <circle cx="37" cy="37" r="29" fill="none" stroke="var(--color-background-secondary)" strokeWidth="8" />
                   <circle cx="37" cy="37" r="29" fill="none" stroke="var(--gold)" strokeWidth="8" strokeLinecap="round"
                     strokeDasharray={RING_C} strokeDashoffset={RING_C * (1 - heroPct / 100)}
                     transform="rotate(-90 37 37)" style={{ transition: "stroke-dashoffset 0.5s ease" }} />

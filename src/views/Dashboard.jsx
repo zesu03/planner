@@ -119,7 +119,7 @@ export default function Dashboard({
     <div className="view-content">
       {/* Hero — the single time-aware focal point: what to do right now,
           glanceable prayer/focus progress, one primary action, and the
-          istiqāmah streak. The detailed Morning/Evening rhythm follows below. */}
+          istiqāmah streak. The niyyah line + goals/continuity bento follow. */}
       <NowCard
         dayPhase={dayPhase}
         prayerTimesSet={!!prayerTimes}
@@ -142,6 +142,16 @@ export default function Dashboard({
         onOpenMuhasaba={() => { setMuhasabaDay(todayStr()); setView("muhasaba"); }}
         onOpenGoals={() => setView("add")}
       />
+
+      {/* Niyyah — the rotating intention, surfaced right under the hero as a
+          quiet centered line (it used to be buried at the very bottom of the
+          verse card, where it was rarely seen). Sets the day's tone up front. */}
+      {INTENTIONS[intentionIdx] && (
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 8, flexWrap: "wrap", textAlign: "center", maxWidth: 620, margin: "0 auto 18px" }}>
+          <span style={{ fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--gold)", fontWeight: 600, flexShrink: 0 }}>Niyyah</span>
+          <span style={{ fontSize: 13.5, color: "var(--text-secondary)", fontStyle: "italic", lineHeight: 1.5 }}>{INTENTIONS[intentionIdx]}</span>
+        </div>
+      )}
 
       {/* First-run onboarding — auto-dismisses when all three steps are done */}
       {showOnboarding && (() => {
@@ -180,15 +190,15 @@ export default function Dashboard({
                     gap: 12,
                     padding: "10px 12px",
                     borderRadius: "var(--border-radius-md)",
-                    background: s.done ? "rgba(127,190,143,0.08)" : "var(--color-background-secondary)",
-                    border: `0.5px solid ${s.done ? "rgba(127,190,143,0.32)" : "var(--color-border-tertiary)"}`,
+                    background: s.done ? "color-mix(in srgb, var(--color-text-success) 8%, transparent)" : "var(--color-background-secondary)",
+                    border: `0.5px solid ${s.done ? "color-mix(in srgb, var(--color-text-success) 32%, transparent)" : "var(--color-border-tertiary)"}`,
                     cursor: s.done ? "default" : "pointer",
                     opacity: s.done ? 0.7 : 1,
                   }}>
                   <span style={{
                     width: 28, height: 28, borderRadius: "50%",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    background: s.done ? "rgba(127,190,143,0.22)" : "var(--bg-card)",
+                    background: s.done ? "color-mix(in srgb, var(--color-text-success) 22%, transparent)" : "var(--bg-card)",
                     color: s.done ? "var(--color-text-success)" : "var(--text-secondary)",
                     fontSize: 14, fontWeight: 600, flexShrink: 0,
                   }}>
@@ -464,11 +474,6 @@ export default function Dashboard({
                   <span style={{ display: "inline-flex", verticalAlign: "middle", marginRight: 4 }}><Icon name="verse" size={13} /></span>{savedCount} saved
                 </button>
               )}
-            </div>
-            {/* niyyah lead-out — the rotating intention, folded into the
-                verse's closing moment rather than floating mid-page. */}
-            <div style={{ fontSize: 13, color: "var(--text-secondary)", fontStyle: "italic", marginTop: 16, maxWidth: 480, marginLeft: "auto", marginRight: "auto" }}>
-              {INTENTIONS[intentionIdx]}
             </div>
           </div>
         );

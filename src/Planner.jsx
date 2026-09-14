@@ -790,9 +790,9 @@ export default function Planner({ user }) {
   const dateLine = hijriDate ? `${englishDate} · ${hijriDate}` : englishDate;
 
   // ── dashboard daily loop ───────────────────────────────────────────────
-  // Replaces the old "right now" cycling hero. Morning + Evening panels are
-  // always both visible — phase decides which gets emphasised. Computation
-  // lives in lib/daily.js; Planner just wires data through.
+  // Time-of-day phase drives the NowCard hero's tone + the ambient body glow
+  // (the old Morning/Evening panels were removed in favour of NowCard +
+  // ContinuityStrip). Computation lives in lib/daily.js; Planner wires it through.
   const phase = dayPhase(prayerTimes);
   const yDuaInfo = yesterdayDua(muhasaba);
   const todayDuaText = muhasaba[todayStr()]?.duaTomorrow || null;
