@@ -28,6 +28,7 @@ import { fmtTime, focusStreakDays, STREAK_MILESTONES } from "./lib/focus";
 import { rewardMilestone } from "./lib/feedback";
 import { goldA, S } from "./lib/styles";
 import { attachForegroundHandler, silentTokenRefresh } from "./lib/notifications";
+import { mergeRefreshedToken } from "./lib/sync";
 import { setUser as setMonitoringUser } from "./lib/monitoring";
 import CelebrationToast from "./components/CelebrationToast";
 import ConfirmDialog from "./components/ConfirmDialog";
@@ -119,7 +120,7 @@ export default function Planner({ user }) {
   // persistence + restore-from-settings).
   const {
     prayerTimes, prayerCity, cityInput, countryInput,
-    prayerLoading, prayerError, hijriDate,
+    prayerLoading, prayerRestoring, prayerError, hijriDate,
     prayerMethod, prayerSchool,
     setCityInput, setCountryInput,
     fetchPrayers, fetchByGeo, setPrayerCalc,
@@ -388,14 +389,12 @@ export default function Planner({ user }) {
     (async () => {
       const res = await silentTokenRefresh();
       if (cancelled || !res?.token) return;
-      // updateNotifications now unions ONLY the added token (arrayUnion), so a
-      // still-valid token is a no-op and this never rewrites the whole
-      // (possibly server-pruned) token list.
-      updateNotifications((prev) => {
-        const toks = Array.isArray(prev?.fcmTokens) ? prev.fcmTokens : [];
-        if (toks.includes(res.token)) return prev; // already registered — no write
-        return { ...prev, fcmTokens: [...toks, res.token], timezone: res.timezone };
-      });
+      // mergeRefreshedToken unions ONLY a new token (arrayUnion, never rewriting
+      // the possibly server-pruned list) AND refreshes `timezone` when it has
+      // drifted — so a device that's travelled keeps getting reminders at the
+      // right local time even though its token is unchanged. Returns the same
+      // ref when nothing changed, so updateNotifications skips the write.
+      updateNotifications((prev) => mergeRefreshedToken(prev, res));
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -515,7 +514,7 @@ export default function Planner({ user }) {
   // per-prayer streak. All in usePrayerLog.
   const {
     togglePrayerLogOnDay, prayerDayFor, togglePrayerLog,
-    prayerDoneToday, canMarkPrayer, prayerStreak,
+    prayerDoneToday, canMarkPrayer, canMarkPrayerOnDay, prayerStreak,
   } = usePrayerLog({ prayerLog, prayerTimes, applyPrayerLogUpdate, applyQazaUpdate });
 
   // Consume the "Mark prayed" push-notification action. The SW opens the app at
@@ -1154,6 +1153,7 @@ export default function Planner({ user }) {
           prayerTimes={prayerTimes}
           prayerLog={prayerLog}
           prayerLoading={prayerLoading}
+          prayerRestoring={prayerRestoring}
           prayerError={prayerError}
           editingCity={editingCity}
           setEditingCity={setEditingCity}
@@ -1173,6 +1173,7 @@ export default function Planner({ user }) {
           togglePrayerLogOnDay={togglePrayerLogOnDay}
           prayerDoneToday={prayerDoneToday}
           canMarkPrayer={canMarkPrayer}
+          canMarkPrayerOnDay={canMarkPrayerOnDay}
           prayerStreak={prayerStreak}
           notifications={notifications}
           updateNotifications={updateNotifications}

@@ -63,6 +63,11 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings, notifi
   const [cityInput, setCityInput] = useState("");
   const [countryInput, setCountryInput] = useState("");
   const [prayerLoading, setPrayerLoading] = useState(false);
+  // Distinct from prayerLoading: true only while the one-shot restore-from-
+  // settings fetch is in flight on load. Lets the view show a "restoring…"
+  // placeholder instead of flashing the empty "Set your location" form to a
+  // returning user before their saved location resolves.
+  const [prayerRestoring, setPrayerRestoring] = useState(false);
   const [prayerError, setPrayerError] = useState("");
   const [hijriDate, setHijriDate] = useState("");
   const settingsAppliedRef = useRef(false);
@@ -101,8 +106,18 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings, notifi
         lastLocRef.current = { kind: "city", city, country };
         const h = data.data?.date?.hijri;
         if (h) setHijriDate(`${h.day} ${h.month.en} ${h.year} AH`);
+      } else {
+        // The saved city no longer resolves — surface it (soft) so the user
+        // understands why they're back on the location form.
+        setPrayerError("Couldn't restore your saved location — enter your city to continue.");
       }
-    } catch { /* silent — restore is best-effort */ }
+    } catch {
+      // A restore that FAILS should not fail silently — the user lands on the
+      // empty location form otherwise, with no idea the service was unreachable.
+      if (mySeq === fetchSeqRef.current) {
+        setPrayerError("Couldn't reach the prayer-time service — check your connection and try again.");
+      }
+    }
   }, []);
 
   // User-initiated city fetch. Persists the choice on success so it
@@ -186,12 +201,19 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings, notifi
         if (persist) {
           updateSettings((prev) => ({ ...prev, prayerLat: lat, prayerLng: lng }));
         }
-      } else if (!silent) {
-        setPrayerError("Could not get times for your location.");
+      } else {
+        // Surface even on the silent restore path (see fetchPrayersFromSettings)
+        // so a failed restore explains itself instead of dumping the user on
+        // the empty location form.
+        setPrayerError(silent
+          ? "Couldn't restore your saved location — enter your city to continue."
+          : "Could not get times for your location.");
       }
     } catch {
       if (mySeq !== fetchSeqRef.current) return;
-      if (!silent) setPrayerError("Failed to fetch.");
+      setPrayerError(silent
+        ? "Couldn't reach the prayer-time service — check your connection and try again."
+        : "Failed to fetch.");
     }
     if (!silent && mySeq === fetchSeqRef.current) setPrayerLoading(false);
   }, [updateSettings]);
@@ -270,10 +292,14 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings, notifi
     if (settingsFromDb.prayerCountry) setCountryInput(settingsFromDb.prayerCountry);
     if (settingsFromDb.prayerLat != null && settingsFromDb.prayerLng != null) {
       settingsAppliedRef.current = true;
-      fetchByCoords(settingsFromDb.prayerLat, settingsFromDb.prayerLng, { silent: true, persist: false });
+      setPrayerRestoring(true);
+      fetchByCoords(settingsFromDb.prayerLat, settingsFromDb.prayerLng, { silent: true, persist: false })
+        .finally(() => setPrayerRestoring(false));
     } else if (settingsFromDb.prayerCity && settingsFromDb.prayerCountry) {
       settingsAppliedRef.current = true;
-      fetchPrayersFromSettings(settingsFromDb.prayerCity, settingsFromDb.prayerCountry);
+      setPrayerRestoring(true);
+      fetchPrayersFromSettings(settingsFromDb.prayerCity, settingsFromDb.prayerCountry)
+        .finally(() => setPrayerRestoring(false));
     }
   }, [settingsFromDb, fetchPrayersFromSettings, fetchByCoords, prayerTimes]);
 
@@ -321,6 +347,7 @@ export function usePrayer({ settingsFromDb, userSettings, updateSettings, notifi
     cityInput,
     countryInput,
     prayerLoading,
+    prayerRestoring,
     prayerError,
     hijriDate,
     prayerMethod,

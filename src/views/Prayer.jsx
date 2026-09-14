@@ -33,6 +33,7 @@ export default function Prayer({
   prayerTimes,
   prayerLog,
   prayerLoading,
+  prayerRestoring,
   prayerError,
   editingCity,
   setEditingCity,
@@ -52,6 +53,7 @@ export default function Prayer({
   togglePrayerLogOnDay,
   prayerDoneToday,
   canMarkPrayer,
+  canMarkPrayerOnDay,
   prayerStreak,
   notifications,
   updateNotifications,
@@ -63,14 +65,20 @@ export default function Prayer({
 
   // "Change city" mode is lifted to Planner (so the page-header location line
   // can toggle it) and passed in as editingCity/setEditingCity. Show the city
-  // form when there are no times yet, or the user chose to change location.
-  const showCityForm = !prayerTimes || editingCity;
+  // form when there are no times yet, or the user chose to change location —
+  // but NOT while the saved location is still being restored on load (that
+  // flashes the empty form at a returning user; show the placeholder instead).
+  const showCityForm = (!prayerTimes && !prayerRestoring) || editingCity;
+  const showRestoring = prayerRestoring && !prayerTimes && !editingCity;
 
   // Reward the moment a prayer is *newly* marked (not on unmark): a soft
   // chime + haptic + a brief burst on the row. `burstKey` drives the
   // animation; it auto-clears so the row settles back.
   const [burstKey, setBurstKey] = useState(null);
   const [jamaahOpen, setJamaahOpen] = useState(false);
+  const [calcOpen, setCalcOpen] = useState(false);
+  const methodName = CALC_METHODS.find((m) => m.id === prayerMethod)?.name;
+  const schoolLabel = ASR_SCHOOLS.find((s) => s.id === prayerSchool)?.label;
   function markPrayer(p) {
     const wasDone = prayerDoneToday ? prayerDoneToday(p) : false;
     togglePrayerLog(p);
@@ -83,6 +91,19 @@ export default function Prayer({
 
   return (
     <div className="view-content">
+      {showRestoring && (
+        <div style={{ ...S.card, marginBottom: 16, display: "flex", alignItems: "center", gap: 12 }} aria-live="polite">
+          <span className="spinner" aria-hidden="true" style={{
+            width: 18, height: 18, borderRadius: "50%", flexShrink: 0,
+            border: "2px solid var(--color-border-tertiary)", borderTopColor: "var(--gold)",
+            animation: "spin 0.8s linear infinite",
+          }} />
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 500 }}>Restoring your location…</div>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>Fetching today&apos;s prayer times.</div>
+          </div>
+        </div>
+      )}
       {showCityForm && (
         <div style={{ ...S.card, marginBottom: 16 }}>
           <div style={{ fontSize: 16, fontWeight: 500, marginBottom: 14 }}>
@@ -104,29 +125,6 @@ export default function Prayer({
                 style={{ width: "100%", boxSizing: "border-box", fontSize: 15 }} />
             </div>
           </div>
-          {/* Calculation method + Asr madhab. Method sets the Fajr/Isha angle
-              convention; Asr school picks the shadow-length rule (Ḥanafī = later
-              Asr). Changing either re-fetches the current location in place. */}
-          {setPrayerCalc && (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
-              <div>
-                <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Calculation method</label>
-                <select value={prayerMethod}
-                  onChange={(e) => setPrayerCalc(Number(e.target.value), prayerSchool)}
-                  style={{ width: "100%", boxSizing: "border-box", fontSize: 15 }}>
-                  {CALC_METHODS.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Asr (madhab)</label>
-                <select value={prayerSchool}
-                  onChange={(e) => setPrayerCalc(prayerMethod, Number(e.target.value))}
-                  style={{ width: "100%", boxSizing: "border-box", fontSize: 15 }}>
-                  {ASR_SCHOOLS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-                </select>
-              </div>
-            </div>
-          )}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button onClick={() => fetchPrayers(cityInput, countryInput)}
               disabled={prayerLoading || !cityInput.trim() || !countryInput.trim()}
@@ -193,11 +191,14 @@ export default function Prayer({
               return (
                 <button key={p} type="button"
                   onClick={() => !disabled && markPrayer(p)}
-                  disabled={disabled}
+                  aria-disabled={disabled || undefined}
                   aria-pressed={done}
+                  aria-label={disabled
+                    ? `${p} — upcoming, starts ${prayerTimes[p]}`
+                    : done ? `${p} prayed, tap to unmark` : `Mark ${p} prayed`}
                   title={disabled ? `${p} time hasn't started yet (${prayerTimes[p]})` : done ? `${p} prayed — tap to unmark` : `Mark ${p} prayed`}
                   className={`pbox ${done ? "done" : "pending"}${isCurrent ? " now" : ""}${burstKey === p ? " mark-burst" : ""}`}
-                  style={{ "--c": color, opacity: disabled ? 0.5 : 1 }}>
+                  style={{ "--c": color, opacity: disabled ? 0.5 : 1, cursor: disabled ? "default" : "pointer" }}>
                   {isCurrent && <span className="pbox-now">now</span>}
                   <span className="pbox-top" />
                   <span className="pbox-ic"><PrayerIcon name={p} size={20} /></span>
@@ -296,6 +297,46 @@ export default function Prayer({
             </div>
           )}
 
+          {/* Calculation method + Asr madhab — its own discoverable card
+              (used to be buried inside the change-location form). Method sets
+              the Fajr/Isha angle convention; Asr school picks the shadow-length
+              rule (Ḥanafī = later Asr). Changing either re-fetches in place.
+              Collapsed by default with a summary so the page stays calm. */}
+          {setPrayerCalc && (
+            <div style={{ ...S.card, marginBottom: 14 }}>
+              <button type="button" onClick={() => setCalcOpen((o) => !o)} aria-expanded={calcOpen}
+                style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, width: "100%", background: "transparent", border: "none", cursor: "pointer", padding: 0, textAlign: "left", color: "var(--text-primary)" }}>
+                <span style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+                  <span className="serif" style={{ fontSize: 16, fontWeight: 600 }}>Calculation method</span>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {[methodName, schoolLabel ? `${schoolLabel} Asr` : null].filter(Boolean).join(" · ") || "Choose how times are computed"}
+                  </span>
+                </span>
+                <span aria-hidden style={{ fontSize: 18, color: "var(--text-muted)", lineHeight: 1, transition: "transform 0.15s ease", transform: calcOpen ? "rotate(45deg)" : "none" }}>+</span>
+              </button>
+              {calcOpen && (
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+                  <div>
+                    <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Calculation method</label>
+                    <select value={prayerMethod}
+                      onChange={(e) => setPrayerCalc(Number(e.target.value), prayerSchool)}
+                      style={{ width: "100%", boxSizing: "border-box", fontSize: 15 }}>
+                      {CALC_METHODS.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ fontSize: 14, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Asr (madhab)</label>
+                    <select value={prayerSchool}
+                      onChange={(e) => setPrayerCalc(prayerMethod, Number(e.target.value))}
+                      style={{ width: "100%", boxSizing: "border-box", fontSize: 15 }}>
+                      {ASR_SCHOOLS.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Voluntary night prayer (Tahajjud). Nafl — never enters qaza and
               never counts towards Prayer Health. Shows the start of the last
               third of the night when available, plus a streak and a 7-day
@@ -335,12 +376,19 @@ export default function Prayer({
                   {days.map((d) => {
                     const dDone = (prayerLog[vp] || []).includes(d);
                     const isToday = d === todayKey;
-                    const title = dDone
-                      ? `${vp} prayed on ${d} — tap to unmark`
-                      : `Mark ${vp} as prayed on ${d}`;
+                    // Can't log a night prayer before its window opens (tonight's
+                    // Tahajjud is gated on Isha). Disable rather than silently
+                    // no-op inside togglePrayerLogOnDay.
+                    const markable = dDone || !canMarkPrayerOnDay || canMarkPrayerOnDay(vp, d);
+                    const title = !markable
+                      ? `${vp} hasn't started yet on ${d}`
+                      : dDone
+                        ? `${vp} prayed on ${d} — tap to unmark`
+                        : `Mark ${vp} as prayed on ${d}`;
                     return (
                       <button key={d}
-                        onClick={() => togglePrayerLogOnDay && togglePrayerLogOnDay(vp, d)}
+                        onClick={() => markable && togglePrayerLogOnDay && togglePrayerLogOnDay(vp, d)}
+                        aria-disabled={!markable || undefined}
                         aria-label={title}
                         title={title}
                         style={{
@@ -352,7 +400,8 @@ export default function Prayer({
                           border: `0.5px solid ${dDone ? color : isToday ? "var(--color-border-secondary)" : "var(--color-border-tertiary)"}`,
                           color: dDone ? "#fff" : "var(--text-muted)",
                           fontSize: 11,
-                          cursor: "pointer",
+                          opacity: markable ? 1 : 0.4,
+                          cursor: markable ? "pointer" : "default",
                         }}>
                         {dDone ? "✓" : ""}
                       </button>
@@ -401,13 +450,19 @@ export default function Prayer({
                         {days.map((d) => {
                           const done = (prayerLog[p] || []).includes(d);
                           const isToday = d === localDateStr();
-                          const title = done
-                            ? `Marked ${p} on ${d} — tap to unmark`
-                            : `Mark ${p} as prayed on ${d}`;
+                          // Today's cell for a prayer whose window hasn't opened
+                          // is not yet markable — disable instead of no-op.
+                          const markable = done || !canMarkPrayerOnDay || canMarkPrayerOnDay(p, d);
+                          const title = !markable
+                            ? `${p} hasn't started yet on ${d}`
+                            : done
+                              ? `Marked ${p} on ${d} — tap to unmark`
+                              : `Mark ${p} as prayed on ${d}`;
                           return (
                             <td key={d} style={{ textAlign: "center", paddingBottom: 6 }}>
                               <button
-                                onClick={() => togglePrayerLogOnDay && togglePrayerLogOnDay(p, d)}
+                                onClick={() => markable && togglePrayerLogOnDay && togglePrayerLogOnDay(p, d)}
+                                aria-disabled={!markable || undefined}
                                 aria-label={title}
                                 title={title}
                                 style={{
@@ -423,7 +478,8 @@ export default function Prayer({
                                   justifyContent: "center",
                                   fontSize: 12,
                                   color: done ? "#fff" : "var(--text-muted)",
-                                  cursor: "pointer",
+                                  opacity: markable ? 1 : 0.4,
+                                  cursor: markable ? "pointer" : "default",
                                 }}>
                                 {done ? "✓" : ""}
                               </button>
@@ -608,6 +664,20 @@ function RemindersPanel({ notifications, updateNotifications }) {
     setBusy(false);
   }
 
+  // Per-prayer opt-out. A prayer counts as ON unless explicitly false (the
+  // server skips only perPrayer[p] === false), so a fresh setup with all-true
+  // is unchanged. Functional updater preserves `enabled` + concurrent writes.
+  const perPrayer = notifications?.prayer?.perPrayer || {};
+  const isPrayerOn = (p) => perPrayer[p] !== false;
+  function togglePerPrayer(p) {
+    updateNotifications((prev) => {
+      const prayer = prev?.prayer || {};
+      const nextPer = { ...(prayer.perPrayer || {}) };
+      nextPer[p] = !(nextPer[p] !== false); // flip, defaulting on
+      return { ...prev, prayer: { ...prayer, perPrayer: nextPer } };
+    });
+  }
+
   // Local display test — asks the active SW to show a notification right now.
   // Verifies THIS device's permission + service-worker display path (the piece
   // that was failing with "no active Service Worker"); it does NOT exercise the
@@ -689,6 +759,36 @@ function RemindersPanel({ notifications, updateNotifications }) {
       )}
       {error && (
         <div role="alert" aria-live="polite" style={{ fontSize: 13, color: "var(--color-text-danger)", marginTop: 10 }}>{error}</div>
+      )}
+
+      {/* Per-prayer control — turn individual prayers on/off (all on by
+          default). Lets someone keep e.g. only Fajr while muting the rest. */}
+      {enabled && (
+        <div style={{ marginTop: 12, paddingTop: 12, borderTop: "0.5px solid var(--color-border-tertiary)" }}>
+          <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>Which prayers</div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {["Fajr", "Dhuhr", "Asr", "Maghrib", "Isha"].map((p) => {
+              const on = isPrayerOn(p);
+              const color = PRAYER_COLORS[p];
+              return (
+                <button key={p} type="button" onClick={() => togglePerPrayer(p)}
+                  aria-pressed={on}
+                  aria-label={`${p} reminder ${on ? "on — tap to mute" : "off — tap to enable"}`}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 5,
+                    fontSize: 13, fontWeight: 500, padding: "6px 12px", borderRadius: 99, cursor: "pointer",
+                    background: on ? `color-mix(in srgb, ${color} 14%, var(--bg-card))` : "var(--color-background-secondary)",
+                    border: `0.5px solid ${on ? `color-mix(in srgb, ${color} 45%, transparent)` : "var(--color-border-tertiary)"}`,
+                    color: on ? "var(--text-primary)" : "var(--text-muted)",
+                    transition: "background 0.15s, border-color 0.15s, color 0.15s",
+                  }}>
+                  {on && <Icon name="check" size={13} style={{ color }} />}
+                  {p}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       )}
 
       {/* Diagnostics — visible once reminders are on, so a silent failure

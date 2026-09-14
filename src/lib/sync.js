@@ -44,6 +44,30 @@ export function pickClientOwnedNotifications(notifications) {
   return Object.keys(out).length ? out : null;
 }
 
+// Given the current notifications object and a freshly-refreshed FCM
+// { token, timezone }, return the next notifications object — or the SAME
+// reference when nothing changed (so updateNotifications' identity no-op guard
+// skips the write). Adds the token when it's new, AND refreshes `timezone`
+// whenever it has drifted (e.g. the user travelled to a new IANA zone). The
+// old refresh path only wrote on a NEW token, so an established device kept its
+// stale timezone forever and the cron fired its reminders at the wrong local
+// wall-clock time. Only a nested `timezone` (and, if new, one arrayUnion'd
+// token) is written — the server-owned token list is never rewritten.
+export function mergeRefreshedToken(prev, refreshed) {
+  const token = refreshed?.token;
+  if (!token) return prev;
+  const cur = prev || {};
+  const toks = Array.isArray(cur.fcmTokens) ? cur.fcmTokens : [];
+  const tokenNew = !toks.includes(token);
+  const tz = refreshed.timezone;
+  const tzChanged = !!tz && tz !== cur.timezone;
+  if (!tokenNew && !tzChanged) return prev;
+  const next = { ...cur };
+  if (tokenNew) next.fcmTokens = [...toks, token];
+  if (tzChanged) next.timezone = tz;
+  return next;
+}
+
 // ── delta descriptors ────────────────────────────────────────────────────
 //
 // A "descriptor" is a Firebase-free encoding of a write. The hook's

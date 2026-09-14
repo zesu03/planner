@@ -78,6 +78,15 @@ export function usePrayerLog({ prayerLog, prayerTimes, applyPrayerLogUpdate, app
     return prayerStartHasPassed(prayer, prayerDayFor(prayer));
   }
 
+  // Can this prayer be marked on a SPECIFIC calendar day (as opposed to its
+  // effective prayer-day)? Used by the 7-day tracker + voluntary strips to
+  // disable a cell whose window hasn't opened yet (e.g. tonight's Tahajjud
+  // before Isha, or today's Isha at noon) instead of letting the tap silently
+  // no-op inside togglePrayerLogOnDay. Past days always pass.
+  function canMarkPrayerOnDay(prayer, day) {
+    return prayerStartHasPassed(prayer, day);
+  }
+
   function prayerStreak(prayer) {
     const log = prayerLog[prayer]||[];
     const startStr = prayerDayFor(prayer);
@@ -93,5 +102,5 @@ export function usePrayerLog({ prayerLog, prayerTimes, applyPrayerLogUpdate, app
     return streak;
   }
 
-  return { togglePrayerLogOnDay, prayerDayFor, togglePrayerLog, prayerDoneToday, canMarkPrayer, prayerStreak };
+  return { togglePrayerLogOnDay, prayerDayFor, togglePrayerLog, prayerDoneToday, canMarkPrayer, canMarkPrayerOnDay, prayerStreak };
 }

@@ -21,6 +21,7 @@ import {
   mapMergeDelta,
   settingsDelta,
   pickClientOwnedNotifications,
+  mergeRefreshedToken,
   deriveConnBadge,
 } from "./sync";
 
@@ -143,6 +144,36 @@ describe("pickClientOwnedNotifications — never touches server-owned keys", () 
   it("returns null when only server-owned keys are present", () => {
     expect(pickClientOwnedNotifications({ fcmTokens: ["a"], lastSentAt: {} })).toBeNull();
     expect(pickClientOwnedNotifications(null)).toBeNull();
+  });
+});
+
+describe("mergeRefreshedToken — refresh timezone even when the token is unchanged", () => {
+  it("returns the SAME ref when token is registered and timezone is unchanged (no write)", () => {
+    const prev = { fcmTokens: ["t1"], timezone: "Asia/Kolkata", prayer: { enabled: true } };
+    expect(mergeRefreshedToken(prev, { token: "t1", timezone: "Asia/Kolkata" })).toBe(prev);
+  });
+
+  it("updates timezone when it drifted, without touching the token list (the travel bug)", () => {
+    const prev = { fcmTokens: ["t1"], timezone: "Asia/Kolkata" };
+    const next = mergeRefreshedToken(prev, { token: "t1", timezone: "Europe/London" });
+    expect(next).not.toBe(prev);
+    expect(next.timezone).toBe("Europe/London");
+    expect(next.fcmTokens).toEqual(["t1"]); // unchanged — server owns pruning
+  });
+
+  it("adds a new token via a fresh array and sets timezone", () => {
+    const prev = { fcmTokens: ["t1"], timezone: "Asia/Kolkata" };
+    const next = mergeRefreshedToken(prev, { token: "t2", timezone: "Europe/London" });
+    expect(next.fcmTokens).toEqual(["t1", "t2"]);
+    expect(next.timezone).toBe("Europe/London");
+  });
+
+  it("no-ops without a token, and seeds cleanly from empty state", () => {
+    const prev = { timezone: "UTC" };
+    expect(mergeRefreshedToken(prev, { token: null, timezone: "X" })).toBe(prev);
+    const seeded = mergeRefreshedToken(null, { token: "t1", timezone: "UTC" });
+    expect(seeded.fcmTokens).toEqual(["t1"]);
+    expect(seeded.timezone).toBe("UTC");
   });
 });
 

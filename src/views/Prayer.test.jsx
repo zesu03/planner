@@ -51,7 +51,9 @@ function makeProps(overrides = {}) {
     togglePrayerLogOnDay: vi.fn(),
     prayerDoneToday: () => false,
     canMarkPrayer: () => true,
+    canMarkPrayerOnDay: () => true,
     prayerStreak: () => 0,
+    prayerRestoring: false,
     notifications: {},
     updateNotifications: vi.fn(),
     ...overrides,
@@ -94,13 +96,35 @@ describe("Prayer view", () => {
     expect(screen.queryByText("Send a test")).toBeNull();
   });
 
-  it("renders the location form with the calc-method picker and routes changes through setPrayerCalc", () => {
+  it("renders the calculation-method card (in the daily view) and routes changes through setPrayerCalc", () => {
     const setPrayerCalc = vi.fn();
-    render(<Prayer {...makeProps({ editingCity: true, setPrayerCalc })} />);
-    expect(screen.getByText("Calculation method")).toBeTruthy();
-    // Two selects on the location form: [0] = method, [1] = Asr madhab.
+    render(<Prayer {...makeProps({ setPrayerCalc })} />);
+    // The picker now lives in its own collapsed card on the daily screen
+    // (no longer buried in the change-location form) — expand it, then change
+    // the method select.
+    fireEvent.click(screen.getByText("Calculation method"));
     const methodSelect = screen.getAllByRole("combobox")[0];
     fireEvent.change(methodSelect, { target: { value: "3" } });
     expect(setPrayerCalc).toHaveBeenCalledWith(3, 1);
+  });
+
+  it("shows a restoring placeholder (not the empty form) while the saved location loads", () => {
+    render(<Prayer {...makeProps({ prayerTimes: null, prayerRestoring: true })} />);
+    expect(screen.getByText("Restoring your location…")).toBeTruthy();
+    expect(screen.queryByText("Set your location")).toBeNull();
+  });
+
+  it("renders per-prayer reminder chips when enabled and routes a toggle through updateNotifications", () => {
+    const updateNotifications = vi.fn();
+    render(<Prayer {...makeProps({ notifications: { prayer: { enabled: true } }, updateNotifications })} />);
+    // "Which prayers" section appears only when reminders are on.
+    expect(screen.getByText("Which prayers")).toBeTruthy();
+    fireEvent.click(screen.getByLabelText(/^Fajr reminder/));
+    expect(updateNotifications).toHaveBeenCalledTimes(1);
+    // The updater flips Fajr to false (it defaults on).
+    const updater = updateNotifications.mock.calls[0][0];
+    const next = updater({ prayer: { enabled: true } });
+    expect(next.prayer.perPrayer.Fajr).toBe(false);
+    expect(next.prayer.enabled).toBe(true);
   });
 });
