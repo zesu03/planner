@@ -1,6 +1,6 @@
 import { CAT_COLORS } from "../lib/constants";
 import { daysLeft, fmt, todayStr } from "../lib/dates";
-import { isGoalDone, pct, isRecurring } from "../lib/goals";
+import { isGoalDone, pct, habitGoalRate, isRecurring } from "../lib/goals";
 import { S } from "../lib/styles";
 import ProgressBar from "./ProgressBar";
 
@@ -10,6 +10,10 @@ import ProgressBar from "./ProgressBar";
 //   onSelect()           — invoked when the card is clicked
 export default function GoalCard({ g, lastActivityDay, onSelect }) {
   const p = pct(g);
+  // Habit-only goals have no one-shot tasks so pct() is a permanent 0% — show
+  // mean habit consistency (30-day) in the bar instead. null for normal goals.
+  const habitRate = habitGoalRate(g);
+  const barVal = habitRate != null ? habitRate : p;
   const dl = daysLeft(g.due);
   const done = isGoalDone(g);
   const overdue = !done && dl < 0;
@@ -54,7 +58,7 @@ export default function GoalCard({ g, lastActivityDay, onSelect }) {
       onClick={onSelect}
       role="button"
       tabIndex={0}
-      aria-label={`Goal: ${g.title}, ${p}% complete, ${statusText}`}
+      aria-label={`Goal: ${g.title}, ${habitRate != null ? `${barVal}% habit consistency` : `${p}% complete`}, ${statusText}`}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect?.(); } }}
       className="tap-card goal-card"
       style={{
@@ -91,10 +95,11 @@ export default function GoalCard({ g, lastActivityDay, onSelect }) {
           separate "Overall progress" card, folded onto the bar itself */}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <ProgressBar val={p} color={catColor} />
+          <ProgressBar val={barVal} color={catColor} />
         </div>
-        <span style={{ fontSize: 12, fontWeight: 600, color: catColor, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
-          {p}%
+        <span style={{ fontSize: 12, fontWeight: 600, color: catColor, fontVariantNumeric: "tabular-nums", flexShrink: 0 }}
+          title={habitRate != null ? "30-day habit consistency" : "tasks complete"}>
+          {barVal}%
         </span>
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginTop: 8, fontSize: 13, gap: 8, flexWrap: "wrap" }}>

@@ -8,10 +8,42 @@
 
 import { todayStr, localDateStr } from "./dates";
 
+// Per-task focus aggregates derived from focusLog — the SINGLE SOURCE OF
+// TRUTH for a task's logged minutes / session count. (Tasks no longer store
+// `totalTime` / `sessions`; deleting a session just drops its focusLog entry
+// and these numbers fall out correctly, so the two accountings can't drift.)
+// Returns a map keyed by taskId: { [taskId]: { mins, sessions, todayMins, lastDay } }.
+export function focusStatsByTask(focusLog, today = todayStr()) {
+  const map = {};
+  for (const l of focusLog || []) {
+    if (!l.taskId) continue;
+    const m = map[l.taskId] || (map[l.taskId] = { mins: 0, sessions: 0, todayMins: 0, lastDay: null });
+    const mins = l.mins || 0;
+    m.mins += mins;
+    m.sessions += 1;
+    if (l.day === today) m.todayMins += mins;
+    if (!m.lastDay || l.day > m.lastDay) m.lastDay = l.day;
+  }
+  return map;
+}
+
+// Minutes logged against a single task. `todayOnly` scopes to today's date —
+// used for the per-DAY ETA budget of a recurring habit (whose lifetime total
+// would otherwise drain the budget permanently after a few days).
+export function taskLoggedMins(focusLog, taskId, { todayOnly = false, today = todayStr() } = {}) {
+  let mins = 0;
+  for (const l of focusLog || []) {
+    if (l.taskId !== taskId) continue;
+    if (todayOnly && l.day !== today) continue;
+    mins += l.mins || 0;
+  }
+  return mins;
+}
+
 // Focus rhythm — windowed aggregates from focusLog for one goal. The 7d/30d
-// totals here are recent-window only ("rhythm"); task.totalTime remains the
-// authoritative lifetime total shown in the "Logged" tile. Returns a 14-day
-// series (oldest → newest) for the sparkline.
+// totals here are recent-window only ("rhythm"); the "Logged" tile shows the
+// lifetime total (also derived from focusLog via focusStatsByTask). Returns a
+// 14-day series (oldest → newest) for the sparkline.
 export function focusRhythm(focusLog, goalId, today = todayStr()) {
   const log = (focusLog || []).filter((l) => l.goalId === goalId);
   if (log.length === 0) {

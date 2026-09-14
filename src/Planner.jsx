@@ -17,7 +17,8 @@ import {
   QUOTES, INTENTIONS,
 } from "./lib/constants";
 import { todayStr, daysLeft, addDaysToStr } from "./lib/dates";
-import { isGoalDone, pct } from "./lib/goals";
+import { isGoalDone, pct, isRecurring } from "./lib/goals";
+import { taskLoggedMins } from "./lib/goalStats";
 import { isMuhasabaFilled, muhasabaStreak } from "./lib/muhasaba";
 import { qazaOwed, QAZA_PRAYERS } from "./lib/qaza";
 import { nextPrayer as computeNextPrayer, parsePrayerMarkParam, allFardDone } from "./lib/prayer";
@@ -425,7 +426,7 @@ export default function Planner({ user }) {
     dismissLastSession, updateLastSessionNote,
   } = useFocusTimer({
     goals,
-    applyGoalsUpdate,
+    focusLog,
     applyFocusLogUpdate,
     settingsFromDb,
     userSettings,
@@ -434,13 +435,19 @@ export default function Planner({ user }) {
     // Starting a task whose logged time already meets its ETA — nudge to
     // complete instead of opening another full block. (toggleTask is defined
     // below; this closure only runs on user interaction, so it's resolved.)
+    // Never auto-completes — the user confirms. A habit's budget is per-day,
+    // so the wording and the action (log today vs finish) differ by flavour.
     onBudgetSpent: (goalId, taskId) => {
       const task = goals.find((g) => g.id === goalId)?.tasks.find((t) => t.id === taskId);
       if (!task) return;
+      const recurring = isRecurring(task);
+      const logged = taskLoggedMins(focusLog, taskId, { todayOnly: recurring });
       requestConfirm({
-        title: "Estimate reached",
-        message: `You've logged ${task.totalTime || task.eta} min on "${task.text}", meeting its ${task.eta}-min estimate. Mark it complete? (To keep timing it, raise its ETA in the goal.)`,
-        confirmLabel: "Mark complete",
+        title: recurring ? "Today's focus done" : "Estimate reached",
+        message: recurring
+          ? `You've focused ${logged} min on "${task.text}" today, meeting its ${task.eta}-min estimate. Log it as done for today? (Or keep going.)`
+          : `You've logged ${logged} min on "${task.text}", meeting its ${task.eta}-min estimate. Mark it complete? (To keep timing it, raise its ETA in the goal.)`,
+        confirmLabel: recurring ? "Log for today" : "Mark complete",
         onConfirm: () => toggleTask(goalId, taskId),
       });
     },
@@ -587,31 +594,19 @@ export default function Planner({ user }) {
     URL.revokeObjectURL(url);
   }
 
-  // Delete a focus log entry and reverse its credit on the linked task's
-  // sessions/totalTime counters. Used by Stats → focus log management.
+  // Delete a focus log entry. Task minute/session totals derive from focusLog,
+  // so dropping the entry reverses its credit automatically — no counter to
+  // adjust. Used by Stats → focus log management.
   function deleteFocusEntry(entryId) {
     const entry = focusLog.find((l) => l.id === entryId);
     if (!entry) return;
     requestConfirm({
       title: "Delete session?",
-      message: `This ${entry.mins}-minute focus session will be removed from your history. Task totals will be adjusted.`,
+      message: `This ${entry.mins}-minute focus session will be removed from your history. Task totals will update to match.`,
       confirmLabel: "Delete",
       tone: "danger",
       onConfirm: () => {
         applyFocusLogUpdate((log) => log.filter((l) => l.id !== entryId));
-        if (entry.goalId && entry.taskId) {
-          applyGoalsUpdate((gs) => gs.map((g) => {
-            if (g.id !== entry.goalId) return g;
-            return {
-              ...g,
-              tasks: g.tasks.map((t) => t.id !== entry.taskId ? t : {
-                ...t,
-                sessions: Math.max(0, (t.sessions || 0) - 1),
-                totalTime: Math.max(0, (t.totalTime || 0) - (entry.mins || 0)),
-              }),
-            };
-          }));
-        }
       },
     });
   }
@@ -653,7 +648,6 @@ export default function Planner({ user }) {
 
   const toggleTask = goalsHook.toggleTask;
   const toggleGoalCompleted = goalsHook.toggleGoalCompleted;
-  const moveTask = goalsHook.moveTask;
   const reorderTasks = goalsHook.reorderTasks;
 
   function addTask(gId) {
@@ -1139,7 +1133,7 @@ export default function Planner({ user }) {
           editingTaskId, taskDraft, setTaskDraft,
           startTaskEdit, cancelTaskEdit, saveTaskEdit,
           // task ops
-          toggleTask, removeTask, moveTask, reorderTasks,
+          toggleTask, removeTask, reorderTasks,
           startTaskTimer,
           // notes
           editingNotes, setEditingNotes, notesVal, setNotesVal, saveNotes,

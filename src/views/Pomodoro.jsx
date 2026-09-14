@@ -662,6 +662,8 @@ export default function Pomodoro({
           pomRunning={pomRunning}
           total={total}
           ringColor={ringColor}
+          activeTask={activeTask}
+          activeGoal={activeGoal}
           onToggle={handleStart}
         />,
         pip.pipWindow.document.body,

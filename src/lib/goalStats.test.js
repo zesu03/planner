@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { focusRhythm, goalChecksWindow, lastActivityLabel } from "./goalStats";
+import { focusRhythm, goalChecksWindow, lastActivityLabel, focusStatsByTask, taskLoggedMins } from "./goalStats";
 
 // Characterization tests for the GoalDetail derivations, locking the
 // behaviour of the IIFEs relocated out of views/GoalDetail.jsx. "Today" is
@@ -100,6 +100,44 @@ describe("goalChecksWindow", () => {
     expect(goalChecksWindow(muhasaba, "g1").counts).toEqual({ yes: 1 });
     expect(goalChecksWindow(muhasaba, "g2").counts).toEqual({ no: 1 });
     expect(goalChecksWindow(muhasaba, "g3").total).toBe(0);
+  });
+});
+
+describe("focusStatsByTask", () => {
+  it("aggregates mins/sessions/todayMins/lastDay per task, ignoring taskId-less entries", () => {
+    const log = [
+      { taskId: "a", day: day(0), mins: 30 },
+      { taskId: "a", day: day(-2), mins: 20 },
+      { taskId: "b", day: day(-1), mins: 15 },
+      { day: day(0), mins: 99 }, // general focus (no taskId) — ignored
+    ];
+    const m = focusStatsByTask(log);
+    expect(m.a).toEqual({ mins: 50, sessions: 2, todayMins: 30, lastDay: day(0) });
+    expect(m.b).toEqual({ mins: 15, sessions: 1, todayMins: 0, lastDay: day(-1) });
+    expect(Object.keys(m)).toEqual(["a", "b"]);
+  });
+
+  it("returns an empty map for an empty or nullish log", () => {
+    expect(focusStatsByTask([])).toEqual({});
+    expect(focusStatsByTask(null)).toEqual({});
+  });
+});
+
+describe("taskLoggedMins", () => {
+  const log = [
+    { taskId: "a", day: day(0), mins: 30 },
+    { taskId: "a", day: day(-3), mins: 20 },
+    { taskId: "b", day: day(0), mins: 15 },
+  ];
+  it("sums lifetime minutes for a task", () => {
+    expect(taskLoggedMins(log, "a")).toBe(50);
+  });
+  it("scopes to today with todayOnly (the per-day habit budget)", () => {
+    expect(taskLoggedMins(log, "a", { todayOnly: true })).toBe(30);
+  });
+  it("returns 0 for an unknown task or empty log", () => {
+    expect(taskLoggedMins(log, "z")).toBe(0);
+    expect(taskLoggedMins([], "a")).toBe(0);
   });
 });
 

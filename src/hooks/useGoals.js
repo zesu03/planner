@@ -79,14 +79,14 @@ export function useGoals({ applyGoalsUpdate }) {
     if (!taskDraft.text.trim()) return false;
     applyGoalsUpdate((gs) => gs.map((g) => {
       if (g.id !== gId) return g;
+      // No sessions/totalTime — a task's logged minutes and session count are
+      // derived from focusLog (the single source of truth), not stored here.
       const newTask = {
         id: newId(),
         text: taskDraft.text.trim(),
         done: false,
         priority: taskDraft.priority,
         eta: Number(taskDraft.eta) || 30,
-        sessions: 0,
-        totalTime: 0,
       };
       if (taskDraft.due) newTask.due = taskDraft.due;
       // If the draft specifies a recurring shape, mark this task as a
@@ -137,18 +137,6 @@ export function useGoals({ applyGoalsUpdate }) {
     return true;
   }, [applyGoalsUpdate]);
 
-  const moveTask = useCallback((gId, tId, dir) => {
-    applyGoalsUpdate((gs) => gs.map((g) => {
-      if (g.id !== gId) return g;
-      const idx = g.tasks.findIndex((t) => t.id === tId);
-      const nextIdx = idx + dir;
-      if (idx < 0 || nextIdx < 0 || nextIdx >= g.tasks.length) return g;
-      const nextTasks = g.tasks.slice();
-      [nextTasks[idx], nextTasks[nextIdx]] = [nextTasks[nextIdx], nextTasks[idx]];
-      return { ...g, tasks: nextTasks };
-    }));
-  }, [applyGoalsUpdate]);
-
   // Drag-and-drop reordering. Caller provides indices into the *unfiltered*
   // task array (the view may translate from filtered indices). Same-index
   // and out-of-range moves are no-ops.
@@ -193,7 +181,6 @@ export function useGoals({ applyGoalsUpdate }) {
     toggleGoalCompleted,
     addTask,
     saveTaskEdit,
-    moveTask,
     reorderTasks,
     removeTask,
     deleteGoal,

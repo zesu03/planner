@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { fmtTime } from "../lib/focus";
+import { CAT_COLORS } from "../lib/constants";
 
 // Compact dial + time for the Picture-in-Picture pop-out. Same paused /
 // running / idle semantics as the main Pomodoro dial — when paused, the
@@ -11,7 +12,7 @@ import { fmtTime } from "../lib/focus";
 //   - short → row: dial on the left, button on the right
 // The breakpoint is height-based and watched via matchMedia inside the
 // PiP window so resizes flip the layout live.
-export default function MiniTimer({ pomSeconds, pomRunning, total, ringColor = "var(--gold)", onToggle }) {
+export default function MiniTimer({ pomSeconds, pomRunning, total, ringColor = "var(--gold)", activeTask = null, activeGoal = null, onToggle }) {
   const prog = total > 0 ? (total - pomSeconds) / total : 0;
   const paused = !pomRunning && prog > 0 && prog < 1;
   const elapsedSecs = Math.max(0, total - pomSeconds);
@@ -87,6 +88,22 @@ export default function MiniTimer({ pomSeconds, pomRunning, total, ringColor = "
           )}
         </svg>
       </div>
+      {/* Which task/goal this session is for — the PiP dial otherwise shows
+          only a countdown, so a backgrounded pop-out lost all context. Hidden
+          in the short/row layout where there's no vertical room. */}
+      {!compact && activeTask && (
+        <div style={{ maxWidth: "100%", padding: "0 8px", textAlign: "center", flexShrink: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 500, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {activeTask.text}
+          </div>
+          {activeGoal && (
+            <div style={{ fontSize: 11, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: CAT_COLORS[activeGoal.category] || "var(--gold)", marginRight: 5, verticalAlign: "middle" }} />
+              {activeGoal.title}
+            </div>
+          )}
+        </div>
+      )}
       <button onClick={onToggle} className="btn-primary"
         style={{
           padding: compact ? "5px 14px" : "6px 22px",

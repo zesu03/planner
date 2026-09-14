@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import {
   isRecurring, isScheduledOn, isDoneOn,
-  oneShotTasks, recurringTasks, isGoalDone, pct,
+  oneShotTasks, recurringTasks, isGoalDone, pct, habitGoalRate,
   scheduleLabel, recurringStreak, recurringCompletionRate,
 } from "./goals";
 import { todayStr, addDaysToStr } from "./dates";
@@ -14,7 +14,7 @@ beforeAll(() => {
 afterAll(() => vi.useRealTimers());
 
 const oneShot = (over = {}) => ({ id: "t", text: "x", priority: "Medium", eta: 30, done: false, ...over });
-const daily = (completions = []) => ({ id: "h", text: "h", recurring: { type: "daily" }, completions });
+const daily = (completions = [], id = "h") => ({ id, text: "h", recurring: { type: "daily" }, completions });
 const weekly = (days, completions = []) => ({ id: "w", text: "w", recurring: { type: "weekly", days }, completions });
 
 describe("isRecurring", () => {
@@ -22,6 +22,29 @@ describe("isRecurring", () => {
     expect(isRecurring(oneShot())).toBe(false);
     expect(isRecurring(daily())).toBe(true);
     expect(isRecurring(null)).toBe(false);
+  });
+});
+
+describe("habitGoalRate", () => {
+  const g = (tasks) => ({ id: "g", tasks });
+  const lastNDays = (n) => Array.from({ length: n }, (_, i) => addDaysToStr(todayStr(), -i));
+
+  it("returns null when the goal has any one-shot task (use pct there)", () => {
+    expect(habitGoalRate(g([oneShot(), daily()]))).toBeNull();
+  });
+
+  it("returns null when the goal has no habits", () => {
+    expect(habitGoalRate(g([oneShot()]))).toBeNull();
+    expect(habitGoalRate(g([]))).toBeNull();
+  });
+
+  it("is the mean 30-day completion rate across the goal's habits", () => {
+    // 15 of the last 30 scheduled (daily) days completed → 50%.
+    expect(habitGoalRate(g([daily(lastNDays(15))]))).toBe(50);
+  });
+
+  it("averages multiple habits (100% + 0% → 50%)", () => {
+    expect(habitGoalRate(g([daily(lastNDays(30), "h1"), daily([], "h2")]))).toBe(50);
   });
 });
 

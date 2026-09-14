@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { CAT_COLORS, PRIORITIES } from "../lib/constants";
 import { daysLeft, fmt, todayStr, addDays } from "../lib/dates";
-import { isGoalDone, pct, isRecurring, isScheduledOn, isDoneOn, recurringStreak, scheduleLabel, DOW_LABELS, DOW_LONG } from "../lib/goals";
+import { isGoalDone, pct, habitGoalRate, isRecurring, isScheduledOn, isDoneOn, recurringStreak, scheduleLabel, DOW_LABELS, DOW_LONG } from "../lib/goals";
 import { fmtMins, fmtTime } from "../lib/focus";
 import * as goalStats from "../lib/goalStats";
 import { goldA, goldLight, S } from "../lib/styles";
@@ -142,8 +142,6 @@ export default function GoalDetail({ selected, goBack }) {
     // task ops
     toggleTask,
     removeTask,
-    // moveTask is still in the context bag for potential context-menu /
-    // keyboard-shortcut consumers, but the UI uses reorderTasks via DnD now.
     reorderTasks,
     // task edit form
     editingTaskId,
@@ -166,13 +164,20 @@ export default function GoalDetail({ selected, goBack }) {
     pomSeconds,
   } = useGoalDetail();
   const p = pct(selected);
+  // Habit-only goals never move pct() (0% forever) — show mean habit
+  // consistency in the header ring instead. null for normal goals.
+  const habitRate = habitGoalRate(selected);
+  const ringPct = habitRate != null ? habitRate : p;
   const dl = daysLeft(selected.due);
   const done = isGoalDone(selected);
   const overdue = !done && dl < 0;
   const onTime = done && selected.completedAt && selected.completedAt <= selected.due;
+  // Task logged minutes / session counts derive from focusLog (source of
+  // truth), keyed by task id — not stored on the task.
+  const statsByTask = goalStats.focusStatsByTask(focusLog);
   const totalEta = selected.tasks.reduce((s, t) => s + (t.eta || 0), 0);
-  const totalLogged = selected.tasks.reduce((s, t) => s + (t.totalTime || 0), 0);
-  const totalSessions = selected.tasks.reduce((s, t) => s + (t.sessions || 0), 0);
+  const totalLogged = selected.tasks.reduce((s, t) => s + (statsByTask[t.id]?.mins || 0), 0);
+  const totalSessions = selected.tasks.reduce((s, t) => s + (statsByTask[t.id]?.sessions || 0), 0);
   const oneShots = selected.tasks.filter((t) => !isRecurring(t));
   const habits = selected.tasks.filter((t) => isRecurring(t));
   const doneOneShots = oneShots.filter((t) => t.done).length;
@@ -269,11 +274,14 @@ export default function GoalDetail({ selected, goBack }) {
             <svg width="66" height="66" viewBox="0 0 66 66" aria-hidden="true">
               <circle cx="33" cy="33" r="26" fill="none" stroke="var(--bg-secondary)" strokeWidth="7" />
               <circle cx="33" cy="33" r="26" fill="none" stroke={CAT_COLORS[selected.category]} strokeWidth="7" strokeLinecap="round"
-                strokeDasharray={RING_C} strokeDashoffset={RING_C * (1 - p / 100)}
+                strokeDasharray={RING_C} strokeDashoffset={RING_C * (1 - ringPct / 100)}
                 transform="rotate(-90 33 33)" style={{ transition: "stroke-dashoffset 0.5s ease", opacity: done ? 0.6 : 1 }} />
             </svg>
-            <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>
-              <span className="serif" style={{ fontSize: p === 100 ? 13 : 16, fontWeight: 600, color: CAT_COLORS[selected.category] }}>{p}%</span>
+            <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+              <span className="serif" style={{ fontSize: ringPct === 100 ? 13 : 16, fontWeight: 600, color: CAT_COLORS[selected.category], lineHeight: 1 }}>{ringPct}%</span>
+              {habitRate != null && (
+                <span style={{ fontSize: 8, letterSpacing: "0.3px", textTransform: "uppercase", color: "var(--text-muted)", marginTop: 1 }}>habits</span>
+              )}
             </div>
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -808,7 +816,7 @@ export default function GoalDetail({ selected, goBack }) {
                                       {!isScheduledOn(t) && (
                                         <span style={{ color: "var(--text-muted)", fontStyle: "italic" }}>· not today</span>
                                       )}
-                                      {t.totalTime > 0 && <span>· {fmtMins(t.totalTime)} total</span>}
+                                      {(statsByTask[t.id]?.mins || 0) > 0 && <span>· {fmtMins(statsByTask[t.id].mins)} total</span>}
                                     </>
                                   ) : (
                                     <>
@@ -830,8 +838,8 @@ export default function GoalDetail({ selected, goBack }) {
                                             : `Due ${fmt(t.due)}`;
                                         return <span style={{ color, fontWeight: overdueT || urgentT ? 500 : 400 }}>· {label}</span>;
                                       })()}
-                                      {t.totalTime > 0 && <span>· Logged {fmtMins(t.totalTime)}</span>}
-                                      {t.sessions > 0 && <span>· {t.sessions} session{t.sessions > 1 ? "s" : ""}</span>}
+                                      {(statsByTask[t.id]?.mins || 0) > 0 && <span>· Logged {fmtMins(statsByTask[t.id].mins)}</span>}
+                                      {(statsByTask[t.id]?.sessions || 0) > 0 && <span>· {statsByTask[t.id].sessions} session{statsByTask[t.id].sessions > 1 ? "s" : ""}</span>}
                                     </>
                                   )}
                                 </div>

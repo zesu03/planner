@@ -133,9 +133,26 @@ export const isGoalDone = (g) => {
 
 // Progress percent — based on one-shot tasks only. Returns 0 when a goal
 // has no one-shot tasks (habit-only goals show 0% and live by their
-// per-habit streaks, not by goal-level progress).
+// per-habit streaks, not by goal-level progress — the views substitute
+// habitGoalRate below rather than a permanent 0% bar).
 export const pct = (g) => {
   const oneShots = oneShotTasks(g);
   if (oneShots.length === 0) return 0;
   return Math.round((oneShots.filter((t) => t.done).length / oneShots.length) * 100);
+};
+
+// Habit-only goals never move pct() (which ignores recurring tasks), so a
+// permanent 0% bar reads as "no progress". For those goals the views show
+// this instead: the mean N-day completion rate across the goal's habits
+// (0..100), a real signal of how the goal is going. Returns null when the
+// goal has ANY one-shot task (use pct there) or has no habits at all — the
+// null is the "this isn't a habit-only goal" flag the views branch on.
+export const habitGoalRate = (g, windowDays = 30) => {
+  const habits = recurringTasks(g);
+  if (oneShotTasks(g).length > 0 || habits.length === 0) return null;
+  const rates = habits
+    .map((t) => recurringCompletionRate(t, windowDays))
+    .filter((r) => r != null);
+  if (rates.length === 0) return 0;
+  return Math.round((rates.reduce((s, r) => s + r, 0) / rates.length) * 100);
 };

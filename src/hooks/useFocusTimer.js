@@ -32,12 +32,16 @@ import { DEFAULT_DURATIONS } from "../lib/constants";
 import { newId } from "../lib/ids";
 import { localDateStr } from "../lib/dates";
 import { getFocusSeconds } from "../lib/focus";
+import { isRecurring } from "../lib/goals";
+import { taskLoggedMins } from "../lib/goalStats";
 import { getAudioCtx, playTimerSound } from "../lib/audio";
 import { haptic } from "../lib/feedback";
 
 export function useFocusTimer({
   goals,
-  applyGoalsUpdate,
+  // focusLog is the source of truth for a task's logged minutes (tasks no
+  // longer store totalTime/sessions), used to compute the draining ETA budget.
+  focusLog,
   applyFocusLogUpdate,
   settingsFromDb,
   userSettings,
@@ -137,16 +141,9 @@ export function useFocusTimer({
       createdAt: at.getTime(),
     };
     applyFocusLogUpdate((l) => [entry, ...l]);
-    if (pomGoalId && pomTaskId) {
-      applyGoalsUpdate((gs) => gs.map((g) =>
-        g.id !== pomGoalId ? g : {
-          ...g,
-          tasks: g.tasks.map((t) =>
-            t.id !== pomTaskId ? t : { ...t, sessions: (t.sessions || 0) + 1, totalTime: (t.totalTime || 0) + mins }
-          ),
-        }
-      ));
-    }
+    // The focusLog entry above IS the record of this session — task minute/
+    // session totals are derived from focusLog, so there's nothing to write
+    // back onto the goal here.
     setLastSession({ id: entry.id, taskId: pomTaskId, goalId: pomGoalId, mins, completedAt: at.toISOString(), kind: "complete" });
     playTimerSound("focusEnd");
     haptic([0, 30, 40, 30]);   // celebratory buzz on mobile, matching the reward system
@@ -161,7 +158,7 @@ export function useFocusTimer({
     targetSecRef.current = nextSecs;
     setPomSeconds(nextSecs);
     setPomRunningInternal(false);
-  }, [pomGoalId, pomTaskId, goals, pomDurations, applyFocusLogUpdate, applyGoalsUpdate]);
+  }, [pomGoalId, pomTaskId, goals, pomDurations, applyFocusLogUpdate]);
 
   // Sync the displayed pomSeconds from wall-clock. If we've crossed the
   // target, complete. Cheap; safe to call from the tick AND from a
@@ -209,13 +206,18 @@ export function useFocusTimer({
     const task = goals.find((g) => g.id === goalId)?.tasks.find((t) => t.id === taskId);
     // The ETA is a budget that drains across laps: start the dial at the
     // remaining minutes (eta − time already logged), not the full estimate.
+    // For a RECURRING habit the budget is per-DAY — lifetime minutes would
+    // drain it permanently after a few days and turn every start into the
+    // "estimate reached" nudge. One-shot tasks budget against lifetime minutes.
     // Once the budget is spent, defer to the host's "mark complete" nudge
     // instead of opening another full block (unless forced).
     const eta = task?.eta;
-    const remaining = eta ? eta - (task?.totalTime || 0) : null;
-    if (eta && remaining <= 0 && !opts.force) {
-      if (onBudgetSpentRef.current) { onBudgetSpentRef.current(goalId, taskId); return; }
-      // no host handler → fall through as a default-length block
+    const recurring = isRecurring(task);
+    const logged = task ? taskLoggedMins(focusLog, taskId, { todayOnly: recurring }) : 0;
+    const remaining = eta ? eta - logged : null;
+    if (eta && remaining <= 0 && !opts.force && onBudgetSpentRef.current) {
+      onBudgetSpentRef.current(goalId, taskId);
+      return;
     }
     const focusMins = (remaining != null && remaining > 0) ? remaining : pomDurations.defaultFocus;
     getAudioCtx();
@@ -231,7 +233,7 @@ export function useFocusTimer({
     setLastSession(null); // a new session begins — close the previous celebration
     setPomRunning(true);
     if (onSessionStart) onSessionStart();
-  }, [pomRunning, pomTaskId, goals, pomDurations, stopTimer, setPomRunning, onSessionStart]);
+  }, [pomRunning, pomTaskId, goals, focusLog, pomDurations, stopTimer, setPomRunning, onSessionStart]);
 
   const dismissLastSession = useCallback(() => setLastSession(null), []);
 
@@ -303,16 +305,7 @@ export function useFocusTimer({
       createdAt: at.getTime(),
     };
     applyFocusLogUpdate((l) => [entry, ...l]);
-    if (pomGoalId && pomTaskId) {
-      applyGoalsUpdate((gs) => gs.map((g) =>
-        g.id !== pomGoalId ? g : {
-          ...g,
-          tasks: g.tasks.map((t) =>
-            t.id !== pomTaskId ? t : { ...t, sessions: (t.sessions || 0) + 1, totalTime: (t.totalTime || 0) + mins }
-          ),
-        }
-      ));
-    }
+    // No task write-back — task totals derive from focusLog (see completeSession).
     setLastSession({ id: entry.id, taskId: pomTaskId, goalId: pomGoalId, mins, completedAt: at.toISOString(), kind: "early" });
     accumulatedSecRef.current = 0;
     startedAtRef.current = null;
@@ -323,15 +316,18 @@ export function useFocusTimer({
     // the next Start (and the resting display) reflect the drained ETA rather
     // than snapping back to the full estimate. Falls back to the full eta /
     // default when there's no remaining budget (the mark-complete nudge handles
-    // the fully-spent case on the next Start).
-    const loggedAfter = (task?.totalTime || 0) + mins;
+    // the fully-spent case on the next Start). `focusLog` here predates this
+    // lap's entry (state updates async), so add `mins` back in. Habits budget
+    // per-day, matching startTaskTimer.
+    const recurring = isRecurring(task);
+    const loggedAfter = (task ? taskLoggedMins(focusLog, pomTaskId, { todayOnly: recurring }) : 0) + mins;
     const remainingAfter = task?.eta ? task.eta - loggedAfter : null;
     const focusMins = (remainingAfter != null && remainingAfter > 0) ? remainingAfter : (task?.eta || pomDurations.defaultFocus);
     setPomFocusTargetMins(focusMins);
     const nextSecs = getFocusSeconds(focusMins, pomDurations);
     targetSecRef.current = nextSecs;
     setPomSeconds(nextSecs);
-  }, [pomTaskId, pomGoalId, goals, pomDurations, stopTimer, applyFocusLogUpdate, applyGoalsUpdate]);
+  }, [pomTaskId, pomGoalId, goals, focusLog, pomDurations, stopTimer, applyFocusLogUpdate]);
 
   // Update a duration field (defaultFocus / break) and persist. When the
   // user is sitting idle with no task linked, reflect the new defaultFocus
