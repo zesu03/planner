@@ -1687,13 +1687,11 @@ const ITEMS_D = [
  figures:["Women: ~60% of farm work, <15% of titles","Agriculture: 46% of workforce, 17–18% of GDP","Maharashtra: 82% rural women vs 58% rural men in agriculture; 15.5% of operational farmland","Uttarakhand 2021: ~3.5 million women"]
 }
 ];
-
-const ITEMS = [].concat(ITEMS_A, ITEMS_B, ITEMS_C, ITEMS_D);
 /* Examples are finer-grained than cards: one card can yield several separately
    deployable examples. type: eth (ethnographic case) | law (court, statute,
    committee) | pol (policy, scheme, observance) | study (recent research) |
    fig (figure worth quoting) | theory (a scholar's stake or a contrast move) */
-const EXAMPLES = [
+const EXAMPLES_BASE = [
 {ex:"Sarnath's 2026 World Heritage inscription — an active pilgrimage centre, a national emblem and an excavated site at once, so international conservation rules collide with living worship",type:"pol",units:[["1","1.3"],["2","3.4"]],from:"sarnath"},
 {ex:"Cunningham's ASI survey at Sarnath, Oertel's recovery of the lion capital in 1904–05, Sahni's excavations — the culture-historical lineage at a single site",type:"theory",units:[["1","1.8"],["1","1.3"]],from:"sarnath"},
 
@@ -1889,7 +1887,7 @@ const EXAMPLES = [
 ];
 
 /* Contrast pairs: the "set X against Y" move, which is where marks live */
-const PAIRS = [
+const PAIRS_BASE = [
 {axis:"Does Fifth Schedule protection attach to a territory or to a people?",a:"Samatha (1997) — land in a Scheduled Area cannot pass to non-tribals for mining, whoever holds it",b:"Mukkera (2026) — where every party is non-tribal, ordinary civil courts keep jurisdiction",units:[["2","7.1"],["2","9.1"]],from:["mukkera"]},
 {axis:"How should a state value a sacred landscape?",a:"Yindjibarndi (Australia, 2026) — quantify spiritual injury in damages, AUD 1.3 billion claimed",b:"Niyamgiri (India, 2013) — refuse to price it and hand the decision to the twelve gram sabhas",units:[["2","6.3"],["1","4.0"]],from:["yindjibarndi","odishapvtg"]},
 {axis:"What is caste, seen from where?",a:"Dumont, Homo Hierarchicus — an ideology of purity and pollution ordering a consensual hierarchy",b:"Mencher (1974) and Berreman — from the bottom, a system of exploitation that keeps the exploited divided",units:[["2","3.2"],["1","6.0"]],from:["mencher"]},
@@ -1911,6 +1909,244 @@ const PAIRS = [
 {axis:"Who counts as a Scheduled Tribe?",a:"Lokur Committee (1965) — primitive traits, distinctive culture, geographical isolation, shyness of contact, backwardness",b:"Xaxa Committee (2014) — those criteria are frozen colonial ethnography, and tribes should be citizens on their own terms",units:[["2","6.1"],["2","7.1"]],from:["creamy","conversion","pahariya"]},
 {axis:"Why do tribal women still give birth at home?",a:"Supply failure — too few institutions, the reading behind hospital construction and cash incentives",b:"Demand-side (Kalahandi, 2026) — cost, mothers-in-law, distance and modesty, with the daai holding authoritative knowledge",units:[["2","6.2"],["1","12.0"]],from:["midwives"]}
 ];
+POSTS.p9 = { date:"2026-09-20", range:"6–18 September 2026", title:"Fortnightly Digest", url:"https://kartic.guru/2026/09/20/anthropology-current-affairs-6/", kind:"digest" };
+
+const ITEMS_F = [
+{
+ id:"climbing", post:"p9", paper:"1",
+ units:[["1","1.4"],["1","1.5"],["1","1.6"]],
+ title:"Bone strength dates the end of habitual tree-climbing to about 1.8 million years ago",
+ gist:"Arm-to-thigh cortical bone strength measured within single skeletons shows Australopithecus still loading its arms like a chimpanzee at 3.67 million years, while early Homo at Dmanisi is indistinguishable from us — obligate terrestrial bipedalism arriving with the genus Homo, not with bipedalism itself.",
+ deploy:"Use Little Foot and the Dmanisi individual together as the 2026 evidence on when arboreality ended, in any answer on erect posture, the skeletal consequences of bipedalism, or mosaic evolution. The clean line: bipedal legs and climbing arms in one skeleton is mosaic evolution in its purest form.",
+ news:"A paper in Science Advances on 16 September 2026, led by Kristian J. Carlson of the Keck School of Medicine at the University of Southern California, argues that obligate terrestrial bipedalism — the complete abandonment of habitual tree use — was established in the genus Homo by about 1.8 million years ago but was not present in Australopithecus. The team used CT scanning and cross-sectional geometry to measure internal cortical bone strength, then computed arm-to-thigh strength ratios within each individual across seven hominin skeletons spanning roughly 3.7 to 1.5 million years, compared against modern humans and living African apes. Two specimens carry the argument. 'Little Foot', an Australopithecus skeleton 3.67 million years old from Sterkfontein in the Cradle of Humankind, shows upper-limb loading comparable to living chimpanzees and gorillas combined with human-like lower-limb structure. The early Homo individual from Dmanisi in Georgia, about 1.8 million years old, shows stronger legs and weaker arms in a pattern indistinguishable from modern humans. Carlson treats relative limb strength as a threshold trait marking a behavioural transition between the two genera, links the shift to changes in ranging and food gathering rather than to tool use alone, and notes that it coincides with brain expansion around two million years ago without claiming causation.",
+ context:"Whether australopithecines still climbed has been open since Raymond Dart described the Taung child in 1925 and argued for an upright terrestrial ancestor. Johanson's recovery of Lucy at Hadar in 1974 and Mary Leakey's Laetoli footprint trail of 1976–78 established habitual bipedalism by 3.6 million years ago; what stayed contested was whether it was exclusive. Randall Susman, Jack Stern and William Jungers argued from curved phalanges and long forelimbs that A. afarensis retained substantial arboreality. Little Foot was identified by Ronald Clarke from four foot bones at Sterkfontein in 1994 and excavated over two decades. The Dmanisi hominins, excavated from 1991 under David Lordkipanidze, are the earliest securely dated hominins outside Africa. The paper's contribution is methodological: it moves the argument from morphology, which both camps read differently, to loading history, which is harder to argue away.",
+ mechLabel:"Scientific mechanism",
+ mech:"Cortical bone obeys what is loosely called Wolff's law: it is deposited where mechanical strain is high and resorbed where it is low, so bone shape records what an animal actually did rather than what its ancestors looked like. Cross-sectional geometry quantifies this by treating a limb-bone shaft as an engineering beam and measuring resistance to bending and torsion. Comparing humerus against femur within one skeleton removes the confounding effects of body size, species differences in bone density and differential preservation. A chimpanzee, supporting much of its weight on its forelimbs in climbing and knuckle-walking, has a high arm-to-thigh ratio; a modern human, whose arms carry nothing, has a low one. Reading that ratio off a fossil is in effect reading the animal's activity pattern.",
+ synth:[
+  "The result supports the mosaic evolution position associated with Le Gros Clark and later Gould, in which different body systems evolve at different rates rather than as an integrated package — and it is the standing refutation of the older idea that erect posture, brain expansion and tool use arrived together.",
+  "It bears on the savanna hypothesis of Dart and Coppens's East Side Story. If Australopithecus was still spending chimpanzee-level time in trees at 3.67 million years, the shift to open country was gradual and incomplete, and a wooded or mosaic habitat — which the Sterkfontein and Hadar palaeoecology suggests anyway — fits better than open grassland."
+ ],
+ terms:[
+  ["Cross-sectional geometry","Analysis of a bone shaft's cross-section as a mechanical beam, yielding measures of resistance to bending and twisting; because bone remodels in life, these record habitual activity rather than inherited shape."],
+  ["Obligate bipedalism","Locomotion in which two-legged walking is the only habitual mode, with the forelimb released entirely from weight-bearing; distinguished from facultative bipedalism, which many primates show occasionally."],
+  ["Wolff's law","The principle that bone is deposited where mechanical strain is high and resorbed where it is low, making cortical thickness a record of loading history."],
+  ["Threshold trait","A character that shifts from one state to another across a boundary rather than continuously, and which can therefore mark a transition in the fossil record."],
+  ["Mosaic evolution","The pattern in which different anatomical or functional systems within a lineage evolve at different rates, so a single fossil combines derived and primitive features."]
+ ],
+ scholars:["Kristian J. Carlson","Raymond Dart","Donald Johanson","Mary Leakey","Randall Susman","Jack Stern","William Jungers","Ronald Clarke","David Lordkipanidze","Wilfrid Le Gros Clark","Stephen Jay Gould","Yves Coppens"],
+ communities:[],
+ law:[],
+ figures:["Obligate bipedalism by ~1.8 million years","Little Foot: 3.67 million years, Sterkfontein","Dmanisi: ~1.8 million years, earliest hominins outside Africa","Seven individuals spanning 3.7–1.5 million years","Laetoli trail: 3.6 million years"]
+},
+{
+ id:"orangutan", post:"p9", paper:"1",
+ units:[["1","1.5"],["1","12.0"],["1","9.8"]],
+ title:"Five infant orangutans in an Odisha forest and India's place in the exotic primate trade",
+ gist:"A seizure that exposes India as both destination and transit node, and a species whose reproductive biology makes it uniquely vulnerable — an infant in the pet trade means a dead mother and a reproductive gap that takes a decade to close.",
+ deploy:"Use the Odisha seizure with the 2022 all-India figures in answers on primate conservation, maternal investment and primate behaviour, or applied anthropology in wildlife policy. Harlow and Bowlby supply the theoretical spine for why separation is not merely cruel but developmentally catastrophic.",
+ news:"Five baby orangutans were discovered in a forest in Odisha, exposing India's emerging role as both destination and transit node in the international primate trade. Indonesia has formally requested repatriation, but Indian authorities have delayed DNA testing on grounds of the infants' fragile health, DNA being the standard tool for establishing provenance and subspecies identity before repatriation can proceed. In 2022 nearly four thousand exotic animals were seized across India in fifty-six incidents, of which over a hundred were primates including orangutans, chimpanzees and gibbons. Gibbons are the most frequently intercepted, with multiple seizures at Mumbai, Chennai and Bengaluru airports in 2025, smuggled principally from Thailand and Malaysia. Documented routes run by sea through the Andaman Islands, by air via Thailand, and overland across the Myanmar and Bangladesh borders, with the United Arab Emirates operating as a laundering hub before re-export. Obtaining a young orangutan for the pet trade requires killing its mother, because orangutan mothers will not abandon a dependent infant. Separated primates show intense phases of agitation — screaming, running, depression — which can be fatal; in one 2025 case nine primates were smuggled in a suitcase and eight died of suffocation and dehydration. Indonesia maintains rehabilitation facilities and forest schools, where rescued primates relearn foraging, nest-building and predator avoidance before any attempt at release.",
+ context:"The international framework is CITES, signed in 1973, in force from 1975, acceded to by India in 1976, with all great apes in Appendix I, which prohibits commercial international trade. India's domestic instrument is the Wild Life (Protection) Act, 1972, substantially amended in 2022 specifically to bring CITES-listed exotic species within its scope, since until then exotic animals not native to India occupied a legal grey area; a voluntary disclosure scheme for exotic pets ran in 2020 and 2021. Orangutan ecology makes the species uniquely vulnerable: females give birth at intervals of six to eight years, the longest interbirth interval of any mammal, and infants remain dependent for seven to nine years.",
+ mechLabel:"Scientific and legal mechanism",
+ mech:"Genetic provenancing compares mitochondrial DNA sequences and microsatellite genotypes from a seized animal against reference panels from wild populations. Because orangutan populations are geographically structured — Pongo pygmaeus in Borneo, Pongo abelii in northern Sumatra, Pongo tapanuliensis in Batang Toru, with further structure within Borneo — an individual can usually be assigned to a source region. The behavioural argument about maternal separation rests on Bowlby's attachment theory and Harlow's rhesus macaque experiments of the late 1950s, which demonstrated that infant primates deprived of maternal contact develop severe and often irreversible social and affective deficits. Forest schools are in effect an attempt to substitute a social learning environment for a mother, and their mixed success is itself evidence for how much of ape behaviour is socially transmitted rather than innate.",
+ synth:[
+  "The item works as an applied anthropology case, where the discipline's knowledge of primate development feeds directly into enforcement and rehabilitation policy.",
+  "It also opens the anthropology of human-animal relations: whether the category of the pet, extended to a great ape, is a cultural artefact of particular urban elites, and how that category travels through trafficking networks."
+ ],
+ terms:[
+  ["CITES Appendix I","The schedule of species threatened with extinction for which commercial international trade is prohibited, permitted only in exceptional non-commercial circumstances under permit."],
+  ["Interbirth interval","The time between successive births to the same female; the orangutan's six to eight years is the longest of any mammal, making populations extremely slow to recover from losses."],
+  ["Genetic provenancing","Assigning a confiscated animal or product to a source population using genetic markers — the essential step before repatriation or prosecution."],
+  ["Attachment (Bowlby, Harlow)","The enduring affective bond between infant and caregiver, whose disruption in primates produces lasting behavioural pathology."],
+  ["Rehabilitation and soft release","The staged restoration of wild competence to a confiscated animal, including forest school training, before release into a monitored wild setting."]
+ ],
+ scholars:["John Bowlby","Harry Harlow"],
+ communities:[],
+ law:["CITES (1973/1975; India acceded 1976)","Wild Life (Protection) Act, 1972","Wild Life (Protection) Amendment Act, 2022"],
+ figures:["~4,000 exotic animals seized in India in 2022 across 56 incidents; 100+ primates","Interbirth interval 6–8 years; dependency 7–9 years","2025: nine primates in a suitcase, eight died"]
+},
+{
+ id:"plague", post:"p9", paper:"1",
+ units:[["1","1.8"],["1","9.8"],["1","9.0"]],
+ title:"Ancient plague genomics resolves the Neolithic decline",
+ gist:"Yersinia pestis genomes recovered from Scandinavian megalithic tombs, with kinship genomics showing plague striking three successive generations of the same family — early plague was lethal enough to collapse Neolithic farming populations, against the older soil-exhaustion, drought and warfare explanations.",
+ deploy:"Cite the 2026 Copenhagen-Cambridge-Oxford study in Paper 1 answers on Neolithic demographic shifts, biocultural adaptation, or ancient disease ecology. The structural point: the Neolithic transition itself manufactured the conditions for the epidemic that undid it.",
+ news:"A paleogenomic and bioarchaeological study led by researchers from the University of Copenhagen, Cambridge and Oxford, published on 14–15 September 2026, resolves a long controversy over the demographic collapse of European Neolithic farming populations around 5,000 years ago. Combining high-coverage ancient DNA extraction, whole-genome sequencing of ancient Yersinia pestis strains, stratigraphy and radiocarbon dating across Neolithic communal megalithic tombs in Scandinavia, the researchers show that early virulent plague outbreaks wiped out entire families and kin groups, with a detection rate approaching 40 per cent among tested individuals.",
+ context:"Between 5,300 and 4,900 years before present, agricultural settlements of the Funnel Beaker (TRB) culture across Northern and Central Europe experienced sudden catastrophic population collapses. Archaeologists had attributed this to agricultural soil exhaustion, mega-droughts, or violent warfare accompanying the migration of pastoralist groups, while paleogeneticists debated whether early prehistoric strains of Yersinia pestis were virulent enough to cause mass mortality or merely produced mild localised infections.",
+ mechLabel:"Scientific mechanism",
+ mech:"The team extracted ancient bacterial and human DNA from dental pulp cavities across 46 individuals buried in Swedish graves; high-throughput metagenomic sequencing identified complete Yersinia pestis genomes in 18 of them. Kinship genomics, analysing identity-by-descent chromosomal segments, revealed that plague struck multiple members across three successive generations within the same biological family line, and that these deaths occurred during brief synchronous epidemic waves rather than as gradual background mortality. That pattern establishes that early pneumonic or septicaemic plague was highly lethal and transmissible through respiratory droplets in the dense, unhygienic households of early agriculture.",
+ synth:[
+  "Biocultural evolution with epidemic disease as an evolutionary force: the cultural transition from low-density mobile foraging to sedentary high-density farming with domesticated livestock generated novel ecological niches that favoured the emergence and rapid amplification of deadly zoonotic pathogens.",
+  "Demographic collapse and population replacement: the study explains the biological vacuum that enabled the Bronze Age steppe genetic turnover, the Yamnaya pastoralist expansion into Western and Northern Europe, illustrating how disease ecology shapes migration and genomic prehistory."
+ ],
+ terms:[
+  ["Neolithic Decline","The widespread demographic and cultural collapse of European early farming societies around 5,000 BP, marked by site abandonment and population crashes."],
+  ["Paleogenomics","The reconstruction and analysis of ancient genetic material from skeletal remains, used for extinct hominins, ancestral migrations and pathogen evolution."],
+  ["Kinship genomics","The identification of biological pedigrees and sibling relationships in prehistoric burial grounds through high-density ancient DNA matching."],
+  ["Zoonotic spillover","Transmission of a pathogen from a vertebrate animal host into a human population, frequently accelerated by agriculture and animal domestication."],
+  ["Identity-by-descent","Chromosomal segments shared between individuals because both inherited them from a common ancestor; the basis for reconstructing prehistoric family lines."]
+ ],
+ scholars:[],
+ communities:["Funnel Beaker (TRB) culture","Yamnaya"],
+ law:[],
+ figures:["~5,000 BP collapse; TRB decline 5,300–4,900 BP","46 individuals tested, Yersinia pestis genomes in 18","Detection rate approaching 40%","Plague across three successive generations"]
+},
+{
+ id:"frafcr", post:"p9", paper:"2",
+ units:[["2","9.1"],["2","6.3"],["2","6.2"],["2","7.1"]],
+ title:"Gram Sabha consent against forest clearance: FRA 2006 versus the Forest Conservation Rules 2022",
+ gist:"The Forest Rights Act requires prior written consent of the Gram Sabha before forest land is diverted; the 2022 Rules moved consent to after Stage-II central clearance is already granted, which critics say reduces it to an administrative formality.",
+ deploy:"The essential contemporary case for FRA implementation bottlenecks. The argument to carry is legislative hierarchy: subordinate rules made under the Forest Conservation Act cannot abrogate substantive rights conferred by a parent Act of Parliament, and Section 4(5) of the FRA bars eviction until recognition is complete.",
+ news:"A legal and policy controversy has resurfaced over the statutory mandate of Gram Sabha consent in forest clearance. The dispute is between the Forest Rights Act, 2006, which requires that no forest land be diverted for developmental projects without complete recognition of tribal rights and the prior written consent of the Gram Sabha, and the Forest Conservation Rules, 2022, notified by MoEFCC under the Forest Conservation Act, which shifted the responsibility of obtaining Gram Sabha consent to State Governments after Stage-II central forest clearance has already been approved.",
+ context:"Under a 2009 circular of the Ministry of Environment and Forests, issued following legal challenges to mining projects in Niyamgiri, central forest clearance required two preconditions: certification that recognition of Individual and Community Forest Rights under the FRA was complete, and an official resolution of prior informed consent from the affected Gram Sabhas. The 2022 Rules decoupled Stage-II clearance from Gram Sabha consent, drawing resistance from the Ministry of Tribal Affairs, tribal leaders and state human rights commissions, who argue that post-clearance consultation makes consent meaningless.",
+ mechLabel:"Legal mechanism",
+ mech:"The core dispute rests on legislative hierarchy. The Forest Rights Act, 2006 is a sovereign Act of Parliament whose Section 4(5) explicitly bars eviction or relocation of forest dwellers until the recognition procedure is complete. The Niyamgiri judgment (Orissa Mining Corporation v. MoEF, 2013) held that the Gram Sabha possesses statutory authority under PESA and the FRA to protect tribal religious, cultural and community rights, and that its consent is a mandatory prerequisite for forest diversion. Executive rules formulated under the Forest Conservation Act are subordinate legislation and cannot override or subordinate substantive statutory rights conferred by Parliament. Sequence is the whole issue: consent sought after clearance has been granted cannot function as consent, because the decision it is meant to govern has already been made.",
+ synth:[
+  "Bureaucratic centralism against subaltern self-rule: the persistent friction between the state's centralised resource-extraction apparatus and the decentralised vision of Gram Swaraj and tribal autonomy in PESA and the FRA.",
+  "Environmental justice and communitarian jurisprudence: tribal land conflicts embody competing paradigms of justice — utilitarian developmentalism measured in national economic growth, against communitarian environmental justice grounded in customary stewardship and human dignity."
+ ],
+ terms:[
+  ["Gram Sabha sovereignty","The statutory doctrine under PESA 1996 and FRA 2006 establishing the village assembly as the authority in determining forest rights, local development planning and community resource protection."],
+  ["Community Forest Rights (CFR)","The right recognised under the FRA empowering forest-dwelling communities to protect, regenerate, conserve and manage customary forest resources."],
+  ["Subordinate legislation","Rules or notifications issued by executive ministries, which must conform to the enabling parent Act and cannot abrogate statutory rights."],
+  ["Section 4(5), FRA 2006","The provision barring eviction or relocation of forest dwellers until the process of recognising rights is complete."],
+  ["Stage-II forest clearance","The final stage of central approval for diverting forest land, after which the 2022 Rules place the consent process — the sequencing at the heart of the dispute."]
+ ],
+ scholars:[],
+ communities:["Dongria Kondh"],
+ law:["Forest Rights Act, 2006","Forest Conservation Rules, 2022","Forest (Conservation) Act, 1980","PESA, 1996","Orissa Mining Corporation v. MoEF (2013)","MoEF circular, 2009"],
+ figures:[]
+},
+{
+ id:"baiga", post:"p9", paper:"2",
+ units:[["2","6.2"],["2","9.1"],["2","6.1"]],
+ title:"Baiga children's deaths in Balaghat and the gap between programme design and outcome",
+ gist:"Around thirty children of a Particularly Vulnerable Tribal Group dying in a district covered by a saturation-principle scheme, of measles, malaria, malnutrition, anaemia and unsafe water — the predictable failure Elwin forecast when bewar was suppressed.",
+ deploy:"Use Balaghat, September 2026, as the current example of the gap between PVTG programme design and outcome, anchored by Elwin's The Baiga (1939) and the Xaxa Committee's health findings. The diagnostic concept is Paul Farmer's structural violence: deaths produced by the ordinary functioning of institutions rather than by any identifiable act.",
+ news:"Around thirty children of the Baiga community, a Particularly Vulnerable Tribal Group, have died in Balaghat district of Madhya Pradesh, with the deaths attributed to lack of adequate care and safe drinking water and to measles, malaria, malnutrition and anaemia. The Baiga are among the seventy-five PVTGs and a target community of PM-JANMAN, which covers seventy-five PVTGs across eighteen States and one Union Territory through eleven critical interventions including safe drinking water, health and nutrition. Balaghat has a substantial Baiga population and falls within the saturation coverage the scheme promises.",
+ context:"The Baiga occupy a particular place in Indian anthropology because Verrier Elwin's The Baiga (1939) made his reputation and framed the argument he carried for the rest of his life. Elwin documented bewar, the shifting cultivation the Baiga regarded as their proper relationship to the earth, and recorded their conviction that tearing the breast of mother earth with a plough was a violation. The colonial administration suppressed bewar progressively from the late nineteenth century and in partial compensation created the Baiga Chak in 1890, a reserved block of villages in the Mandla area where limited shifting cultivation was permitted. The consequence was the one Elwin predicted: a community pushed onto marginal settled cultivation without the skills, cattle or land quality it required, with chronic under-nutrition following. The PVTG category descends from the Dhebar Commission of 1960–61, which first drew attention to internal differentiation among Scheduled Tribes; the Primitive Tribal Group category was operationalised from 1975 under the Fifth Five Year Plan with fifty-two groups, later expanded to seventy-five and renamed in 2006. Central India's tribal populations also carry a heavy sickle cell burden, targeted by the National Sickle Cell Anaemia Elimination Mission launched in 2023.",
+ mechLabel:"Policy mechanism",
+ mech:"PM-JANMAN operates on a saturation principle: rather than selecting beneficiaries, it aims to cover every PVTG habitation with a defined package, delivered by converging eleven existing schemes across nine ministries — pucca housing under PMAY-Gramin, all-weather roads under PMGSY, piped water under the Jal Jeevan Mission, mobile medical units, anganwadi centres, hostels, Van Dhan Vikas Kendras and electrification. The design assumption is that convergence at habitation level eliminates the gaps scheme-by-scheme delivery leaves. The known weakness is that saturation is measured by asset creation — houses built, pipelines laid — rather than by outcome, and the smallest and most remote habitations, which are precisely where PVTGs live, are the last to be reached and the hardest to monitor. Article 275(1) grants-in-aid and DAPST are the fiscal instruments behind the scheme.",
+ synth:[
+  "The episode belongs to what Paul Farmer called structural violence, in which deaths are produced not by identifiable acts but by the ordinary functioning of institutions that fail predictably for particular populations; Nancy Scheper-Hughes's Death Without Weeping (1992) is the classic ethnographic treatment of how routine child death becomes normalised.",
+  "The Xaxa Committee's 2014 findings recorded that tribal populations have consistently worse nutritional and mortality indicators than both the general population and the Scheduled Castes.",
+  "Elwin's original argument — that destroying a subsistence system produces health collapse a generation later — connects the 1939 monograph directly to this incident."
+ ],
+ terms:[
+  ["Bewar","The Baiga form of shifting cultivation on hill slopes, suppressed by colonial forest administration and partially permitted within the Baiga Chak reserved area created in 1890."],
+  ["Saturation approach","A delivery model aiming at universal coverage of a defined population with a defined package of entitlements, rather than selective targeting of identified beneficiaries."],
+  ["Structural violence (Farmer)","Harm resulting from the organisation of social, economic and political institutions rather than from any identifiable agent, producing predictable excess mortality among particular groups."],
+  ["Baiga Chak","The reserved block of villages created in the Mandla area in 1890 where limited shifting cultivation was permitted, in partial compensation for the suppression of bewar."],
+  ["DAPST","The Development Action Plan for Scheduled Tribes, formerly the Tribal Sub-Plan, requiring ministries to earmark funds for tribal development in proportion to the ST share of population."]
+ ],
+ scholars:["Verrier Elwin","Paul Farmer","Nancy Scheper-Hughes","Virginius Xaxa"],
+ communities:["Baiga"],
+ law:["PM-JANMAN","Article 275(1)","Dhebar Commission (1960–61)","Xaxa Committee (2014)","National Sickle Cell Anaemia Elimination Mission (2023)"],
+ figures:["~30 Baiga children died, Balaghat, September 2026","75 PVTGs across 18 States and 1 UT","PM-JANMAN: 11 interventions, 9 ministries","PTG category 1975 with 52 groups, later 75"]
+},
+{
+ id:"affinity", post:"p9", paper:"2",
+ units:[["2","7.1"],["2","3.2"],["2","6.1"]],
+ title:"Kerala High Court rejects a rigid burden of proof for Scheduled Tribe claims",
+ gist:"Scrutiny committees cannot demand of tribal claimants the documentary standard expected of general citizens, and the affinity test cannot mechanically invalidate a claim when urbanised tribal youth have lost fluency in archaic customs — denial is confined to proven patent fraud.",
+ deploy:"Cite the 2026 Kerala High Court ruling on caste and tribe scrutiny, the limits of the affinity test, and Articles 341 and 342. The sharp irony to deploy: an affinity test used rigidly punishes exactly the families that education and mobility have changed, making the safeguard penalise the mobility it was meant to enable.",
+ news:"In a judgment in September 2026 the Kerala High Court held that authorities and Caste Scrutiny Committees cannot insist that members of Scheduled Castes and Scheduled Tribes discharge the same rigid, technical burden of proof ordinarily expected of general citizens when proving community identity. Denial of constitutionally guaranteed reservation must be confined strictly to proven cases of patent fraud established by independent material available with the State, rather than penalising tribal claimants for lacking century-old documentary records.",
+ context:"Under the Supreme Court's Madhuri Patil guidelines of 1994, state governments established District and State Scrutiny Committees to verify the genuineness of caste and tribe certificates. In practice these committees frequently demand pre-independence land deeds, colonial census entries or formal revenue records. Scheduled Tribes historically inhabited remote forests, possessed oral rather than written cultures, had high illiteracy and held land under unwritten customary community tenure, so producing decades-old individual documentary records is an insurmountable barrier — leading to arbitrary cancellation of valid tribal certificates.",
+ mechLabel:"Legal mechanism",
+ mech:"The Court treated affirmative action under Articles 15(4) and 16(4) as an instrument of substantive equality, so demanding standard civil-court proof from historically marginalised groups ignores structural inequality. Three strands follow. On evidentiary inequity, marginalised tribal families had no institutional access to registration departments or school admission registries in the early twentieth century. On the anthropological affinity test — inquiry into distinctive customs, marriage rituals, deities, funeral rites and dialects — the Court reaffirmed it as a supporting diagnostic tool that cannot be used mechanically to invalidate a claim when younger urbanised tribal youths have experienced cultural assimilation or lost fluency in archaic customs. On the standard of proof, unless the scrutiny body uncovers positive evidence of intentional fraud, authentic familial oral history and surrounding socio-economic conditions must be given decisive weight.",
+ synth:[
+  "The ruling engages the tribe–caste continuum directly: as tribal communities assimilate into regional peasant societies through modernisation, rigid insistence on retained 'primitive traits' punishes precisely those tribal families that have pursued education and employment.",
+  "It also exposes a tension inside the Lokur criteria themselves, since a test framed around cultural distinctiveness becomes a barrier the moment a community's culture changes — which is what the Xaxa Committee meant in calling those criteria frozen colonial ethnography."
+ ],
+ terms:[
+  ["Madhuri Patil guidelines (1994)","The Supreme Court ruling establishing standardised scrutiny committees and vigilance cells to prevent fraudulent SC/ST reservation claims."],
+  ["Anthropological affinity test","An investigative procedure examining whether an applicant retains the traditional customs, dialect, totemic clans, deities and lifecycle rituals characteristic of a notified Scheduled Tribe."],
+  ["Patent fraud","Clear, undeniable, intentional misrepresentation or forgery of legal identity, distinguished from an applicant's inability to retrieve archival paperwork."],
+  ["Substantive equality","The principle that equal treatment of unequally situated groups reproduces inequality, so affirmative action requires differentiated standards; the basis of Articles 15(4) and 16(4)."],
+  ["Evidentiary inequity","The structural disadvantage of communities that had no access to registration, revenue or school records, when a legal process demands documentary proof."]
+ ],
+ scholars:["Virginius Xaxa"],
+ communities:[],
+ law:["Kerala High Court ruling (2026)","Madhuri Patil (1994)","Articles 341 & 342","Articles 15(4) & 16(4)","Lokur Committee (1965)"],
+ figures:[]
+},
+{
+ id:"crafts", post:"p9", paper:"2",
+ units:[["2","6.1"],["2","9.1"],["1","3.0"],["2","7.2"]],
+ title:"TRIFED, PM Vishwakarma and the tribal craft economy",
+ gist:"Dhokra casting, Toda embroidery, Warli and Pithora murals brought under a convergence of toolkits, collateral-free credit, direct digital market linkage and GI registration — an attempt to keep ethno-technology alive by making it pay.",
+ deploy:"Cite the 2026 TRIFED-PM Vishwakarma convergence on tribal arts and crafts, economic organisation and cottage industry revival. Polanyi's substantivism is the frame: these crafts are embedded in cosmology and ritual, so commercialising them without dissolving that embedding is the whole policy problem.",
+ news:"In an official review of indigenous craft empowerment, the Ministry of Tribal Affairs with TRIFED announced large-scale integration of traditional tribal craftspersons under the PM Vishwakarma Scheme and expansion of Van Dhan Vikas Kendras. The initiative focuses on preserving endangered tribal ethno-technologies — Dhokra lost-wax bronze casting, Toda embroidery, Warli and Pithora mural painting, bamboo and cane architecture — through modern design toolkits, direct digital market linkage via the e-TRIFED portal, and legal protection through Geographical Indication registration.",
+ context:"Tribal art and material culture in India are not merely merchandise but extensions of cosmology, folklore and socio-economic life. The lost-wax Dhokra metalcraft of the Bastar Gonds and the West Bengal Malhors encodes clan totems and deities; Warli painting depicts the fertility goddess Palaghat. Industrial mass production, loss of natural raw materials and exploitation by non-tribal middlemen had pushed tribal artisans into poverty and agricultural wage labour, threatening these living traditions with extinction.",
+ mechLabel:"Policy mechanism",
+ mech:"The convergence operates through four pillars. Skill upgradation supplies solar-assisted kilns and precision casting tools without altering traditional manual production aesthetics. Institutional credit under PM Vishwakarma provides collateral-free working capital so artisan cooperatives can buy raw materials in bulk. Van Dhan Vikas Kendras group self-help groups to handle primary processing, quality grading and direct selling to urban emporiums, removing the middleman. Geographical Indication registration is accelerated to prevent counterfeit imitation by non-tribal industrial manufacturers.",
+ synth:[
+  "Substantivist economic anthropology in Polanyi's sense: tribal craft production is embedded in social relations, religious ritual and ecological taboo rather than driven by price-making market mechanisms, which is why market integration is never a purely economic intervention.",
+  "Preservation without assimilation, in the idiom of Nehru's tribal Panchsheel: crafts should not be extinguished by industrial commercialisation but nurtured for economic dignity and cultural self-reliance."
+ ],
+ terms:[
+  ["Ethno-technology","The study of traditional indigenous tools, production techniques, metallurgy and architectural methods developed in response to local ecological materials."],
+  ["Dhokra (lost-wax casting)","An ancient non-ferrous metal casting technique using beeswax, clay and molten bronze, practised across Central and Eastern India and traced back to the Mohenjo-daro dancing girl."],
+  ["Substantivism (Polanyi)","The position that in traditional and tribal societies the economic system is subordinate to and embedded in social, religious and political institutions."],
+  ["Geographical Indication","A legal mark identifying goods as originating in a particular place with qualities attributable to that origin; used here to protect tribal crafts from industrial imitation."],
+  ["Van Dhan Vikas Kendra","A community-level tribal enterprise unit under the Pradhan Mantri Van Dhan Yojana for value addition, processing and branding of minor forest produce and crafts."]
+ ],
+ scholars:["Karl Polanyi","Jawaharlal Nehru"],
+ communities:["Bastar Gond","Malhor","Toda","Warli","Rathwa (Pithora)"],
+ law:["PM Vishwakarma Scheme","Pradhan Mantri Van Dhan Yojana","Geographical Indications registration"],
+ figures:[]
+}
+];
+
+const EXAMPLES_F = [
+{ex:"Carlson et al. (Science Advances, 2026): arm-to-thigh cortical bone strength puts obligate terrestrial bipedalism in Homo by about 1.8 million years ago, and absent in Australopithecus",type:"study",units:[["1","1.4"],["1","1.5"]],from:"climbing"},
+{ex:"Little Foot, 3.67 million years old from Sterkfontein, shows upper-limb loading like a living chimpanzee or gorilla combined with human-like lower-limb structure — bipedal legs and climbing arms in one skeleton",type:"study",units:[["1","1.5"],["1","1.6"]],from:"climbing"},
+{ex:"The Dmanisi individual at about 1.8 million years, the earliest securely dated hominin outside Africa, shows a limb-strength pattern indistinguishable from modern humans",type:"fig",units:[["1","1.6"]],from:"climbing"},
+{ex:"Wolff's law makes cortical bone a record of what an animal actually did: comparing humerus against femur within one skeleton removes body size, density and preservation as confounds, so a fossil's activity pattern can be read off its bone geometry",type:"theory",units:[["1","1.5"]],from:"climbing"},
+{ex:"If Australopithecus was still spending chimpanzee-level time in trees at 3.67 million years, the savanna hypothesis of Dart and Coppens's East Side Story weakens, and a wooded or mosaic habitat fits the Sterkfontein and Hadar palaeoecology better than open grassland",type:"theory",units:[["1","1.4"],["1","9.8"]],from:"climbing"},
+
+{ex:"Five infant orangutans seized in an Odisha forest in 2026, with Indonesia requesting repatriation and DNA provenancing delayed on grounds of the infants' fragile health",type:"pol",units:[["1","12.0"],["1","1.5"]],from:"orangutan"},
+{ex:"Nearly 4,000 exotic animals seized across India in 2022 in 56 incidents, over a hundred of them primates; gibbons are the most frequently intercepted, with routes through the Andamans, Thailand, Myanmar and Bangladesh and the UAE as a laundering hub",type:"fig",units:[["1","12.0"]],from:"orangutan"},
+{ex:"Orangutan females give birth at intervals of six to eight years, the longest of any mammal, with infants dependent for seven to nine years — so every infant taken for the pet trade means a dead mother and a reproductive gap that takes a decade to close",type:"fig",units:[["1","1.5"]],from:"orangutan"},
+{ex:"Harlow's rhesus macaque experiments of the late 1950s and Bowlby's attachment theory: infant primates deprived of maternal contact develop severe and often irreversible social and affective deficits, which is why forest schools substitute a social learning environment for a mother",type:"theory",units:[["1","1.5"],["1","10.0"]],from:"orangutan"},
+{ex:"All great apes sit in CITES Appendix I; India acceded in 1976, but exotic species occupied a domestic legal grey area until the Wild Life (Protection) Amendment Act of 2022 brought CITES-listed species within its scope",type:"law",units:[["1","12.0"]],from:"orangutan"},
+
+{ex:"Copenhagen-Cambridge-Oxford study (September 2026): Yersinia pestis genomes in 18 of 46 individuals from Swedish megalithic tombs, a detection rate approaching 40 per cent, establishing plague as the cause of the Neolithic decline around 5,000 BP",type:"study",units:[["1","1.8"],["1","9.8"]],from:"plague"},
+{ex:"Kinship genomics using identity-by-descent segments showed plague striking three successive generations of the same family in brief synchronous waves rather than as background mortality — proof of high lethality and respiratory transmission",type:"study",units:[["1","9.0"],["1","1.8"]],from:"plague"},
+{ex:"The Neolithic transition manufactured its own catastrophe: sedentary high-density farming with domesticated livestock created the ecological niche for zoonotic spillover, and the resulting demographic vacuum enabled the Yamnaya steppe expansion into Europe",type:"theory",units:[["1","1.8"],["1","9.8"]],from:"plague"},
+
+{ex:"Forest Conservation Rules, 2022 shifted Gram Sabha consent to after Stage-II central clearance is already approved, against the Forest Rights Act, 2006 requirement of prior written consent — consent sought after the decision cannot function as consent",type:"law",units:[["2","9.1"],["2","6.3"]],from:"frafcr"},
+{ex:"Section 4(5) of the FRA bars eviction or relocation of forest dwellers until the recognition procedure is complete, and subordinate rules made under the Forest Conservation Act cannot abrogate rights conferred by a parent Act of Parliament",type:"law",units:[["2","7.1"],["2","9.1"]],from:"frafcr"},
+{ex:"The 2009 MoEF circular, issued after the Niyamgiri challenges, made central forest clearance conditional on completed recognition of Individual and Community Forest Rights plus a prior informed consent resolution from the affected Gram Sabhas",type:"law",units:[["2","9.1"],["2","6.3"]],from:"frafcr"},
+{ex:"Bureaucratic centralism against subaltern self-rule: the centralised resource-extraction apparatus versus the Gram Swaraj vision of PESA and the FRA, or utilitarian developmentalism against communitarian environmental justice",type:"theory",units:[["2","9.1"],["2","6.3"]],from:"frafcr"},
+
+{ex:"Around thirty Baiga children died in Balaghat, Madhya Pradesh in September 2026 of measles, malaria, malnutrition, anaemia and unsafe water — in a district covered by PM-JANMAN's saturation promise",type:"eth",units:[["2","6.2"],["2","9.1"]],from:"baiga"},
+{ex:"Colonial suppression of bewar from the late nineteenth century, with the Baiga Chak created in 1890 as partial compensation, pushed the Baiga onto marginal settled cultivation without the skills, cattle or land quality it required — Elwin's predicted chronic under-nutrition arriving a generation later",type:"eth",units:[["2","6.2"],["2","6.1"]],from:"baiga"},
+{ex:"Paul Farmer's structural violence: deaths produced not by identifiable acts but by the ordinary functioning of institutions that fail predictably for particular populations, with Scheper-Hughes's Death Without Weeping (1992) on how routine child death becomes normalised",type:"theory",units:[["2","6.2"],["1","12.0"]],from:"baiga"},
+{ex:"PM-JANMAN's saturation principle converges eleven schemes across nine ministries, but saturation is measured by asset creation rather than outcome, and the smallest, most remote habitations — precisely where PVTGs live — are reached last and monitored least",type:"pol",units:[["2","9.1"],["2","6.3"]],from:"baiga"},
+{ex:"The Xaxa Committee (2014) recorded that tribal populations have consistently worse nutritional and mortality indicators than both the general population and the Scheduled Castes",type:"fig",units:[["2","6.2"],["2","7.1"]],from:"baiga"},
+
+{ex:"Kerala High Court (2026): scrutiny committees cannot demand of SC and ST claimants the documentary standard expected of general citizens, and denial of reservation must be confined to proven patent fraud established by independent state material",type:"law",units:[["2","7.1"]],from:"affinity"},
+{ex:"The affinity test — inquiry into customs, marriage ritual, deities, funeral rites and dialect — is a supporting diagnostic only, and cannot mechanically invalidate a claim when urbanised tribal youth have assimilated or lost fluency in archaic customs",type:"law",units:[["2","7.1"],["2","3.2"]],from:"affinity"},
+{ex:"Evidentiary inequity: tribes held land under unwritten customary tenure and had no institutional access to registration departments or school registries in the early twentieth century, so demands for pre-independence deeds and colonial census entries are an insurmountable barrier",type:"theory",units:[["2","7.1"],["2","6.1"]],from:"affinity"},
+{ex:"A safeguard framed around retained cultural distinctiveness penalises exactly the families that education and mobility have changed — the tribe-caste continuum turning the Lokur criteria against their intended beneficiaries",type:"theory",units:[["2","3.2"],["2","7.1"]],from:"affinity"},
+
+{ex:"TRIFED-PM Vishwakarma convergence (2026): modern toolkits, collateral-free credit, the e-TRIFED portal and accelerated GI registration for Dhokra casting, Toda embroidery, Warli and Pithora murals and bamboo architecture",type:"pol",units:[["2","6.1"],["2","9.1"]],from:"crafts"},
+{ex:"Dhokra lost-wax casting by the Bastar Gonds and West Bengal Malhors encodes clan totems and deities, and traces back to the Mohenjo-daro dancing girl; Warli painting depicts the fertility goddess Palaghat — craft as cosmology, not merchandise",type:"eth",units:[["2","6.1"],["2","3.3"]],from:"crafts"},
+{ex:"Polanyi's substantivism: tribal craft production is embedded in social relations, religious ritual and ecological taboo rather than driven by price-making markets, so market integration is never a purely economic intervention",type:"theory",units:[["1","3.0"],["2","6.1"]],from:"crafts"},
+{ex:"Van Dhan Vikas Kendras group self-help groups to handle processing, grading and direct sale to urban emporiums, the institutional device for removing the non-tribal middleman who had pushed artisans into agricultural wage labour",type:"pol",units:[["2","9.1"],["1","3.0"]],from:"crafts"}
+];
+
+const PAIRS_F = [
+{axis:"When must the Gram Sabha consent to forest diversion?",a:"Forest Rights Act 2006 and the 2009 circular — prior written consent, before clearance, with rights recognition complete",b:"Forest Conservation Rules 2022 — consent devolved to states after Stage-II central clearance is already granted",units:[["2","9.1"],["2","6.3"]],from:["frafcr"]},
+{axis:"How do you prove you are a Scheduled Tribe?",a:"Madhuri Patil (1994) scrutiny practice — pre-independence deeds, colonial census entries, revenue records, affinity test applied strictly",b:"Kerala High Court (2026) — oral family history and socio-economic conditions decisive unless the state proves patent fraud",units:[["2","7.1"],["2","3.2"]],from:["affinity"]},
+{axis:"Did Australopithecus still climb?",a:"Susman, Stern and Jungers — yes, on curved phalanges and long forelimbs, but read from morphology, which both camps interpret differently",b:"Carlson (2026) — yes, and now shown from loading history in cortical bone, which records behaviour rather than inherited shape",units:[["1","1.5"],["1","1.6"]],from:["climbing"]},
+{axis:"What ended the European Neolithic?",a:"Soil exhaustion, mega-drought or warfare accompanying pastoralist migration — the standard archaeological explanations",b:"Plague genomics (2026) — virulent Yersinia pestis in 40 per cent of tested individuals, killing across three generations of a family",units:[["1","1.8"],["1","9.8"]],from:["plague"]}
+];
+/* Aggregator. To add a week: create dataG.js etc. with ITEMS_G / EXAMPLES_G /
+   PAIRS_G and a POSTS.pN entry, then add the names to the three lines below. */
+const ITEMS    = [].concat(ITEMS_A, ITEMS_B, ITEMS_C, ITEMS_D, ITEMS_F);
+const EXAMPLES = [].concat(EXAMPLES_BASE, EXAMPLES_F);
+const PAIRS    = [].concat(PAIRS_BASE, PAIRS_F);
 /* ---------------- state ---------------- */
 const PC = { "1":"var(--p1)", "2":"var(--p2)" };
 let marks = {};         // id -> "revise" | "solid"
