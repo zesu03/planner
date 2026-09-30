@@ -87,7 +87,7 @@ const docxItems = docxFiles
 const pdfItems = pdfFiles
   .map((name) => {
     const href = encodeURIComponent(name);
-    return `      <li><a href="./${href}" target="_blank" rel="noopener">${esc(prettyName(name))}<span class="ext">.pdf</span></a></li>`;
+    return `      <li><a href="./${href}" download>${esc(prettyName(name))}<span class="ext">.pdf</span></a></li>`;
   })
   .join("\n");
 
