@@ -35,16 +35,17 @@ const entries = readdirSync(srcDir, { withFileTypes: true })
 
 const htmlFiles = entries.filter((n) => n.toLowerCase().endsWith(".html")).sort();
 const docxFiles = entries.filter((n) => n.toLowerCase().endsWith(".docx")).sort();
+const pdfFiles  = entries.filter((n) => n.toLowerCase().endsWith(".pdf")).sort();
 
-if (htmlFiles.length === 0 && docxFiles.length === 0) {
-  console.log("build-guide: no .html or .docx files in guide/ — nothing to publish.");
+if (htmlFiles.length === 0 && docxFiles.length === 0 && pdfFiles.length === 0) {
+  console.log("build-guide: no .html, .docx or .pdf files in guide/ — nothing to publish.");
   process.exit(0);
 }
 
 mkdirSync(outDir, { recursive: true });
 
 // Copy every published file verbatim into dist/guide/.
-for (const name of [...htmlFiles, ...docxFiles]) {
+for (const name of [...htmlFiles, ...docxFiles, ...pdfFiles]) {
   copyFileSync(join(srcDir, name), join(outDir, name));
 }
 
@@ -83,12 +84,22 @@ const docxItems = docxFiles
   })
   .join("\n");
 
+const pdfItems = pdfFiles
+  .map((name) => {
+    const href = encodeURIComponent(name);
+    return `      <li><a href="./${href}" target="_blank" rel="noopener">${esc(prettyName(name))}<span class="ext">.pdf</span></a></li>`;
+  })
+  .join("\n");
+
 const sections = [];
 if (htmlFiles.length) {
   sections.push(`    <h2>Guides</h2>\n    <ul>\n${htmlItems}\n    </ul>`);
 }
 if (docxFiles.length) {
   sections.push(`    <h2>Downloads</h2>\n    <ul class="downloads">\n${docxItems}\n    </ul>`);
+}
+if (pdfFiles.length) {
+  sections.push(`    <h2>PDFs</h2>\n    <ul class="downloads">\n${pdfItems}\n    </ul>`);
 }
 
 const indexHtml = `<!doctype html>
@@ -124,7 +135,7 @@ const indexHtml = `<!doctype html>
     <h1>Guide</h1>
     <p class="sub">${htmlFiles.length} guide${htmlFiles.length === 1 ? "" : "s"}${
       docxFiles.length ? ` · ${docxFiles.length} download${docxFiles.length === 1 ? "" : "s"}` : ""
-    }</p>
+    }${pdfFiles.length ? ` · ${pdfFiles.length} PDF${pdfFiles.length === 1 ? "" : "s"}` : ""}</p>
 ${sections.join("\n")}
   </main>
 </body>
@@ -134,5 +145,5 @@ ${sections.join("\n")}
 writeFileSync(join(outDir, "index.html"), indexHtml, "utf-8");
 
 console.log(
-  `build-guide: published ${htmlFiles.length} html + ${docxFiles.length} docx → dist/guide/ (index.html generated).`
+  `build-guide: published ${htmlFiles.length} html + ${docxFiles.length} docx + ${pdfFiles.length} pdf → dist/guide/ (index.html generated).`
 );
